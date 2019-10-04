@@ -306,7 +306,7 @@ uint8_t* rc522_get_tag() {
     return NULL;
 }
 
-static void timer_callback(void* arg) {
+static void rc522_timer_callback(void* arg) {
     uint8_t* serial_no = rc522_get_tag();
 
     if(serial_no != NULL) {
@@ -326,18 +326,25 @@ esp_err_t rc522_start(rc522_start_args_t start_args) {
     rc522_init();
 
     const esp_timer_create_args_t timer_args = {
-        .callback = &timer_callback,
+        .callback = &rc522_timer_callback,
         .arg = (void*) start_args.callback
     };
 
-    esp_timer_handle_t timer;
-    esp_err_t ret = esp_timer_create(&timer_args, &timer);
+    esp_err_t ret = esp_timer_create(&timer_args, &rc522_timer);
 
     if(ret != ESP_OK) {
         return ret;
     }
 
-    return esp_timer_start_periodic(timer, 125000);
+    return rc522_resume();
+}
+
+esp_err_t rc522_resume() {
+    return rc522_timer_running ? ESP_OK : esp_timer_start_periodic(rc522_timer, 125000);
+}
+
+esp_err_t rc522_pause() {
+    return ! rc522_timer_running ? ESP_OK : esp_timer_stop(rc522_timer);
 }
 
 #endif

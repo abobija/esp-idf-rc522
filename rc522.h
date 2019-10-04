@@ -4,6 +4,8 @@
 #include "driver/spi_master.h"
 
 spi_device_handle_t rc522_spi;
+esp_timer_handle_t rc522_timer;
+bool rc522_timer_running = false;
 
 typedef void(*rc522_tag_callback_t)(uint8_t*);
 
@@ -32,5 +34,7 @@ uint8_t* rc522_request(uint8_t* res_n);
 uint8_t* rc522_anticoll();
 uint8_t* rc522_get_tag();
 esp_err_t rc522_start(rc522_start_args_t start_args);
+esp_err_t rc522_resume();
+esp_err_t rc522_pause();
 
 #endif
