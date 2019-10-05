@@ -119,7 +119,7 @@ esp_err_t rc522_init() {
 
     rc522_antenna_on();
 
-    printf("RC522 Firmvare 0x%x\n", rc522_fw_version());
+    printf("RC522 Firmware 0x%x\n", rc522_fw_version());
 
     return ESP_OK;
 }
@@ -146,7 +146,7 @@ esp_err_t rc522_antenna_on() {
     return rc522_write(0x26, 0x60); // 43dB gain
 }
 
-/* Returns pointer to dinamically allocated array of two element */
+/* Returns pointer to dynamically allocated array of two element */
 uint8_t* rc522_calculate_crc(uint8_t *data, uint8_t n) {
     rc522_clear_bitmask(0x05, 0x04);
     rc522_set_bitmask(0x0A, 0x80);
