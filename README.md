@@ -3,7 +3,7 @@ C library for interfacing ESP32 with MFRC522 RFID card reader
 
 # How to use
 
-This directory is an ESP-IDF component. Clone it (or add it as submodule) into component directory of the project.
+This directory is an ESP-IDF component. Clone it (or add it as submodule) into `components` directory of the project.
 
 Example:
 
