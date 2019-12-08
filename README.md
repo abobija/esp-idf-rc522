@@ -8,6 +8,7 @@ This directory is an ESP-IDF component. Clone it (or add it as submodule) into c
 Example:
 
 ```c
+#include <stdio.h>
 #include "rc522.c"
 
 void tag_handler(uint8_t* serial_no) {
