@@ -1,6 +1,3 @@
-#ifndef rc522_c
-#define rc522_c
-
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
@@ -12,6 +9,10 @@
 #include "driver/gpio.h"
 #include "esp_timer.h"
 #include "rc522.h"
+
+spi_device_handle_t rc522_spi;
+static esp_timer_handle_t rc522_timer;
+static bool rc522_timer_running = false;
 
 esp_err_t rc522_spi_init(int miso_io, int mosi_io, int sck_io, int sda_io) {
     spi_bus_config_t buscfg = {
@@ -346,5 +347,3 @@ esp_err_t rc522_resume() {
 esp_err_t rc522_pause() {
     return ! rc522_timer_running ? ESP_OK : esp_timer_stop(rc522_timer);
 }
-
-#endif

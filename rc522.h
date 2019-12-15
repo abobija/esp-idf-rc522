@@ -1,11 +1,10 @@
-#ifndef rc522_h
-#define rc522_h
+#pragma once
+
+#ifdef __cplusplus
+extern "C" {
+#endif
 
 #include "driver/spi_master.h"
-
-spi_device_handle_t rc522_spi;
-esp_timer_handle_t rc522_timer;
-bool rc522_timer_running = false;
 
 typedef void(*rc522_tag_callback_t)(uint8_t*);
 
@@ -37,4 +36,6 @@ esp_err_t rc522_start(rc522_start_args_t start_args);
 esp_err_t rc522_resume();
 esp_err_t rc522_pause();
 
+#ifdef __cplusplus
+}
 #endif

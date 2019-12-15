@@ -13,7 +13,7 @@ Example:
 
 ```c
 #include <stdio.h>
-#include "rc522.c"
+#include "rc522.h"
 
 void tag_handler(uint8_t* serial_no) {
     for(int i = 0; i < 5; i++) {
