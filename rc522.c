@@ -18,6 +18,7 @@ static rc522_start_args_t* config_g   = NULL; /* Global configuration */
 static spi_device_handle_t rc522_spi  = NULL;
 static esp_timer_handle_t rc522_timer = NULL;
 static bool rc522_timer_running       = false;
+static bool tag_was_present_last_time = false;
 
 #define rc522_fw_version() rc522_read(0x37)
 
@@ -372,9 +373,12 @@ static uint8_t* rc522_get_tag() {
 static void rc522_timer_callback(void* arg) {
     uint8_t* serial_no = rc522_get_tag();
 
-    if(serial_no != NULL) {
+    if(serial_no && ! tag_was_present_last_time) {
         rc522_tag_callback_t cb = (rc522_tag_callback_t) arg;
         if(cb) { cb(serial_no); }
+    }
+    
+    if((tag_was_present_last_time = serial_no != NULL)) {
         free(serial_no);
     }
 }
