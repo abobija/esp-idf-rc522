@@ -20,8 +20,8 @@ static const char* TAG = "app";
 
 void tag_handler(uint8_t* serial_no) { // serial_no is always 5 bytes long
     ESP_LOGI(TAG, "Tag: %#x %#x %#x %#x %#x", 
-		sn[0], sn[1], sn[2], sn[3], sn[4]
-	);
+        sn[0], sn[1], sn[2], sn[3], sn[4]
+    );
 }
 
 void app_main(void) {
