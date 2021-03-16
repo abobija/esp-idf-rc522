@@ -323,15 +323,12 @@ static uint8_t* rc522_request(uint8_t* res_n) {
 }
 
 static uint8_t* rc522_anticoll() {
-    uint8_t* result = NULL;
     uint8_t res_n;
-    uint8_t serial_number[] = { 0x93, 0x20 };
 
     rc522_write(0x0D, 0x00);
+    uint8_t* result = rc522_card_write(0x0C, (uint8_t[]) { 0x93, 0x20 }, 2, &res_n);
 
-    result = rc522_card_write(0x0C, serial_number, 2, &res_n);
-
-    if(result != NULL && res_n != 5) {
+    if(result && res_n != 5) { // all cards/tags serial numbers is 5 bytes long (?)
         free(result);
         return NULL;
     }
@@ -349,7 +346,7 @@ static uint8_t* rc522_get_tag() {
     if(res_data != NULL) {
         free(res_data);
 
-        result = rc522_anticoll(&res_data_n);
+        result = rc522_anticoll();
 
         if(result != NULL) {
             uint8_t buf[] = { 0x50, 0x00, 0x00, 0x00 };
