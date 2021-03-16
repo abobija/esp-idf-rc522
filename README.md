@@ -1,4 +1,5 @@
 # esp-idf-rc522
+
 C library for interfacing ESP32 with MFRC522 RFID card reader
 
 ## Demo
@@ -9,7 +10,7 @@ C library for interfacing ESP32 with MFRC522 RFID card reader
 
 This directory is an ESP-IDF component. Clone it (or add it as submodule) into `components` directory of the project.
 
-Example:
+## Example
 
 ```c
 #include <stdio.h>
@@ -35,3 +36,12 @@ void app_main(void) {
     rc522_start(start_args);
 }
 ```
+
+## Author
+
+GitHub: [abobija](https://github.com/abobija)<br>
+Homepage: [abobija.com](https://abobija.com)
+
+## License
+
+[MIT](LICENSE)
