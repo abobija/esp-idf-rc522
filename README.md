@@ -13,15 +13,15 @@ This directory is an ESP-IDF component. Clone it (or add it as submodule) into `
 ## Example
 
 ```c
-#include <stdio.h>
+#include "esp_log.h"
 #include "rc522.h"
 
-void tag_handler(uint8_t* serial_no) {
-    for(int i = 0; i < 5; i++) {
-        printf("%#x ", serial_no[i]);
-    }
-    
-    printf("\n");
+static const char* TAG = "app";
+
+void tag_handler(uint8_t* serial_no) { // serial_no is always 5 bytes long
+    ESP_LOGI(TAG, "Tag: %#x %#x %#x %#x %#x", 
+		sn[0], sn[1], sn[2], sn[3], sn[4]
+	);
 }
 
 void app_main(void) {
