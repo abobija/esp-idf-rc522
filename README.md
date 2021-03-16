@@ -30,7 +30,10 @@ void app_main(void) {
         .mosi_io  = 23,
         .sck_io   = 19,
         .sda_io   = 22,
-        .callback = &tag_handler
+        .callback = &tag_handler,
+
+        // Uncomment next line for attaching RC522 to SPI2 bus. Default is VSPI_HOST (SPI3)
+        //.spi_host_id = HSPI_HOST
     };
 
     rc522_start(start_args);
