@@ -169,13 +169,13 @@ esp_err_t rc522_init(rc522_config_t* config) {
         return ESP_ERR_NO_MEM;
     }
 
-    // copy config to global configuration
-    hndl->config->miso_io = config->miso_io;
-    hndl->config->mosi_io = config->mosi_io;
-    hndl->config->sck_io = config->sck_io;
-    hndl->config->sda_io = config->sda_io;
-    hndl->config->spi_host_id = config->spi_host_id == 0 ? VSPI_HOST : config->spi_host_id;
-    hndl->config->callback = config->callback;
+    // copy config considering defaults
+    hndl->config->miso_io          = config->miso_io == 0 ? CONFIG_DISCORD_RFID_MISO : config->miso_io;
+    hndl->config->mosi_io          = config->mosi_io == 0 ? CONFIG_DISCORD_RFID_MOSI : config->mosi_io;
+    hndl->config->sck_io           = config->sck_io == 0 ? CONFIG_DISCORD_RFID_SCK : config->sck_io;
+    hndl->config->sda_io           = config->sda_io == 0 ? CONFIG_DISCORD_RFID_SDA : config->sda_io;
+    hndl->config->spi_host_id      = config->spi_host_id == 0 ? VSPI_HOST : config->spi_host_id;
+    hndl->config->callback         = config->callback;
     hndl->config->scan_interval_ms = config->scan_interval_ms == 0 ? 125 : config->scan_interval_ms;
 
     esp_err_t err = rc522_spi_init();
@@ -395,10 +395,10 @@ static void rc522_timer_callback(void* arg) {
 
 esp_err_t rc522_start(rc522_start_args_t start_args) {
     esp_err_t err = rc522_init(&start_args);
-    return err != ESP_OK ? err : rc522_resume();
+    return err != ESP_OK ? err : rc522_start2();
 }
 
-esp_err_t rc522_resume() {
+esp_err_t rc522_start2() {
     if(! hndl) { return ESP_ERR_INVALID_STATE; }
 
     if(hndl->timer_running) {
