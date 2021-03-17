@@ -16,9 +16,11 @@ typedef struct {
     spi_host_device_t spi_host_id; /*<! Default VSPI_HOST (SPI3) */
     rc522_tag_callback_t callback;
     uint16_t scan_interval_ms; /*<! How fast will ESP32 scan for nearby tags, in miliseconds. Default: 125ms */
-} rc522_start_args_t;
+} rc522_config_t;
 
-esp_err_t rc522_init(rc522_start_args_t* config);
+typedef rc522_config_t rc522_start_args_t;
+
+esp_err_t rc522_init(rc522_config_t* config);
 esp_err_t rc522_start(rc522_start_args_t start_args);
 esp_err_t rc522_resume();
 esp_err_t rc522_pause();

@@ -14,29 +14,35 @@
 
 static const char* TAG = "ESP-RC522";
 
-static rc522_start_args_t* config_g   = NULL; /* Global configuration */
-static spi_device_handle_t rc522_spi  = NULL;
-static esp_timer_handle_t rc522_timer = NULL;
-static bool rc522_timer_running       = false;
-static bool tag_was_present_last_time = false;
+struct rc522 {
+    rc522_config_t* config;
+    spi_device_handle_t spi;
+    esp_timer_handle_t timer;
+    bool timer_running;
+    bool tag_was_present_last_time;
+};
+
+typedef struct rc522* rc522_handle_t;
+
+static rc522_handle_t hndl = NULL;
 
 #define rc522_fw_version() rc522_read(0x37)
 
 static esp_err_t rc522_spi_init() {
-    if(! config_g) {
-        ESP_LOGE(TAG, "Fail to init SPI. Missing global config");
+    if(! hndl || ! hndl->config) {
+        ESP_LOGE(TAG, "Fail to init SPI. Invalid handle");
         return ESP_ERR_INVALID_STATE;
     }
 
-    if(rc522_spi) {
+    if(hndl->spi) {
         ESP_LOGW(TAG, "SPI already initialized");
         return ESP_ERR_INVALID_STATE;
     }
 
     spi_bus_config_t buscfg = {
-        .miso_io_num = config_g->miso_io,
-        .mosi_io_num = config_g->mosi_io,
-        .sclk_io_num = config_g->sck_io,
+        .miso_io_num = hndl->config->miso_io,
+        .mosi_io_num = hndl->config->mosi_io,
+        .sclk_io_num = hndl->config->sck_io,
         .quadwp_io_num = -1,
         .quadhd_io_num = -1
     };
@@ -44,21 +50,22 @@ static esp_err_t rc522_spi_init() {
     spi_device_interface_config_t devcfg = {
         .clock_speed_hz = 5000000,
         .mode = 0,
-        .spics_io_num = config_g->sda_io,
+        .spics_io_num = hndl->config->sda_io,
         .queue_size = 7,
         .flags = SPI_DEVICE_HALFDUPLEX
     };
 
-    esp_err_t err = spi_bus_initialize(config_g->spi_host_id, &buscfg, 0);
+    esp_err_t err = spi_bus_initialize(hndl->config->spi_host_id, &buscfg, 0);
 
     if(err != ESP_OK) {
         return err;
     }
 
-    err = spi_bus_add_device(config_g->spi_host_id, &devcfg, &rc522_spi);
+    err = spi_bus_add_device(hndl->config->spi_host_id, &devcfg, &hndl->spi);
 
     if(err != ESP_OK) {
-        spi_bus_free(config_g->spi_host_id);
+        spi_bus_free(hndl->config->spi_host_id);
+        hndl->spi = NULL;
     }
 
     return err;
@@ -78,7 +85,7 @@ static esp_err_t rc522_write_n(uint8_t addr, uint8_t n, uint8_t *data) {
     t.length = 8 * (n + 1);
     t.tx_buffer = buffer;
 
-    esp_err_t ret = spi_device_transmit(rc522_spi, &t);
+    esp_err_t ret = spi_device_transmit(hndl->spi, &t);
 
     free(buffer);
 
@@ -105,7 +112,7 @@ static uint8_t* rc522_read_n(uint8_t addr, uint8_t n) {
     t.rxlength = 8 * n;
     t.rx_buffer = buffer;
 
-    esp_err_t ret = spi_device_transmit(rc522_spi, &t);
+    esp_err_t ret = spi_device_transmit(hndl->spi, &t);
     assert(ret == ESP_OK);
 
     return buffer;
@@ -143,30 +150,33 @@ static esp_err_t rc522_antenna_on() {
 
 static void rc522_timer_callback(void* arg);
 
-esp_err_t rc522_init(rc522_start_args_t* config) {
+esp_err_t rc522_init(rc522_config_t* config) {
     if(! config) {
         return ESP_ERR_INVALID_ARG;
     }
 
-    if(config_g) {
+    if(hndl) {
         ESP_LOGW(TAG, "Already initialized");
         return ESP_ERR_INVALID_STATE;
     }
 
-    config_g = calloc(1, sizeof(rc522_start_args_t));
+    if(! (hndl = calloc(1, sizeof(struct rc522)))) {
+        return ESP_ERR_NO_MEM;
+    }
 
-    if(! config_g) {
+    if(! (hndl->config = calloc(1, sizeof(rc522_config_t)))) {
+        rc522_destroy();
         return ESP_ERR_NO_MEM;
     }
 
     // copy config to global configuration
-    config_g->miso_io = config->miso_io;
-    config_g->mosi_io = config->mosi_io;
-    config_g->sck_io = config->sck_io;
-    config_g->sda_io = config->sda_io;
-    config_g->spi_host_id = config->spi_host_id == 0 ? VSPI_HOST : config->spi_host_id;
-    config_g->callback = config->callback;
-    config_g->scan_interval_ms = config->scan_interval_ms == 0 ? 125 : config->scan_interval_ms;
+    hndl->config->miso_io = config->miso_io;
+    hndl->config->mosi_io = config->mosi_io;
+    hndl->config->sck_io = config->sck_io;
+    hndl->config->sda_io = config->sda_io;
+    hndl->config->spi_host_id = config->spi_host_id == 0 ? VSPI_HOST : config->spi_host_id;
+    hndl->config->callback = config->callback;
+    hndl->config->scan_interval_ms = config->scan_interval_ms == 0 ? 125 : config->scan_interval_ms;
 
     esp_err_t err = rc522_spi_init();
 
@@ -198,10 +208,10 @@ esp_err_t rc522_init(rc522_start_args_t* config) {
 
     const esp_timer_create_args_t timer_args = {
         .callback = &rc522_timer_callback,
-        .arg = (void*) config_g->callback
+        .arg = (void*) hndl->config->callback
     };
 
-    err = esp_timer_create(&timer_args, &rc522_timer);
+    err = esp_timer_create(&timer_args, &hndl->timer);
 
     if(err != ESP_OK) {
         ESP_LOGE(TAG, "Fail to create timer");
@@ -373,12 +383,12 @@ static uint8_t* rc522_get_tag() {
 static void rc522_timer_callback(void* arg) {
     uint8_t* serial_no = rc522_get_tag();
 
-    if(serial_no && ! tag_was_present_last_time) {
+    if(serial_no && ! hndl->tag_was_present_last_time) {
         rc522_tag_callback_t cb = (rc522_tag_callback_t) arg;
         if(cb) { cb(serial_no); }
     }
     
-    if((tag_was_present_last_time = serial_no != NULL)) {
+    if((hndl->tag_was_present_last_time = (bool) serial_no)) {
         free(serial_no);
     }
 }
@@ -389,45 +399,50 @@ esp_err_t rc522_start(rc522_start_args_t start_args) {
 }
 
 esp_err_t rc522_resume() {
-    if(rc522_timer_running) {
+    if(! hndl) { return ESP_ERR_INVALID_STATE; }
+
+    if(hndl->timer_running) {
         return ESP_OK;
     }
 
-    esp_err_t err = esp_timer_start_periodic(rc522_timer, config_g->scan_interval_ms * 1000);
-    rc522_timer_running = err == ESP_OK;
+    esp_err_t err = esp_timer_start_periodic(hndl->timer, hndl->config->scan_interval_ms * 1000);
+    hndl->timer_running = err == ESP_OK;
 
     return err;
 }
 
 esp_err_t rc522_pause() {
-    if(! rc522_timer_running) {
+    if(! hndl) { return ESP_ERR_INVALID_STATE; }
+
+    if(! hndl->timer_running) {
         return ESP_OK;
     }
 
-    esp_err_t err = esp_timer_stop(rc522_timer);
-    rc522_timer_running = false;
+    esp_err_t err = esp_timer_stop(hndl->timer);
+    hndl->timer_running = false;
 
     return err;
 }
 
 void rc522_destroy() {
-    if(! config_g) {
-        return;
+    if(! hndl) { return; }
+
+    rc522_pause(); // stop timer
+
+    if(hndl->timer) {
+        esp_timer_delete(hndl->timer);
+        hndl->timer = NULL;
     }
 
-    rc522_pause();
-
-    if(rc522_timer) {
-        esp_timer_delete(rc522_timer);
-        rc522_timer = NULL;
+    if(hndl->spi) {
+        spi_bus_remove_device(hndl->spi);
+        spi_bus_free(hndl->config->spi_host_id);
+        hndl->spi = NULL;
     }
 
-    if(rc522_spi) {
-        spi_bus_remove_device(rc522_spi);
-        spi_bus_free(config_g->spi_host_id);
-        rc522_spi = NULL;
-    }
+    free(hndl->config);
+    hndl->config = NULL;
 
-    free(config_g);
-    config_g = NULL;
+    free(hndl);
+    hndl = NULL;
 }
