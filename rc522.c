@@ -29,7 +29,7 @@ static rc522_handle_t hndl = NULL;
 #define rc522_fw_version() rc522_read(0x37)
 
 bool rc522_is_inited() {
-    return (bool) hndl;
+    return hndl != NULL;
 }
 
 static esp_err_t rc522_spi_init() {
@@ -392,7 +392,7 @@ static void rc522_timer_callback(void* arg) {
         if(cb) { cb(serial_no); }
     }
     
-    if((hndl->tag_was_present_last_time = (bool) serial_no)) {
+    if((hndl->tag_was_present_last_time = serial_no != NULL)) {
         free(serial_no);
     }
 }
