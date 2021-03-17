@@ -392,7 +392,7 @@ static void rc522_timer_callback(void* arg) {
         if(cb) { cb(serial_no); }
     }
     
-    if((hndl->tag_was_present_last_time = serial_no != NULL)) {
+    if((hndl->tag_was_present_last_time = (serial_no != NULL))) {
         free(serial_no);
     }
 }
