@@ -28,6 +28,10 @@ static rc522_handle_t hndl = NULL;
 
 #define rc522_fw_version() rc522_read(0x37)
 
+bool rc522_is_inited() {
+    return (bool) hndl;
+}
+
 static esp_err_t rc522_spi_init() {
     if(! hndl || ! hndl->config) {
         ESP_LOGE(TAG, "Fail to init SPI. Invalid handle");
