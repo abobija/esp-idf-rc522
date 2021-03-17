@@ -6,6 +6,11 @@ extern "C" {
 
 #include "driver/spi_master.h"
 
+#define RC522_DEFAULT_MISO 25
+#define RC522_DEFAULT_MOSI 23
+#define RC522_DEFAULT_SCK  19
+#define RC522_DEFAULT_SDA  22
+
 typedef void(*rc522_tag_callback_t)(uint8_t*);
 
 typedef struct {

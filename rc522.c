@@ -170,10 +170,10 @@ esp_err_t rc522_init(rc522_config_t* config) {
     }
 
     // copy config considering defaults
-    hndl->config->miso_io          = config->miso_io == 0 ? CONFIG_DISCORD_RFID_MISO : config->miso_io;
-    hndl->config->mosi_io          = config->mosi_io == 0 ? CONFIG_DISCORD_RFID_MOSI : config->mosi_io;
-    hndl->config->sck_io           = config->sck_io == 0 ? CONFIG_DISCORD_RFID_SCK : config->sck_io;
-    hndl->config->sda_io           = config->sda_io == 0 ? CONFIG_DISCORD_RFID_SDA : config->sda_io;
+    hndl->config->miso_io          = config->miso_io == 0 ? RC522_DEFAULT_MISO : config->miso_io;
+    hndl->config->mosi_io          = config->mosi_io == 0 ? RC522_DEFAULT_MOSI : config->mosi_io;
+    hndl->config->sck_io           = config->sck_io == 0 ? RC522_DEFAULT_SCK : config->sck_io;
+    hndl->config->sda_io           = config->sda_io == 0 ? RC522_DEFAULT_SDA : config->sda_io;
     hndl->config->spi_host_id      = config->spi_host_id == 0 ? VSPI_HOST : config->spi_host_id;
     hndl->config->callback         = config->callback;
     hndl->config->scan_interval_ms = config->scan_interval_ms == 0 ? 125 : config->scan_interval_ms;
