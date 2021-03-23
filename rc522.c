@@ -227,6 +227,19 @@ esp_err_t rc522_init(rc522_config_t* config) {
     return ESP_OK;
 }
 
+uint64_t rc522_sn_to_u64(uint8_t* sn) {
+    if(!sn) {
+        return 0;
+    }
+
+    uint64_t result = 0;
+    for(int i = 4; i >= 0; i--) {
+        result |= ((uint64_t) sn[i] << (i * 8));
+    }
+
+    return result;
+}
+
 /* Returns pointer to dynamically allocated array of two element */
 static uint8_t* rc522_calculate_crc(uint8_t *data, uint8_t n) {
     rc522_clear_bitmask(0x05, 0x04);

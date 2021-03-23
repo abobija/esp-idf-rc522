@@ -34,6 +34,13 @@ typedef rc522_config_t rc522_start_args_t;
 esp_err_t rc522_init(rc522_config_t* config);
 
 /**
+ * @brief Convert serial number (array of 5 bytes) to uint64_t number
+ * @param sn Serial number
+ * @return Serial number in number representation. If fail, 0 will be retured
+ */
+uint64_t rc522_sn_to_u64(uint8_t* sn);
+
+/**
  * @brief Check if RC522 is inited
  * @return true if RC522 is inited
  */
