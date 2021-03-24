@@ -173,7 +173,7 @@ esp_err_t rc522_init(rc522_config_t* config) {
         rc522_destroy();
         return ESP_ERR_NO_MEM;
     }
-    
+
     // copy config considering defaults
     hndl->config->callback         = config->callback;
     hndl->config->miso_io          = config->miso_io == 0 ? RC522_DEFAULT_MISO : config->miso_io;
@@ -466,7 +466,7 @@ static void rc522_task(void* arg) {
         int delay_interval_ms = hndl->config->scan_interval_ms;
 
         if(hndl->tag_was_present_last_time) {
-            delay_interval_ms *= 3; // extra scan-bursting prevention
+            delay_interval_ms *= 2; // extra scan-bursting prevention
         }
 
         vTaskDelay(delay_interval_ms / portTICK_PERIOD_MS);
