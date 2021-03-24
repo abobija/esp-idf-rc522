@@ -15,10 +15,11 @@
 static const char* TAG = "ESP-RC522";
 
 struct rc522 {
+    bool running;
     rc522_config_t* config;
     spi_device_handle_t spi;
-    esp_timer_handle_t timer;
-    bool timer_running;
+    TaskHandle_t task_handle;
+    bool scan_started;
     bool tag_was_present_last_time;
 };
 
@@ -152,7 +153,7 @@ static esp_err_t rc522_antenna_on() {
     return rc522_write(0x26, 0x60); // 43dB gain
 }
 
-static void rc522_timer_callback(void* arg);
+static void rc522_task(void* arg);
 
 esp_err_t rc522_init(rc522_config_t* config) {
     if(! config) {
@@ -172,15 +173,17 @@ esp_err_t rc522_init(rc522_config_t* config) {
         rc522_destroy();
         return ESP_ERR_NO_MEM;
     }
-
+    
     // copy config considering defaults
+    hndl->config->callback         = config->callback;
     hndl->config->miso_io          = config->miso_io == 0 ? RC522_DEFAULT_MISO : config->miso_io;
     hndl->config->mosi_io          = config->mosi_io == 0 ? RC522_DEFAULT_MOSI : config->mosi_io;
     hndl->config->sck_io           = config->sck_io == 0 ? RC522_DEFAULT_SCK : config->sck_io;
     hndl->config->sda_io           = config->sda_io == 0 ? RC522_DEFAULT_SDA : config->sda_io;
-    hndl->config->spi_host_id      = config->spi_host_id == 0 ? VSPI_HOST : config->spi_host_id;
-    hndl->config->callback         = config->callback;
-    hndl->config->scan_interval_ms = config->scan_interval_ms == 0 ? 125 : config->scan_interval_ms;
+    hndl->config->spi_host_id      = config->spi_host_id == 0 ? RC522_DEFAULT_SPI_HOST : config->spi_host_id;
+    hndl->config->scan_interval_ms = config->scan_interval_ms < 50 ? RC522_DEFAULT_SCAN_INTERVAL_MS : config->scan_interval_ms;
+    hndl->config->task_stack_size  = config->task_stack_size == 0 ? RC522_DEFAULT_TACK_STACK_SIZE : config->task_stack_size;
+    hndl->config->task_priority    = config->task_priority == 0 ? RC522_DEFAULT_TACK_STACK_PRIORITY : config->task_priority;
 
     esp_err_t err = rc522_spi_init();
 
@@ -210,12 +213,12 @@ esp_err_t rc522_init(rc522_config_t* config) {
 
     rc522_antenna_on();
 
-    const esp_timer_create_args_t timer_args = {
-        .callback = &rc522_timer_callback,
-        .arg = (void*) hndl->config->callback
-    };
-
-    err = esp_timer_create(&timer_args, &hndl->timer);
+    hndl->running = true;
+    if (xTaskCreate(rc522_task, "rc522_task", hndl->config->task_stack_size, NULL, hndl->config->task_priority, &hndl->task_handle) != pdTRUE) {
+        ESP_LOGE(TAG, "Fail to create rc522 task");
+        rc522_destroy();
+        return err;
+    }
 
     if(err != ESP_OK) {
         ESP_LOGE(TAG, "Fail to create timer");
@@ -397,19 +400,6 @@ static uint8_t* rc522_get_tag() {
     return NULL;
 }
 
-static void rc522_timer_callback(void* arg) {
-    uint8_t* serial_no = rc522_get_tag();
-
-    if(serial_no && ! hndl->tag_was_present_last_time) {
-        rc522_tag_callback_t cb = (rc522_tag_callback_t) arg;
-        if(cb) { cb(serial_no); }
-    }
-    
-    if((hndl->tag_was_present_last_time = (serial_no != NULL))) {
-        free(serial_no);
-    }
-}
-
 esp_err_t rc522_start(rc522_start_args_t start_args) {
     esp_err_t err = rc522_init(&start_args);
     return err != ESP_OK ? err : rc522_start2();
@@ -418,38 +408,28 @@ esp_err_t rc522_start(rc522_start_args_t start_args) {
 esp_err_t rc522_start2() {
     if(! hndl) { return ESP_ERR_INVALID_STATE; }
 
-    if(hndl->timer_running) {
-        return ESP_OK;
-    }
+    hndl->scan_started = true;
 
-    esp_err_t err = esp_timer_start_periodic(hndl->timer, hndl->config->scan_interval_ms * 1000);
-    hndl->timer_running = err == ESP_OK;
-
-    return err;
+    return ESP_OK;
 }
 
 esp_err_t rc522_pause() {
     if(! hndl) { return ESP_ERR_INVALID_STATE; }
 
-    if(! hndl->timer_running) {
+    if(! hndl->scan_started) {
         return ESP_OK;
     }
 
-    esp_err_t err = esp_timer_stop(hndl->timer);
-    hndl->timer_running = false;
+    hndl->scan_started = false;
 
-    return err;
+    return ESP_OK;
 }
 
 void rc522_destroy() {
     if(! hndl) { return; }
 
     rc522_pause(); // stop timer
-
-    if(hndl->timer) {
-        esp_timer_delete(hndl->timer);
-        hndl->timer = NULL;
-    }
+    hndl->running = false; // task will delete itself
 
     if(hndl->spi) {
         spi_bus_remove_device(hndl->spi);
@@ -462,4 +442,35 @@ void rc522_destroy() {
 
     free(hndl);
     hndl = NULL;
+}
+
+static void rc522_task(void* arg) {
+    while(hndl->running) {
+        if(!hndl->scan_started) {
+            vTaskDelay(100 / portTICK_PERIOD_MS);
+            continue;
+        }
+
+        uint8_t* serial_no = rc522_get_tag();
+
+        if(serial_no && ! hndl->tag_was_present_last_time) {
+            rc522_tag_callback_t cb = hndl->config->callback;
+            if(cb) { cb(serial_no); }
+        }
+        
+        if((hndl->tag_was_present_last_time = (serial_no != NULL))) {
+            free(serial_no);
+            serial_no = NULL;
+        }
+
+        int delay_interval_ms = hndl->config->scan_interval_ms;
+
+        if(hndl->tag_was_present_last_time) {
+            delay_interval_ms *= 3; // extra scan-bursting prevention
+        }
+
+        vTaskDelay(delay_interval_ms / portTICK_PERIOD_MS);
+    }
+
+    vTaskDelete(NULL);
 }
