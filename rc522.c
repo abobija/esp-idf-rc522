@@ -29,11 +29,13 @@ static rc522_handle_t hndl = NULL;
 
 #define rc522_fw_version() rc522_read(0x37)
 
-bool rc522_is_inited() {
+bool rc522_is_inited()
+{
     return hndl != NULL;
 }
 
-static esp_err_t rc522_spi_init() {
+static esp_err_t rc522_spi_init()
+{
     if(! hndl || ! hndl->config) {
         ESP_LOGE(TAG, "Fail to init SPI. Invalid handle");
         return ESP_ERR_INVALID_STATE;
@@ -76,7 +78,8 @@ static esp_err_t rc522_spi_init() {
     return err;
 }
 
-static esp_err_t rc522_write_n(uint8_t addr, uint8_t n, uint8_t *data) {
+static esp_err_t rc522_write_n(uint8_t addr, uint8_t n, uint8_t *data)
+{
     uint8_t* buffer = (uint8_t*) malloc(n + 1);
     buffer[0] = (addr << 1) & 0x7E;
 
@@ -97,11 +100,13 @@ static esp_err_t rc522_write_n(uint8_t addr, uint8_t n, uint8_t *data) {
     return ret;
 }
 
-static esp_err_t rc522_write(uint8_t addr, uint8_t val) {
+static esp_err_t rc522_write(uint8_t addr, uint8_t val)
+{
     return rc522_write_n(addr, 1, &val);
 }
 
-static uint8_t* rc522_read_n(uint8_t addr, uint8_t n) {
+static uint8_t* rc522_read_n(uint8_t addr, uint8_t n)
+{
     if (n <= 0) {
         return NULL;
     }
@@ -123,7 +128,8 @@ static uint8_t* rc522_read_n(uint8_t addr, uint8_t n) {
     return buffer;
 }
 
-static uint8_t rc522_read(uint8_t addr) {
+static uint8_t rc522_read(uint8_t addr)
+{
     uint8_t* buffer = rc522_read_n(addr, 1);
     uint8_t res = buffer[0];
     free(buffer);
@@ -131,15 +137,18 @@ static uint8_t rc522_read(uint8_t addr) {
     return res;
 }
 
-static esp_err_t rc522_set_bitmask(uint8_t addr, uint8_t mask) {
+static esp_err_t rc522_set_bitmask(uint8_t addr, uint8_t mask)
+{
     return rc522_write(addr, rc522_read(addr) | mask);
 }
 
-static esp_err_t rc522_clear_bitmask(uint8_t addr, uint8_t mask) {
+static esp_err_t rc522_clear_bitmask(uint8_t addr, uint8_t mask)
+{
     return rc522_write(addr, rc522_read(addr) & ~mask);
 }
 
-static esp_err_t rc522_antenna_on() {
+static esp_err_t rc522_antenna_on()
+{
     esp_err_t ret;
 
     if(~ (rc522_read(0x14) & 0x03)) {
@@ -155,7 +164,8 @@ static esp_err_t rc522_antenna_on() {
 
 static void rc522_task(void* arg);
 
-esp_err_t rc522_init(rc522_config_t* config) {
+esp_err_t rc522_init(rc522_config_t* config)
+{
     if(! config) {
         return ESP_ERR_INVALID_ARG;
     }
@@ -226,11 +236,12 @@ esp_err_t rc522_init(rc522_config_t* config) {
         return err;
     }
 
-    ESP_LOGI(TAG, "Initialized (firmware: 0x%x)", rc522_fw_version());
+    ESP_LOGI(TAG, "Initialized (fw: 0x%x)", rc522_fw_version());
     return ESP_OK;
 }
 
-uint64_t rc522_sn_to_u64(uint8_t* sn) {
+uint64_t rc522_sn_to_u64(uint8_t* sn)
+{
     if(!sn) {
         return 0;
     }
@@ -244,7 +255,8 @@ uint64_t rc522_sn_to_u64(uint8_t* sn) {
 }
 
 /* Returns pointer to dynamically allocated array of two element */
-static uint8_t* rc522_calculate_crc(uint8_t *data, uint8_t n) {
+static uint8_t* rc522_calculate_crc(uint8_t *data, uint8_t n)
+{
     rc522_clear_bitmask(0x05, 0x04);
     rc522_set_bitmask(0x0A, 0x80);
 
@@ -272,7 +284,8 @@ static uint8_t* rc522_calculate_crc(uint8_t *data, uint8_t n) {
     return res;
 }
 
-static uint8_t* rc522_card_write(uint8_t cmd, uint8_t *data, uint8_t n, uint8_t* res_n) {
+static uint8_t* rc522_card_write(uint8_t cmd, uint8_t *data, uint8_t n, uint8_t* res_n)
+{
     uint8_t *result = NULL;
     uint8_t irq = 0x00;
     uint8_t irq_wait = 0x00;
@@ -338,7 +351,8 @@ static uint8_t* rc522_card_write(uint8_t cmd, uint8_t *data, uint8_t n, uint8_t*
     return result;
 }
 
-static uint8_t* rc522_request(uint8_t* res_n) {
+static uint8_t* rc522_request(uint8_t* res_n)
+{
     uint8_t* result = NULL;
     rc522_write(0x0D, 0x07);
 
@@ -353,7 +367,8 @@ static uint8_t* rc522_request(uint8_t* res_n) {
     return result;
 }
 
-static uint8_t* rc522_anticoll() {
+static uint8_t* rc522_anticoll()
+{
     uint8_t res_n;
 
     rc522_write(0x0D, 0x00);
@@ -367,7 +382,8 @@ static uint8_t* rc522_anticoll() {
     return result;
 }
 
-static uint8_t* rc522_get_tag() {
+static uint8_t* rc522_get_tag()
+{
     uint8_t* result = NULL;
     uint8_t* res_data = NULL;
     uint8_t res_data_n;
@@ -400,21 +416,22 @@ static uint8_t* rc522_get_tag() {
     return NULL;
 }
 
-esp_err_t rc522_start(rc522_start_args_t start_args) {
-    esp_err_t err = rc522_init(&start_args);
-    return err != ESP_OK ? err : rc522_start2();
-}
-
-esp_err_t rc522_start2() {
-    if(! hndl) { return ESP_ERR_INVALID_STATE; }
+esp_err_t rc522_start()
+{
+    if(! hndl) {
+        ESP_LOGE(TAG, "Cannot start. Not initialized.");
+        return ESP_ERR_INVALID_STATE;
+    }
 
     hndl->scan_started = true;
-
     return ESP_OK;
 }
 
-esp_err_t rc522_pause() {
-    if(! hndl) { return ESP_ERR_INVALID_STATE; }
+esp_err_t rc522_pause()
+{
+    if(! hndl) {
+        return ESP_ERR_INVALID_STATE;
+    }
 
     if(! hndl->scan_started) {
         return ESP_OK;
@@ -425,8 +442,11 @@ esp_err_t rc522_pause() {
     return ESP_OK;
 }
 
-void rc522_destroy() {
-    if(! hndl) { return; }
+void rc522_destroy()
+{
+    if(! hndl) {
+        return;
+    }
 
     rc522_pause(); // stop timer
     hndl->running = false; // task will delete itself
@@ -444,7 +464,8 @@ void rc522_destroy() {
     hndl = NULL;
 }
 
-static void rc522_task(void* arg) {
+static void rc522_task(void* arg)
+{
     while(hndl->running) {
         if(!hndl->scan_started) {
             vTaskDelay(100 / portTICK_PERIOD_MS);

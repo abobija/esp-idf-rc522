@@ -53,28 +53,17 @@ uint64_t rc522_sn_to_u64(uint8_t* sn);
 bool rc522_is_inited();
 
 /**
- * @brief This function will call rc522_init function and immediately start to scan tags by calling rc522_resume function.
- *        NOTE: This function will be refactored in future to just start scanning without
- *        initialization (same as rc522_resume). For initialization rc522_init will be required to call before this function.
- * @param start_args Configuration
+ * @brief Start to scan tags. If already started, ESP_OK will just be returned. Initialization function had to be
+ *        called before this one.
  * @return ESP_OK on success
  */
-esp_err_t rc522_start(rc522_start_args_t start_args);
-
-/**
- * @brief Start to scan tags. If already started, ESP_OK will just be returned.
- *        NOTE: This function is implemented because in time of implementation rc522_start function is intented for
- *        initialization and scanning in once. In future, when rc522_start gonna be refactored to just start to scan tags
- *        without initialization, this function will be just alias of rc522_start.
- * @return ESP_OK on success
- */
-esp_err_t rc522_start2();
+esp_err_t rc522_start();
 
 /**
  * @brief Start to scan tags. If already started, ESP_OK will just be returned.
  * @return ESP_OK on success
  */
-#define rc522_resume() rc522_start2()
+#define rc522_resume() rc522_start()
 
 /**
  * @brief Pause scan tags. If already paused, ESP_OK will just be returned.
