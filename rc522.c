@@ -17,11 +17,14 @@ static const char* TAG = "rc522";
 struct rc522 {
     bool running;
     rc522_config_t* config;
-    spi_device_handle_t spi;
     TaskHandle_t task_handle;
+    esp_event_loop_handle_t event_handle;
+    spi_device_handle_t spi;
     bool scan_started;
     bool tag_was_present_last_time;
 };
+
+ESP_EVENT_DEFINE_BASE(RC522_EVENTS);
 
 #define rc522_fw_version(handle) rc522_read(handle, 0x37)
 
@@ -161,11 +164,12 @@ esp_err_t rc522_init(rc522_config_t* config, rc522_handle_t* out_handle)
         return ESP_ERR_INVALID_ARG;
     }
 
+    esp_err_t err = ESP_OK;
+
     rc522_handle_t handle = calloc(1, sizeof(struct rc522)); // TODO: memcheck
     handle->config = calloc(1, sizeof(rc522_config_t)); // TODO: memcheck
 
     // copy config considering defaults
-    handle->config->callback         = config->callback;
     handle->config->miso_io          = config->miso_io == 0 ? RC522_DEFAULT_MISO : config->miso_io;
     handle->config->mosi_io          = config->mosi_io == 0 ? RC522_DEFAULT_MOSI : config->mosi_io;
     handle->config->sck_io           = config->sck_io == 0 ? RC522_DEFAULT_SCK : config->sck_io;
@@ -175,7 +179,7 @@ esp_err_t rc522_init(rc522_config_t* config, rc522_handle_t* out_handle)
     handle->config->task_stack_size  = config->task_stack_size == 0 ? RC522_DEFAULT_TACK_STACK_SIZE : config->task_stack_size;
     handle->config->task_priority    = config->task_priority == 0 ? RC522_DEFAULT_TACK_STACK_PRIORITY : config->task_priority;
 
-    esp_err_t err = rc522_spi_init(handle);
+    err = rc522_spi_init(handle);
 
     if(err != ESP_OK) {
         rc522_destroy(handle);
@@ -203,15 +207,20 @@ esp_err_t rc522_init(rc522_config_t* config, rc522_handle_t* out_handle)
 
     rc522_antenna_on(handle);
 
-    handle->running = true;
-    if (xTaskCreate(rc522_task, "rc522_task", handle->config->task_stack_size, handle, handle->config->task_priority, &handle->task_handle) != pdTRUE) {
-        ESP_LOGE(TAG, "Fail to create rc522 task");
+    esp_event_loop_args_t event_args = {
+        .queue_size = 1,
+        .task_name = NULL, // no task will be created
+    };
+
+    if(ESP_OK != (err = esp_event_loop_create(&event_args, &handle->event_handle))) {
+        ESP_LOGE(TAG, "Cannot create event loop");
         rc522_destroy(handle);
         return err;
     }
 
-    if(err != ESP_OK) {
-        ESP_LOGE(TAG, "Fail to create timer");
+    handle->running = true;
+    if (xTaskCreate(rc522_task, "rc522_task", handle->config->task_stack_size, handle, handle->config->task_priority, &handle->task_handle) != pdTRUE) {
+        ESP_LOGE(TAG, "Cannot create task");
         rc522_destroy(handle);
         return err;
     }
@@ -219,6 +228,24 @@ esp_err_t rc522_init(rc522_config_t* config, rc522_handle_t* out_handle)
     *out_handle = handle;
     ESP_LOGI(TAG, "Initialized (fw: 0x%x)", rc522_fw_version(handle));
     return ESP_OK;
+}
+
+esp_err_t rc522_register_events(rc522_handle_t handle, rc522_event_t event, esp_event_handler_t event_handler, void* event_handler_arg)
+{
+    if(! handle) {
+        return ESP_ERR_INVALID_ARG;
+    }
+
+    return esp_event_handler_register_with(handle->event_handle, RC522_EVENTS, event, event_handler, event_handler_arg);
+}
+
+esp_err_t rc522_unregister_events(rc522_handle_t handle, rc522_event_t event, esp_event_handler_t event_handler)
+{
+    if(! handle) {
+        return ESP_ERR_INVALID_ARG;
+    }
+
+    return esp_event_handler_unregister_with(handle->event_handle, RC522_EVENTS, event, event_handler);
 }
 
 uint64_t rc522_sn_to_u64(uint8_t* sn)
@@ -428,8 +455,18 @@ void rc522_destroy(rc522_handle_t handle)
         return;
     }
 
+    if(xTaskGetCurrentTaskHandle() == handle->task_handle) {
+        ESP_LOGE(TAG, "Cannot destroy rc522 from event handler");
+        return;
+    }
+
     rc522_pause(handle); // stop timer
-    handle->running = false; // task will delete itself
+    handle->running = false; // task will delete himself
+
+    if(handle->event_handle) {
+        esp_event_loop_delete(handle->event_handle);
+        handle->event_handle = NULL;
+    }
 
     if(handle->spi) {
         spi_bus_remove_device(handle->spi);
@@ -442,6 +479,25 @@ void rc522_destroy(rc522_handle_t handle)
 
     free(handle);
     handle = NULL;
+}
+
+static esp_err_t rc522_dispatch_event(rc522_handle_t handle, rc522_event_t event, void* data)
+{
+    if(! handle) {
+        return ESP_ERR_INVALID_ARG;
+    }
+
+    rc522_event_data_t e_data = {
+        .handle = handle,
+        .ptr = data,
+    };
+
+    esp_err_t err;
+    if(ESP_OK != (err = esp_event_post_to(handle->event_handle, RC522_EVENTS, event, &e_data, sizeof(rc522_event_data_t), portMAX_DELAY))) {
+        return err;
+    }
+
+    return esp_event_loop_run(handle->event_handle, 0);
 }
 
 static void rc522_task(void* arg)
@@ -457,14 +513,11 @@ static void rc522_task(void* arg)
         uint8_t* serial_no = rc522_get_tag(handle);
 
         if(serial_no && ! handle->tag_was_present_last_time) {
-            rc522_tag_callback_t cb = handle->config->callback;
-            if(cb) { cb(serial_no); }
+            rc522_dispatch_event(handle, RC522_EVENT_TAG_SCANNED, serial_no);
         }
-        
-        if((handle->tag_was_present_last_time = (serial_no != NULL))) {
-            free(serial_no);
-            serial_no = NULL;
-        }
+
+        handle->tag_was_present_last_time = (serial_no != NULL);
+        free(serial_no);
 
         int delay_interval_ms = handle->config->scan_interval_ms;
 

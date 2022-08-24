@@ -4,6 +4,7 @@
 extern "C" {
 #endif
 
+#include <esp_event.h>
 #include "driver/spi_master.h"
 
 #define RC522_DEFAULT_MISO                 (25)
@@ -15,9 +16,9 @@ extern "C" {
 #define RC522_DEFAULT_TACK_STACK_SIZE      (4 * 1024)
 #define RC522_DEFAULT_TACK_STACK_PRIORITY  (4)
 
-typedef struct rc522* rc522_handle_t;
+ESP_EVENT_DECLARE_BASE(RC522_EVENTS);
 
-typedef void(*rc522_tag_callback_t)(uint8_t*);
+typedef struct rc522* rc522_handle_t;
 
 typedef struct {
     int miso_io;                    /*<! MFRC522 MISO gpio (Default: 25) */
@@ -25,11 +26,21 @@ typedef struct {
     int sck_io;                     /*<! MFRC522 SCK gpio  (Default: 19) */
     int sda_io;                     /*<! MFRC522 SDA gpio  (Default: 22) */
     spi_host_device_t spi_host_id;  /*<! Default VSPI_HOST (SPI3) */
-    rc522_tag_callback_t callback;  /*<! Scanned tags handler */
     uint16_t scan_interval_ms;      /*<! How fast will ESP32 scan for nearby tags, in miliseconds. Default: 125ms */
     size_t task_stack_size;         /*<! Stack size of rc522 task (Default: 4 * 1024) */
     uint8_t task_priority;          /*<! Priority of rc522 task (Default: 4) */
 } rc522_config_t;
+
+typedef enum {
+    RC522_EVENT_ANY = ESP_EVENT_ANY_ID,
+    RC522_EVENT_NONE,
+    RC522_EVENT_TAG_SCANNED,             /*<! Tag scanned */
+} rc522_event_t;
+
+typedef struct {
+    rc522_handle_t handle;
+    void* ptr;
+} rc522_event_data_t;
 
 /**
  * @brief Initialize RC522 module.
@@ -39,6 +50,10 @@ typedef struct {
  * @return ESP_OK on success
  */
 esp_err_t rc522_init(rc522_config_t* config, rc522_handle_t* out_handle);
+
+esp_err_t rc522_register_events(rc522_handle_t handle, rc522_event_t event, esp_event_handler_t event_handler, void* event_handler_arg);
+
+esp_err_t rc522_unregister_events(rc522_handle_t handle, rc522_event_t event, esp_event_handler_t event_handler);
 
 /**
  * @brief Convert serial number (array of 5 bytes) to uint64_t number
@@ -70,7 +85,7 @@ esp_err_t rc522_start(rc522_handle_t handle);
 esp_err_t rc522_pause(rc522_handle_t handle);
 
 /**
- * @brief Destroy RC522 and free all resources
+ * @brief Destroy RC522 and free all resources. Cannot be called from event handler.
  * @param handle Handle
  */
 void rc522_destroy(rc522_handle_t handle);
