@@ -33,9 +33,9 @@ typedef struct {
 
 /**
  * @brief Initialize RC522 module.
- *        To start scanning tags - call rc522_resume or rc522_start2 function.
+ *        To start scanning tags call the rc522_start function.
  * @param config Configuration
- * @param out_handle Reference to resulting new handle
+ * @param out_handle Pointer to resulting new handle
  * @return ESP_OK on success
  */
 esp_err_t rc522_init(rc522_config_t* config, rc522_handle_t* out_handle);
@@ -48,34 +48,32 @@ esp_err_t rc522_init(rc522_config_t* config, rc522_handle_t* out_handle);
 uint64_t rc522_sn_to_u64(uint8_t* sn);
 
 /**
- * @brief Check if RC522 is inited
- * @return true if RC522 is inited
- */
-bool rc522_is_inited();
-
-/**
  * @brief Start to scan tags. If already started, ESP_OK will just be returned. Initialization function had to be
  *        called before this one.
+ * @param handle Handle
  * @return ESP_OK on success
  */
-esp_err_t rc522_start();
+esp_err_t rc522_start(rc522_handle_t handle);
 
 /**
  * @brief Start to scan tags. If already started, ESP_OK will just be returned.
+ * @param handle Handle
  * @return ESP_OK on success
  */
-#define rc522_resume() rc522_start()
+#define rc522_resume(handle) rc522_start(handle)
 
 /**
  * @brief Pause scan tags. If already paused, ESP_OK will just be returned.
+ * @param handle Handle
  * @return ESP_OK on success
  */
-esp_err_t rc522_pause();
+esp_err_t rc522_pause(rc522_handle_t handle);
 
 /**
  * @brief Destroy RC522 and free all resources
+ * @param handle Handle
  */
-void rc522_destroy();
+void rc522_destroy(rc522_handle_t handle);
 
 #ifdef __cplusplus
 }
