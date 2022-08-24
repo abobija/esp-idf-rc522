@@ -31,8 +31,6 @@ typedef struct {
     uint8_t task_priority;          /*<! Priority of rc522 task (Default: 4) */
 } rc522_config_t;
 
-typedef rc522_config_t rc522_start_args_t;
-
 /**
  * @brief Initialize RC522 module.
  *        To start scanning tags - call rc522_resume or rc522_start2 function.
