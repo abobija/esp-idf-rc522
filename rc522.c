@@ -6,6 +6,15 @@
 
 #include "rc522.h"
 
+typedef enum {
+    RC522_REG_VERSION = 0x37,
+} rc522_register_t;
+
+typedef enum {
+    RC522_VERSION_1_0 = 0x91,
+    RC522_VERSION_2_0 = 0x92,
+} rc522_version_t;
+
 static const char* TAG = "rc522";
 
 struct rc522 {
@@ -13,6 +22,7 @@ struct rc522 {
     rc522_config_t* config;                /*<! Configuration */
     TaskHandle_t task_handle;              /*<! Handle of task */
     esp_event_loop_handle_t event_handle;  /*<! Handle of event loop */
+    bool initialized;                      /*<! Set on the first start() when configuration is sent to rc522 */
     bool scanning;                         /*<! Whether the rc522 is in scanning or idle mode */
     bool tag_was_present_last_time;
 };
@@ -64,7 +74,7 @@ static inline esp_err_t rc522_clear_bitmask(rc522_handle_t rc522, uint8_t addr, 
 
 static inline uint8_t rc522_firmware(rc522_handle_t rc522)
 {
-    return rc522_read(rc522, 0x37);
+    return rc522_read(rc522, RC522_REG_VERSION);
 }
 
 static esp_err_t rc522_antenna_on(rc522_handle_t rc522)
@@ -102,27 +112,6 @@ esp_err_t rc522_create(rc522_config_t* config, rc522_handle_t* out_rc522)
     rc522->config->task_priority    = config->task_priority == 0 ? RC522_DEFAULT_TACK_STACK_PRIORITY : config->task_priority;
     rc522->config->send_handler     = config->send_handler;
     rc522->config->receive_handler  = config->receive_handler;
-    
-    // ---------- RW test ------------
-    const uint8_t test_addr = 0x24, test_val = 0x25;
-    for(uint8_t i = test_val; i < test_val + 2; i++) {
-        if((err = rc522_write(rc522, test_addr, i)) != ESP_OK || rc522_read(rc522, test_addr) != i) {
-            ESP_LOGE(TAG, "RW test fail");
-            rc522_destroy(rc522);
-            return err;
-        }
-    }
-    // ------- End of RW test --------
-
-    rc522_write(rc522, 0x01, 0x0F);
-    rc522_write(rc522, 0x2A, 0x8D);
-    rc522_write(rc522, 0x2B, 0x3E);
-    rc522_write(rc522, 0x2D, 0x1E);
-    rc522_write(rc522, 0x2C, 0x00);
-    rc522_write(rc522, 0x15, 0x40);
-    rc522_write(rc522, 0x11, 0x3D);
-
-    rc522_antenna_on(rc522);
 
     esp_event_loop_args_t event_args = {
         .queue_size = 1,
@@ -143,7 +132,6 @@ esp_err_t rc522_create(rc522_config_t* config, rc522_handle_t* out_rc522)
     }
 
     *out_rc522 = rc522;
-    ESP_LOGI(TAG, "Initialized (fw: 0x%x)", rc522_firmware(rc522));
     return ESP_OK;
 }
 
@@ -336,6 +324,52 @@ esp_err_t rc522_start(rc522_handle_t rc522)
 {
     if(! rc522) {
         return ESP_ERR_INVALID_ARG;
+    }
+    if(rc522->scanning) { // Already in scan mode
+        return ESP_OK;
+    }
+
+    if(! rc522->initialized) {
+        // Initialization will be done only once, on the first call of start function
+
+        esp_err_t err;
+
+        // ---------- RW test ------------
+        const uint8_t test_addr = 0x24, test_val = 0x25;
+        for(uint8_t i = test_val; i < test_val + 2; i++) {
+            if((err = rc522_write(rc522, test_addr, i)) != ESP_OK || rc522_read(rc522, test_addr) != i) {
+                ESP_LOGE(TAG, "Read/write test failed");
+                rc522_destroy(rc522);
+                return err;
+            }
+        }
+        // ------- End of RW test --------
+
+        rc522_write(rc522, 0x01, 0x0F);
+        rc522_write(rc522, 0x2A, 0x8D);
+        rc522_write(rc522, 0x2B, 0x3E);
+        rc522_write(rc522, 0x2D, 0x1E);
+        rc522_write(rc522, 0x2C, 0x00);
+        rc522_write(rc522, 0x15, 0x40);
+        rc522_write(rc522, 0x11, 0x3D);
+
+        rc522_antenna_on(rc522);
+
+        rc522->initialized = true;
+
+        ESP_LOGI(TAG, "Initialized");
+        
+        switch(rc522_firmware(rc522)) {
+            case RC522_VERSION_1_0:
+                ESP_LOGI(TAG, "Firmware v1.0");
+                break;
+            case RC522_VERSION_2_0:
+                ESP_LOGI(TAG, "Firmware v2.0");
+                break;
+            default:
+                ESP_LOGW(TAG, "Unknown firmware version");
+                break;
+        }
     }
 
     rc522->scanning = true;
