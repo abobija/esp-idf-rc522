@@ -9,11 +9,11 @@
 static const char* TAG = "rc522";
 
 struct rc522 {
-    bool running;
-    rc522_config_t* config;
-    TaskHandle_t task_handle;
-    esp_event_loop_handle_t event_handle;
-    bool scan_started;
+    bool running;                          /*<! Indicates whether rc522 task is running or not */
+    rc522_config_t* config;                /*<! Configuration */
+    TaskHandle_t task_handle;              /*<! Handle of task */
+    esp_event_loop_handle_t event_handle;  /*<! Handle of event loop */
+    bool scanning;                         /*<! Whether the rc522 is in scanning or idle mode */
     bool tag_was_present_last_time;
 };
 
@@ -338,7 +338,7 @@ esp_err_t rc522_start(rc522_handle_t rc522)
         return ESP_ERR_INVALID_ARG;
     }
 
-    rc522->scan_started = true;
+    rc522->scanning = true;
     return ESP_OK;
 }
 
@@ -347,10 +347,10 @@ esp_err_t rc522_pause(rc522_handle_t rc522)
     if(! rc522) {
         return ESP_ERR_INVALID_ARG;
     }
-    if(! rc522->scan_started) {
+    if(! rc522->scanning) {
         return ESP_OK;
     }
-    rc522->scan_started = false;
+    rc522->scanning = false;
 
     return ESP_OK;
 }
@@ -399,30 +399,31 @@ static esp_err_t rc522_dispatch_event(rc522_handle_t rc522, rc522_event_t event,
 
 static void rc522_task(void* arg)
 {
-    rc522_handle_t handle = (rc522_handle_t) arg;
+    rc522_handle_t rc522 = (rc522_handle_t) arg;
 
-    while(handle->running) {
-        if(! handle->scan_started) {
+    while(rc522->running) {
+        if(! rc522->scanning) {
+            // Idling...
             vTaskDelay(100 / portTICK_PERIOD_MS);
             continue;
         }
 
-        uint8_t* serial_no_array = rc522_get_tag(handle);
+        uint8_t* serial_no_array = rc522_get_tag(rc522);
         
         if(! serial_no_array) {
-            handle->tag_was_present_last_time = false;
-        } else if(! handle->tag_was_present_last_time) {
+            rc522->tag_was_present_last_time = false;
+        } else if(! rc522->tag_was_present_last_time) {
             rc522_tag_t tag = {
                 .serial_number = rc522_sn_to_u64(serial_no_array),
             };
             free(serial_no_array);
-            rc522_dispatch_event(handle, RC522_EVENT_TAG_SCANNED, &tag);
-            handle->tag_was_present_last_time = true;
+            rc522_dispatch_event(rc522, RC522_EVENT_TAG_SCANNED, &tag);
+            rc522->tag_was_present_last_time = true;
         }
 
-        int delay_interval_ms = handle->config->scan_interval_ms;
+        int delay_interval_ms = rc522->config->scan_interval_ms;
 
-        if(handle->tag_was_present_last_time) {
+        if(rc522->tag_was_present_last_time) {
             delay_interval_ms *= 2; // extra scan-bursting prevention
         }
 
