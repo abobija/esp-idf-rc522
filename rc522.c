@@ -6,15 +6,6 @@
 
 #include "rc522.h"
 
-typedef enum {
-    RC522_REG_VERSION = 0x37,
-} rc522_register_t;
-
-typedef enum {
-    RC522_VERSION_1_0 = 0x91,
-    RC522_VERSION_2_0 = 0x92,
-} rc522_version_t;
-
 static const char* TAG = "rc522";
 
 struct rc522 {
@@ -74,7 +65,7 @@ static inline esp_err_t rc522_clear_bitmask(rc522_handle_t rc522, uint8_t addr, 
 
 static inline uint8_t rc522_firmware(rc522_handle_t rc522)
 {
-    return rc522_read(rc522, RC522_REG_VERSION);
+    return rc522_read(rc522, 0x37);
 }
 
 static esp_err_t rc522_antenna_on(rc522_handle_t rc522)
@@ -357,19 +348,7 @@ esp_err_t rc522_start(rc522_handle_t rc522)
 
         rc522->initialized = true;
 
-        ESP_LOGI(TAG, "Initialized");
-        
-        switch(rc522_firmware(rc522)) {
-            case RC522_VERSION_1_0:
-                ESP_LOGI(TAG, "Firmware v1.0");
-                break;
-            case RC522_VERSION_2_0:
-                ESP_LOGI(TAG, "Firmware v2.0");
-                break;
-            default:
-                ESP_LOGW(TAG, "Unknown firmware version");
-                break;
-        }
+        ESP_LOGI(TAG, "Initialized (firmware v%d.0)", (rc522_firmware(rc522) & 0x03));
     }
 
     rc522->scanning = true;
