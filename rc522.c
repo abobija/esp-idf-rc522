@@ -82,7 +82,7 @@ static esp_err_t rc522_antenna_on(rc522_handle_t rc522)
     return rc522_write(rc522, 0x26, 0x60); // 43dB gain
 }
 
-esp_err_t rc522_init(rc522_config_t* config, rc522_handle_t* out_rc522)
+esp_err_t rc522_create(rc522_config_t* config, rc522_handle_t* out_rc522)
 {
     if(! config || ! out_rc522) {
         return ESP_ERR_INVALID_ARG;

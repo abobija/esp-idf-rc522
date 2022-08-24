@@ -41,13 +41,13 @@ typedef struct {
 } rc522_tag_t;
 
 /**
- * @brief Initialize RC522 module.
+ * @brief Create RC522 scanner handle.
  *        To start scanning tags call the rc522_start function.
  * @param config Configuration
  * @param out_rc522 Pointer to resulting new handle
  * @return ESP_OK on success
  */
-esp_err_t rc522_init(rc522_config_t* config, rc522_handle_t* out_rc522);
+esp_err_t rc522_create(rc522_config_t* config, rc522_handle_t* out_rc522);
 
 esp_err_t rc522_register_events(rc522_handle_t rc522, rc522_event_t event, esp_event_handler_t event_handler, void* event_handler_arg);
 
