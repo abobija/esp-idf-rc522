@@ -5,13 +5,7 @@ extern "C" {
 #endif
 
 #include <esp_event.h>
-#include "driver/spi_master.h"
 
-#define RC522_DEFAULT_MISO                 (25)
-#define RC522_DEFAULT_MOSI                 (23)
-#define RC522_DEFAULT_SCK                  (19)
-#define RC522_DEFAULT_SDA                  (22)
-#define RC522_DEFAULT_SPI_HOST             (VSPI_HOST)
 #define RC522_DEFAULT_SCAN_INTERVAL_MS     (125)
 #define RC522_DEFAULT_TACK_STACK_SIZE      (4 * 1024)
 #define RC522_DEFAULT_TACK_STACK_PRIORITY  (4)
@@ -20,15 +14,15 @@ ESP_EVENT_DECLARE_BASE(RC522_EVENTS);
 
 typedef struct rc522* rc522_handle_t;
 
+typedef esp_err_t(*rc522_send_handler_t)(uint8_t* buffer, uint8_t length);
+typedef esp_err_t(*rc522_receive_handler_t)(uint8_t* buffer, uint8_t lenght, uint8_t addr_encoded);
+
 typedef struct {
-    int miso_io;                    /*<! MFRC522 MISO gpio (Default: 25) */
-    int mosi_io;                    /*<! MFRC522 MOSI gpio (Default: 23) */
-    int sck_io;                     /*<! MFRC522 SCK gpio  (Default: 19) */
-    int sda_io;                     /*<! MFRC522 SDA gpio  (Default: 22) */
-    spi_host_device_t spi_host_id;  /*<! Default VSPI_HOST (SPI3) */
-    uint16_t scan_interval_ms;      /*<! How fast will ESP32 scan for nearby tags, in miliseconds. Default: 125ms */
-    size_t task_stack_size;         /*<! Stack size of rc522 task (Default: 4 * 1024) */
-    uint8_t task_priority;          /*<! Priority of rc522 task (Default: 4) */
+    uint16_t scan_interval_ms;         /*<! How fast will ESP32 scan for nearby tags, in miliseconds. Default: 125ms */
+    size_t task_stack_size;            /*<! Stack size of rc522 task (Default: 4 * 1024) */
+    uint8_t task_priority;             /*<! Priority of rc522 task (Default: 4) */
+    rc522_send_handler_t send_handler;
+    rc522_receive_handler_t receive_handler;
 } rc522_config_t;
 
 typedef enum {

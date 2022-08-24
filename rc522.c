@@ -1,14 +1,8 @@
-#include <stdio.h>
-#include <stdlib.h>
+#include <freertos/FreeRTOS.h>
+#include <freertos/task.h>
+#include <esp_system.h>
+#include <esp_log.h>
 #include <string.h>
-#include "freertos/FreeRTOS.h"
-#include "freertos/task.h"
-#include "esp_system.h"
-#include "driver/spi_master.h"
-#include "soc/gpio_struct.h"
-#include "driver/gpio.h"
-#include "esp_timer.h"
-#include "esp_log.h"
 
 #include "rc522.h"
 
@@ -19,110 +13,37 @@ struct rc522 {
     rc522_config_t* config;
     TaskHandle_t task_handle;
     esp_event_loop_handle_t event_handle;
-    spi_device_handle_t spi;
     bool scan_started;
     bool tag_was_present_last_time;
 };
 
 ESP_EVENT_DEFINE_BASE(RC522_EVENTS);
 
-#define rc522_fw_version(rc522) rc522_read(rc522, 0x37)
-
-static esp_err_t rc522_spi_init(rc522_handle_t rc522)
-{
-    if(! rc522 || ! rc522->config) {
-        ESP_LOGE(TAG, "Fail to init SPI. Invalid handle");
-        return ESP_ERR_INVALID_ARG;
-    }
-
-    if(rc522->spi) {
-        ESP_LOGW(TAG, "SPI already initialized");
-        return ESP_ERR_INVALID_ARG;
-    }
-
-    spi_bus_config_t buscfg = {
-        .miso_io_num = rc522->config->miso_io,
-        .mosi_io_num = rc522->config->mosi_io,
-        .sclk_io_num = rc522->config->sck_io,
-        .quadwp_io_num = -1,
-        .quadhd_io_num = -1
-    };
-
-    spi_device_interface_config_t devcfg = {
-        .clock_speed_hz = 5000000,
-        .mode = 0,
-        .spics_io_num = rc522->config->sda_io,
-        .queue_size = 7,
-        .flags = SPI_DEVICE_HALFDUPLEX
-    };
-
-    esp_err_t err = spi_bus_initialize(rc522->config->spi_host_id, &buscfg, 0);
-
-    if(err != ESP_OK) {
-        return err;
-    }
-
-    err = spi_bus_add_device(rc522->config->spi_host_id, &devcfg, &rc522->spi);
-
-    if(err != ESP_OK) {
-        spi_bus_free(rc522->config->spi_host_id);
-        rc522->spi = NULL;
-    }
-
-    return err;
-}
+static void rc522_task(void* arg);
 
 static esp_err_t rc522_write_n(rc522_handle_t rc522, uint8_t addr, uint8_t n, uint8_t *data)
 {
     uint8_t* buffer = (uint8_t*) malloc(n + 1);
     buffer[0] = (addr << 1) & 0x7E;
-
-    for (uint8_t i = 1; i <= n; i++) {
-        buffer[i] = data[i-1];
-    }
-
-    spi_transaction_t t;
-    memset(&t, 0, sizeof(t));
-
-    t.length = 8 * (n + 1);
-    t.tx_buffer = buffer;
-
-    esp_err_t ret = spi_device_transmit(rc522->spi, &t);
-
+    memcpy(buffer + 1, data, n);
+    esp_err_t err = rc522->config->send_handler(buffer, n + 1);
     free(buffer);
-
-    return ret;
+    return err;
 }
 
-static esp_err_t rc522_write(rc522_handle_t rc522, uint8_t addr, uint8_t val)
+static inline esp_err_t rc522_write(rc522_handle_t rc522, uint8_t addr, uint8_t val)
 {
     return rc522_write_n(rc522, addr, 1, &val);
 }
 
 static uint8_t* rc522_read_n(rc522_handle_t rc522, uint8_t addr, uint8_t n)
 {
-    if (n <= 0) {
-        return NULL;
-    }
-
-    spi_transaction_t t;
-    memset(&t, 0, sizeof(t));
-
     uint8_t* buffer = (uint8_t*) malloc(n);
-    
-    t.flags = SPI_TRANS_USE_TXDATA;
-    t.length = 8;
-    t.tx_data[0] = ((addr << 1) & 0x7E) | 0x80;
-    t.rxlength = 8 * n;
-    t.rx_buffer = buffer;
-
-    esp_err_t ret = spi_device_transmit(rc522->spi, &t);
-    assert(ret == ESP_OK);
-
+    rc522->config->receive_handler(buffer, n, ((addr << 1) & 0x7E) | 0x80);
     return buffer;
 }
 
-static uint8_t rc522_read(rc522_handle_t rc522, uint8_t addr)
+static inline uint8_t rc522_read(rc522_handle_t rc522, uint8_t addr)
 {
     uint8_t* buffer = rc522_read_n(rc522, addr, 1);
     uint8_t res = buffer[0];
@@ -131,36 +52,44 @@ static uint8_t rc522_read(rc522_handle_t rc522, uint8_t addr)
     return res;
 }
 
-static esp_err_t rc522_set_bitmask(rc522_handle_t rc522, uint8_t addr, uint8_t mask)
+static inline esp_err_t rc522_set_bitmask(rc522_handle_t rc522, uint8_t addr, uint8_t mask)
 {
     return rc522_write(rc522, addr, rc522_read(rc522, addr) | mask);
 }
 
-static esp_err_t rc522_clear_bitmask(rc522_handle_t rc522, uint8_t addr, uint8_t mask)
+static inline esp_err_t rc522_clear_bitmask(rc522_handle_t rc522, uint8_t addr, uint8_t mask)
 {
     return rc522_write(rc522, addr, rc522_read(rc522, addr) & ~mask);
 }
 
+static inline uint8_t rc522_firmware(rc522_handle_t rc522)
+{
+    return rc522_read(rc522, 0x37);
+}
+
 static esp_err_t rc522_antenna_on(rc522_handle_t rc522)
 {
-    esp_err_t ret;
+    esp_err_t err;
 
     if(~ (rc522_read(rc522, 0x14) & 0x03)) {
-        ret = rc522_set_bitmask(rc522, 0x14, 0x03);
+        err = rc522_set_bitmask(rc522, 0x14, 0x03);
 
-        if(ret != ESP_OK) {
-            return ret;
+        if(err != ESP_OK) {
+            return err;
         }
     }
 
     return rc522_write(rc522, 0x26, 0x60); // 43dB gain
 }
 
-static void rc522_task(void* arg);
-
 esp_err_t rc522_init(rc522_config_t* config, rc522_handle_t* out_rc522)
 {
     if(! config || ! out_rc522) {
+        return ESP_ERR_INVALID_ARG;
+    }
+
+    if(! config->send_handler || ! config->receive_handler) {
+        ESP_LOGE(TAG, "Both (send and receive) handlers need to be present in the configuration");
         return ESP_ERR_INVALID_ARG;
     }
 
@@ -170,21 +99,11 @@ esp_err_t rc522_init(rc522_config_t* config, rc522_handle_t* out_rc522)
     rc522->config = calloc(1, sizeof(rc522_config_t)); // TODO: memcheck
 
     // copy config considering defaults
-    rc522->config->miso_io          = config->miso_io == 0 ? RC522_DEFAULT_MISO : config->miso_io;
-    rc522->config->mosi_io          = config->mosi_io == 0 ? RC522_DEFAULT_MOSI : config->mosi_io;
-    rc522->config->sck_io           = config->sck_io == 0 ? RC522_DEFAULT_SCK : config->sck_io;
-    rc522->config->sda_io           = config->sda_io == 0 ? RC522_DEFAULT_SDA : config->sda_io;
-    rc522->config->spi_host_id      = config->spi_host_id == 0 ? RC522_DEFAULT_SPI_HOST : config->spi_host_id;
     rc522->config->scan_interval_ms = config->scan_interval_ms < 50 ? RC522_DEFAULT_SCAN_INTERVAL_MS : config->scan_interval_ms;
     rc522->config->task_stack_size  = config->task_stack_size == 0 ? RC522_DEFAULT_TACK_STACK_SIZE : config->task_stack_size;
     rc522->config->task_priority    = config->task_priority == 0 ? RC522_DEFAULT_TACK_STACK_PRIORITY : config->task_priority;
-
-    err = rc522_spi_init(rc522);
-
-    if(err != ESP_OK) {
-        rc522_destroy(rc522);
-        return err;
-    }
+    rc522->config->send_handler     = config->send_handler;
+    rc522->config->receive_handler  = config->receive_handler;
     
     // ---------- RW test ------------
     const uint8_t test_addr = 0x24, test_val = 0x25;
@@ -226,7 +145,7 @@ esp_err_t rc522_init(rc522_config_t* config, rc522_handle_t* out_rc522)
     }
 
     *out_rc522 = rc522;
-    ESP_LOGI(TAG, "Initialized (fw: 0x%x)", rc522_fw_version(rc522));
+    ESP_LOGI(TAG, "Initialized (fw: 0x%x)", rc522_firmware(rc522));
     return ESP_OK;
 }
 
@@ -466,12 +385,6 @@ void rc522_destroy(rc522_handle_t rc522)
     if(rc522->event_handle) {
         esp_event_loop_delete(rc522->event_handle);
         rc522->event_handle = NULL;
-    }
-
-    if(rc522->spi) {
-        spi_bus_remove_device(rc522->spi);
-        spi_bus_free(rc522->config->spi_host_id);
-        rc522->spi = NULL;
     }
 
     free(rc522->config);
