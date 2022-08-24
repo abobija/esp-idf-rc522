@@ -248,7 +248,7 @@ esp_err_t rc522_unregister_events(rc522_handle_t rc522, rc522_event_t event, esp
     return esp_event_handler_unregister_with(rc522->event_handle, RC522_EVENTS, event, event_handler);
 }
 
-uint64_t rc522_sn_to_u64(uint8_t* sn)
+static uint64_t rc522_sn_to_u64(uint8_t* sn)
 {
     if(!sn) {
         return 0;
@@ -510,14 +510,18 @@ static void rc522_task(void* arg)
             continue;
         }
 
-        uint8_t* serial_no = rc522_get_tag(handle);
-
-        if(serial_no && ! handle->tag_was_present_last_time) {
-            rc522_dispatch_event(handle, RC522_EVENT_TAG_SCANNED, serial_no);
+        uint8_t* serial_no_array = rc522_get_tag(handle);
+        
+        if(! serial_no_array) {
+            handle->tag_was_present_last_time = false;
+        } else if(! handle->tag_was_present_last_time) {
+            rc522_tag_t tag = {
+                .serial_number = rc522_sn_to_u64(serial_no_array),
+            };
+            free(serial_no_array);
+            rc522_dispatch_event(handle, RC522_EVENT_TAG_SCANNED, &tag);
+            handle->tag_was_present_last_time = true;
         }
-
-        handle->tag_was_present_last_time = (serial_no != NULL);
-        free(serial_no);
 
         int delay_interval_ms = handle->config->scan_interval_ms;
 

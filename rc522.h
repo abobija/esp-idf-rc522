@@ -42,6 +42,10 @@ typedef struct {
     void* ptr;
 } rc522_event_data_t;
 
+typedef struct {
+    uint64_t serial_number;
+} rc522_tag_t;
+
 /**
  * @brief Initialize RC522 module.
  *        To start scanning tags call the rc522_start function.
@@ -54,13 +58,6 @@ esp_err_t rc522_init(rc522_config_t* config, rc522_handle_t* out_rc522);
 esp_err_t rc522_register_events(rc522_handle_t rc522, rc522_event_t event, esp_event_handler_t event_handler, void* event_handler_arg);
 
 esp_err_t rc522_unregister_events(rc522_handle_t rc522, rc522_event_t event, esp_event_handler_t event_handler);
-
-/**
- * @brief Convert serial number (array of 5 bytes) to uint64_t number
- * @param sn Serial number
- * @return Serial number in number representation. If fail, 0 will be retured
- */
-uint64_t rc522_sn_to_u64(uint8_t* sn);
 
 /**
  * @brief Start to scan tags. If already started, ESP_OK will just be returned. Initialization function had to be
