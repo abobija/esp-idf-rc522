@@ -15,6 +15,8 @@ extern "C" {
 #define RC522_DEFAULT_TACK_STACK_SIZE      (4 * 1024)
 #define RC522_DEFAULT_TACK_STACK_PRIORITY  (4)
 
+typedef struct rc522* rc522_handle_t;
+
 typedef void(*rc522_tag_callback_t)(uint8_t*);
 
 typedef struct {

@@ -12,7 +12,7 @@
 
 #include "rc522.h"
 
-static const char* TAG = "ESP-RC522";
+static const char* TAG = "rc522";
 
 struct rc522 {
     bool running;
@@ -22,8 +22,6 @@ struct rc522 {
     bool scan_started;
     bool tag_was_present_last_time;
 };
-
-typedef struct rc522* rc522_handle_t;
 
 static rc522_handle_t hndl = NULL;
 
