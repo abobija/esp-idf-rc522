@@ -162,7 +162,7 @@ static esp_err_t rc522_antenna_on()
 
 static void rc522_task(void* arg);
 
-esp_err_t rc522_init(rc522_config_t* config)
+esp_err_t rc522_init(rc522_config_t* config, rc522_handle_t* out_handle)
 {
     if(! config) {
         return ESP_ERR_INVALID_ARG;

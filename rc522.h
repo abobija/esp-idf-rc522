@@ -35,9 +35,10 @@ typedef struct {
  * @brief Initialize RC522 module.
  *        To start scanning tags - call rc522_resume or rc522_start2 function.
  * @param config Configuration
+ * @param out_handle Reference to resulting new handle
  * @return ESP_OK on success
  */
-esp_err_t rc522_init(rc522_config_t* config);
+esp_err_t rc522_init(rc522_config_t* config, rc522_handle_t* out_handle);
 
 /**
  * @brief Convert serial number (array of 5 bytes) to uint64_t number
