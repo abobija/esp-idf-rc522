@@ -38,7 +38,7 @@ typedef enum {
 } rc522_event_t;
 
 typedef struct {
-    rc522_handle_t handle;
+    rc522_handle_t rc522;
     void* ptr;
 } rc522_event_data_t;
 
@@ -46,14 +46,14 @@ typedef struct {
  * @brief Initialize RC522 module.
  *        To start scanning tags call the rc522_start function.
  * @param config Configuration
- * @param out_handle Pointer to resulting new handle
+ * @param out_rc522 Pointer to resulting new handle
  * @return ESP_OK on success
  */
-esp_err_t rc522_init(rc522_config_t* config, rc522_handle_t* out_handle);
+esp_err_t rc522_init(rc522_config_t* config, rc522_handle_t* out_rc522);
 
-esp_err_t rc522_register_events(rc522_handle_t handle, rc522_event_t event, esp_event_handler_t event_handler, void* event_handler_arg);
+esp_err_t rc522_register_events(rc522_handle_t rc522, rc522_event_t event, esp_event_handler_t event_handler, void* event_handler_arg);
 
-esp_err_t rc522_unregister_events(rc522_handle_t handle, rc522_event_t event, esp_event_handler_t event_handler);
+esp_err_t rc522_unregister_events(rc522_handle_t rc522, rc522_event_t event, esp_event_handler_t event_handler);
 
 /**
  * @brief Convert serial number (array of 5 bytes) to uint64_t number
@@ -65,30 +65,30 @@ uint64_t rc522_sn_to_u64(uint8_t* sn);
 /**
  * @brief Start to scan tags. If already started, ESP_OK will just be returned. Initialization function had to be
  *        called before this one.
- * @param handle Handle
+ * @param rc522 Handle
  * @return ESP_OK on success
  */
-esp_err_t rc522_start(rc522_handle_t handle);
+esp_err_t rc522_start(rc522_handle_t rc522);
 
 /**
  * @brief Start to scan tags. If already started, ESP_OK will just be returned.
- * @param handle Handle
+ * @param rc522 Handle
  * @return ESP_OK on success
  */
-#define rc522_resume(handle) rc522_start(handle)
+#define rc522_resume(rc522) rc522_start(rc522)
 
 /**
  * @brief Pause scan tags. If already paused, ESP_OK will just be returned.
- * @param handle Handle
+ * @param rc522 Handle
  * @return ESP_OK on success
  */
-esp_err_t rc522_pause(rc522_handle_t handle);
+esp_err_t rc522_pause(rc522_handle_t rc522);
 
 /**
  * @brief Destroy RC522 and free all resources. Cannot be called from event handler.
- * @param handle Handle
+ * @param rc522 Handle
  */
-void rc522_destroy(rc522_handle_t handle);
+void rc522_destroy(rc522_handle_t rc522);
 
 #ifdef __cplusplus
 }
