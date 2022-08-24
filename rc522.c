@@ -23,7 +23,7 @@ static void rc522_task(void* arg);
 
 static esp_err_t rc522_write_n(rc522_handle_t rc522, uint8_t addr, uint8_t n, uint8_t *data)
 {
-    uint8_t* buffer = (uint8_t*) malloc(n + 1);
+    uint8_t* buffer = (uint8_t*) malloc(n + 1); // TODO: memcheck
     buffer[0] = (addr << 1) & 0x7E;
     memcpy(buffer + 1, data, n);
     esp_err_t err = rc522->config->send_handler(buffer, n + 1);
@@ -38,7 +38,7 @@ static inline esp_err_t rc522_write(rc522_handle_t rc522, uint8_t addr, uint8_t 
 
 static uint8_t* rc522_read_n(rc522_handle_t rc522, uint8_t addr, uint8_t n)
 {
-    uint8_t* buffer = (uint8_t*) malloc(n);
+    uint8_t* buffer = (uint8_t*) malloc(n); // TODO: memcheck
     rc522->config->receive_handler(buffer, n, ((addr << 1) & 0x7E) | 0x80);
     return buffer;
 }
@@ -203,7 +203,7 @@ static uint8_t* rc522_calculate_crc(rc522_handle_t rc522, uint8_t *data, uint8_t
         }
     }
 
-    uint8_t* res = (uint8_t*) malloc(2); 
+    uint8_t* res = (uint8_t*) malloc(2); // TODO: memcheck
     
     res[0] = rc522_read(rc522, 0x22);
     res[1] = rc522_read(rc522, 0x21);
@@ -266,7 +266,7 @@ static uint8_t* rc522_card_write(rc522_handle_t rc522, uint8_t cmd, uint8_t *dat
                     *res_n = nn;
                 }
 
-                result = (uint8_t*) malloc(*res_n);
+                result = (uint8_t*) malloc(*res_n); // TODO: memcheck
 
                 for(i = 0; i < *res_n; i++) {
                     result[i] = rc522_read(rc522, 0x09);
