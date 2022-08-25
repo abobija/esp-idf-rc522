@@ -1,5 +1,5 @@
 idf_component_register(
-    INCLUDE_DIRS include
-    SRCS src/rc522.c src/rc522/helpers/i2c.c src/rc522/helpers/spi.c
+    INCLUDE_DIRS .
+    SRCS rc522.c
     REQUIRES esp_event
 )

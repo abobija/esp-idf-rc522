@@ -5,32 +5,56 @@ extern "C" {
 #endif
 
 #include <esp_event.h>
+#include <driver/spi_master.h>
+#include <driver/i2c.h>
 
-#define RC522_DEFAULT_SCAN_INTERVAL_MS     (125)
-#define RC522_DEFAULT_TACK_STACK_SIZE      (4 * 1024)
-#define RC522_DEFAULT_TACK_STACK_PRIORITY  (4)
+#define RC522_DEFAULT_SCAN_INTERVAL_MS (125)
+#define RC522_DEFAULT_TASK_STACK_SIZE (4 * 1024)
+#define RC522_DEFAULT_TASK_STACK_PRIORITY (4)
+
+#ifndef RC522_SPI_HOST
+    #define RC522_SPI_HOST (VSPI_HOST)
+#endif
+#ifndef RC522_SPI_CLOCK_SPEED_HZ
+    #define RC522_SPI_CLOCK_SPEED_HZ (5000000)
+#endif
+
+#define RC522_I2C_ADDRESS (0x28)
+#ifndef RC522_I2C_CLK_SPEED
+    #define RC522_I2C_CLK_SPEED (100000)
+#endif
+#ifndef RC522_I2C_RW_TIMEOUT_MS
+    #define RC522_I2C_RW_TIMEOUT_MS (1000)
+#endif
 
 ESP_EVENT_DECLARE_BASE(RC522_EVENTS);
 
 typedef struct rc522* rc522_handle_t;
 
-typedef esp_err_t(*rc522_transport_init_fn_t)();
-typedef esp_err_t(*rc522_transport_send_fn_t)(uint8_t* buffer, uint8_t length);
-typedef esp_err_t(*rc522_transport_receive_fn_t)(uint8_t* buffer, uint8_t lenght, uint8_t addr);
-typedef void(*rc522_transport_remove_fn_t)();
-
-typedef struct {
-    rc522_transport_init_fn_t init;
-    rc522_transport_send_fn_t send;
-    rc522_transport_receive_fn_t receive;
-    rc522_transport_remove_fn_t remove;
+typedef enum {
+    RC522_TRANSPORT_SPI,
+    RC522_TRANSPORT_I2C,
 } rc522_transport_t;
 
 typedef struct {
-    uint16_t scan_interval_ms;         /*<! How fast will ESP32 scan for nearby tags, in miliseconds. Default: 125ms */
-    size_t task_stack_size;            /*<! Stack size of rc522 task (Default: 4 * 1024) */
-    uint8_t task_priority;             /*<! Priority of rc522 task (Default: 4) */
-    rc522_transport_t* transport;
+    uint16_t scan_interval_ms;         /*<! How fast will ESP32 scan for nearby tags, in miliseconds */
+    size_t task_stack_size;            /*<! Stack size of rc522 task */
+    uint8_t task_priority;             /*<! Priority of rc522 task */
+    rc522_transport_t transport;       /*<! Transport that will be used. Defaults to SPI */
+    union {
+        struct {
+            spi_host_device_t host;
+            int miso_gpio;
+            int mosi_gpio;
+            int sck_gpio;
+            int sda_gpio;
+        } spi;
+        struct {
+            i2c_port_t port;
+            int sda_gpio;
+            int scl_gpio;
+        } i2c;
+    };
 } rc522_config_t;
 
 typedef enum {
