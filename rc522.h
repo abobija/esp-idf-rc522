@@ -8,24 +8,11 @@ extern "C" {
 #include <driver/spi_master.h>
 #include <driver/i2c.h>
 
+#define RC522_I2C_ADDRESS (0x28)
+
 #define RC522_DEFAULT_SCAN_INTERVAL_MS (125)
 #define RC522_DEFAULT_TASK_STACK_SIZE (4 * 1024)
 #define RC522_DEFAULT_TASK_STACK_PRIORITY (4)
-
-#ifndef RC522_SPI_HOST
-    #define RC522_SPI_HOST (VSPI_HOST)
-#endif
-#ifndef RC522_SPI_CLOCK_SPEED_HZ
-    #define RC522_SPI_CLOCK_SPEED_HZ (5000000)
-#endif
-
-#define RC522_I2C_ADDRESS (0x28)
-#ifndef RC522_I2C_CLK_SPEED
-    #define RC522_I2C_CLK_SPEED (100000)
-#endif
-#ifndef RC522_I2C_RW_TIMEOUT_MS
-    #define RC522_I2C_RW_TIMEOUT_MS (1000)
-#endif
 
 ESP_EVENT_DECLARE_BASE(RC522_EVENTS);
 
@@ -48,11 +35,14 @@ typedef struct {
             int mosi_gpio;
             int sck_gpio;
             int sda_gpio;
+            int clock_speed_hz;
         } spi;
         struct {
             i2c_port_t port;
             int sda_gpio;
             int scl_gpio;
+            int rw_timeout_ms;
+            uint32_t clock_speed_hz;
         } i2c;
     };
 } rc522_config_t;

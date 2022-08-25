@@ -134,14 +134,17 @@ rc522_config_t* rc522_clone_config(rc522_config_t* config)
             new_config->spi.mosi_gpio = config->spi.mosi_gpio;
             new_config->spi.sck_gpio = config->spi.sck_gpio;
             new_config->spi.sda_gpio = config->spi.sda_gpio;
+            new_config->spi.clock_speed_hz = config->spi.clock_speed_hz;
             break;
         case RC522_TRANSPORT_I2C:
             new_config->i2c.port = config->i2c.port;
             new_config->i2c.scl_gpio = config->i2c.scl_gpio;
             new_config->i2c.sda_gpio = config->i2c.sda_gpio;
+            new_config->i2c.rw_timeout_ms = config->i2c.rw_timeout_ms;
+            new_config->i2c.clock_speed_hz = config->i2c.clock_speed_hz;
             break;
         default:
-            ESP_LOGE(TAG, "clone_config: Unknown transport");
+            ESP_LOGEW(TAG, "clone_config: Unknown transport");
             break;
     }
 
@@ -163,18 +166,18 @@ static esp_err_t rc522_create_transport(rc522_handle_t rc522)
                 };
 
                 spi_device_interface_config_t devcfg = {
-                    .clock_speed_hz = RC522_SPI_CLOCK_SPEED_HZ,
+                    .clock_speed_hz = rc522->config->spi.clock_speed_hz,
                     .mode = 0,
                     .spics_io_num = rc522->config->spi.sda_gpio,
                     .queue_size = 7,
                     .flags = SPI_DEVICE_HALFDUPLEX,
                 };
 
-                if(ESP_OK != (ret = spi_bus_initialize(RC522_SPI_HOST, &buscfg, 0))) {
+                if(ESP_OK != (ret = spi_bus_initialize(rc522->config->spi.host, &buscfg, 0))) {
                     break;
                 }
 
-                ret = spi_bus_add_device(RC522_SPI_HOST, &devcfg, &rc522->spi_handle);
+                ret = spi_bus_add_device(rc522->config->spi.host, &devcfg, &rc522->spi_handle);
             }
             break;
         case RC522_TRANSPORT_I2C: {
@@ -184,7 +187,7 @@ static esp_err_t rc522_create_transport(rc522_handle_t rc522)
                     .scl_io_num = rc522->config->i2c.scl_gpio,
                     .sda_pullup_en = GPIO_PULLUP_ENABLE,
                     .scl_pullup_en = GPIO_PULLUP_ENABLE,
-                    .master.clk_speed = RC522_I2C_CLK_SPEED,
+                    .master.clk_speed = rc522->config->i2c.clock_speed_hz,
                 };
 
                 if(ESP_OK != (ret = i2c_param_config(rc522->config->i2c.port, &conf))) {
@@ -489,7 +492,7 @@ static void rc522_destroy_transport(rc522_handle_t rc522)
     switch(rc522->config->transport) {
         case RC522_TRANSPORT_SPI:
             spi_bus_remove_device(rc522->spi_handle);
-            spi_bus_free(RC522_SPI_HOST);
+            spi_bus_free(rc522->config->spi.host);
             break;
         case RC522_TRANSPORT_I2C:
             i2c_driver_delete(rc522->config->i2c.port);
@@ -567,12 +570,12 @@ static esp_err_t rc522_spi_receive(rc522_handle_t rc522, uint8_t* buffer, uint8_
 
 static esp_err_t rc522_i2c_send(rc522_handle_t rc522, uint8_t* buffer, uint8_t length)
 {
-    return i2c_master_write_to_device(rc522->config->i2c.port, RC522_I2C_ADDRESS, buffer, length, RC522_I2C_RW_TIMEOUT_MS / portTICK_PERIOD_MS);
+    return i2c_master_write_to_device(rc522->config->i2c.port, RC522_I2C_ADDRESS, buffer, length, rc522->config->i2c.rw_timeout_ms / portTICK_PERIOD_MS);
 }
 
 static esp_err_t rc522_i2c_receive(rc522_handle_t rc522, uint8_t* buffer, uint8_t length, uint8_t addr)
 {
-    return i2c_master_write_read_device(rc522->config->i2c.port, RC522_I2C_ADDRESS, &addr, 1, buffer, length, RC522_I2C_RW_TIMEOUT_MS / portTICK_PERIOD_MS);
+    return i2c_master_write_read_device(rc522->config->i2c.port, RC522_I2C_ADDRESS, &addr, 1, buffer, length, rc522->config->i2c.rw_timeout_ms / portTICK_PERIOD_MS);
 }
 
 static void rc522_task(void* arg)
