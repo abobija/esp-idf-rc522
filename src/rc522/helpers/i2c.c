@@ -1,11 +1,14 @@
 #include "rc522/helpers/i2c.h"
 
+static int _sda_gpio;
+static int _scl_gpio;
+
 static esp_err_t rc522_i2c_init()
 {
     i2c_config_t conf = {
         .mode = I2C_MODE_MASTER,
-        .sda_io_num = RC522_I2C_SDA_GPIO,
-        .scl_io_num = RC522_I2C_SCL_GPIO,
+        .sda_io_num = _sda_gpio,
+        .scl_io_num = _scl_gpio,
         .sda_pullup_en = GPIO_PULLUP_ENABLE,
         .scl_pullup_en = GPIO_PULLUP_ENABLE,
         .master.clk_speed = RC522_I2C_CLK_SPEED,
@@ -35,8 +38,11 @@ static void rc522_i2c_remove()
     i2c_driver_delete(RC522_I2C_PORT);
 }
 
-rc522_transport_t* rc522_i2c()
+rc522_transport_t* rc522_i2c(int sda_gpio, int scl_gpio)
 {
+    _sda_gpio = sda_gpio;
+    _scl_gpio = scl_gpio;
+
     rc522_transport_t* trans = calloc(1, sizeof(rc522_transport_t)); // FIXME: memcheck
 
     trans->init = rc522_i2c_init;

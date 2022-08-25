@@ -13,14 +13,6 @@ extern "C" {
     #define RC522_I2C_PORT I2C_NUM_0
 #endif
 
-#ifndef RC522_I2C_SDA_GPIO
-    #define RC522_I2C_SDA_GPIO (18)
-#endif
-
-#ifndef RC522_I2C_SCL_GPIO
-    #define RC522_I2C_SCL_GPIO (19)
-#endif
-
 #ifndef RC522_I2C_CLK_SPEED
     #define RC522_I2C_CLK_SPEED (100000)
 #endif
@@ -29,7 +21,7 @@ extern "C" {
     #define RC522_I2C_RW_TIMEOUT_MS (1000)
 #endif
 
-rc522_transport_t* rc522_i2c();
+rc522_transport_t* rc522_i2c(int sda_gpio, int scl_gpio);
 
 #ifdef __cplusplus
 }
