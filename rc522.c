@@ -120,33 +120,12 @@ static esp_err_t rc522_antenna_on(rc522_handle_t rc522)
 rc522_config_t* rc522_clone_config(rc522_config_t* config)
 {
     rc522_config_t* new_config = calloc(1, sizeof(rc522_config_t)); // FIXME: memcheck
+    memcpy(new_config, config, sizeof(rc522_config_t));
 
-    // copy config considering defaults
+    // defaults
     new_config->scan_interval_ms = config->scan_interval_ms < 50 ? RC522_DEFAULT_SCAN_INTERVAL_MS : config->scan_interval_ms;
-    new_config->task_stack_size  = config->task_stack_size == 0 ? RC522_DEFAULT_TASK_STACK_SIZE : config->task_stack_size;
-    new_config->task_priority    = config->task_priority == 0 ? RC522_DEFAULT_TASK_STACK_PRIORITY : config->task_priority;
-    new_config->transport        = config->transport;
-
-    switch(config->transport) {
-        case RC522_TRANSPORT_SPI:
-            new_config->spi.host = config->spi.host;
-            new_config->spi.miso_gpio = config->spi.miso_gpio;
-            new_config->spi.mosi_gpio = config->spi.mosi_gpio;
-            new_config->spi.sck_gpio = config->spi.sck_gpio;
-            new_config->spi.sda_gpio = config->spi.sda_gpio;
-            new_config->spi.clock_speed_hz = config->spi.clock_speed_hz;
-            break;
-        case RC522_TRANSPORT_I2C:
-            new_config->i2c.port = config->i2c.port;
-            new_config->i2c.scl_gpio = config->i2c.scl_gpio;
-            new_config->i2c.sda_gpio = config->i2c.sda_gpio;
-            new_config->i2c.rw_timeout_ms = config->i2c.rw_timeout_ms;
-            new_config->i2c.clock_speed_hz = config->i2c.clock_speed_hz;
-            break;
-        default:
-            ESP_LOGEW(TAG, "clone_config: Unknown transport");
-            break;
-    }
+    new_config->task_stack_size = config->task_stack_size == 0 ? RC522_DEFAULT_TASK_STACK_SIZE : config->task_stack_size;
+    new_config->task_priority = config->task_priority == 0 ? RC522_DEFAULT_TASK_STACK_PRIORITY : config->task_priority;
 
     return new_config;
 }
