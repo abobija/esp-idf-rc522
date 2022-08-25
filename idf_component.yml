@@ -1,0 +1,7 @@
+version: "2.0.0"
+description: MFRC522 driver
+repository: https://github.com/abobija/esp-idf-rc522
+issues: https://github.com/abobija/esp-idf-rc522/issues
+
+dependencies:
+  idf: "^4.1"
