@@ -42,6 +42,7 @@ static esp_err_t rc522_write_n(rc522_handle_t rc522, uint8_t addr, uint8_t n, ui
             ret = rc522_i2c_send(rc522, buffer, n + 1);
             break;
         default:
+            ESP_LOGE(TAG, "write: Unknown transport");
             ret = ESP_ERR_INVALID_STATE; // unknown transport
     }
     free(buffer);
@@ -68,6 +69,7 @@ static uint8_t* rc522_read_n(rc522_handle_t rc522, uint8_t addr, uint8_t n)
             ret = rc522_i2c_receive(rc522, buffer, n, addr);
             break;
         default:
+            ESP_LOGE(TAG, "read: Unknown transport");
             ret = ESP_ERR_INVALID_STATE; // unknown transport
     }
     if(ESP_OK != ret) {
@@ -138,6 +140,9 @@ rc522_config_t* rc522_clone_config(rc522_config_t* config)
             new_config->i2c.scl_gpio = config->i2c.scl_gpio;
             new_config->i2c.sda_gpio = config->i2c.sda_gpio;
             break;
+        default:
+            ESP_LOGE(TAG, "clone_config: Unknown transport");
+            break;
     }
 
     return new_config;
@@ -190,6 +195,7 @@ static esp_err_t rc522_create_transport(rc522_handle_t rc522)
             }
             break;
         default:
+            ESP_LOGE(TAG, "create_transport: Unknown transport");
             ret = ESP_ERR_INVALID_STATE; // unknown transport
             break;
     }
@@ -488,6 +494,8 @@ static void rc522_destroy_transport(rc522_handle_t rc522)
         case RC522_TRANSPORT_I2C:
             i2c_driver_delete(rc522->config->i2c.port);
             break;
+        default:
+            ESP_LOGW(TAG, "destroy_transport: Unknown transport");
     }
 }
 
