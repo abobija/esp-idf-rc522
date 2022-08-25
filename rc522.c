@@ -139,14 +139,6 @@ static esp_err_t rc522_create_transport(rc522_handle_t rc522)
 
     switch(rc522->config->transport) {
         case RC522_TRANSPORT_SPI: {
-                spi_bus_config_t buscfg = {
-                    .miso_io_num = rc522->config->spi.miso_gpio,
-                    .mosi_io_num = rc522->config->spi.mosi_gpio,
-                    .sclk_io_num = rc522->config->spi.sck_gpio,
-                    .quadwp_io_num = -1,
-                    .quadhd_io_num = -1,
-                };
-
                 spi_device_interface_config_t devcfg = {
                     .clock_speed_hz = rc522->config->spi.clock_speed_hz,
                     .mode = 0,
@@ -155,8 +147,18 @@ static esp_err_t rc522_create_transport(rc522_handle_t rc522)
                     .flags = rc522->config->spi.device_flags,
                 };
 
-                if(ESP_OK != (ret = spi_bus_initialize(rc522->config->spi.host, &buscfg, 0))) {
-                    break;
+                if(! rc522->config->spi.bus_is_initialized) {
+                    spi_bus_config_t buscfg = {
+                        .miso_io_num = rc522->config->spi.miso_gpio,
+                        .mosi_io_num = rc522->config->spi.mosi_gpio,
+                        .sclk_io_num = rc522->config->spi.sck_gpio,
+                        .quadwp_io_num = -1,
+                        .quadhd_io_num = -1,
+                    };
+
+                    if(ESP_OK != (ret = spi_bus_initialize(rc522->config->spi.host, &buscfg, 0))) {
+                        break;
+                    }
                 }
 
                 ret = spi_bus_add_device(rc522->config->spi.host, &devcfg, &rc522->spi_handle);
@@ -543,7 +545,7 @@ static esp_err_t rc522_spi_receive(rc522_handle_t rc522, uint8_t* buffer, uint8_
 
     esp_err_t ret;
 
-    if(SPI_DEVICE_HALFDUPLEX == (rc522->config->spi.device_flags & SPI_DEVICE_HALFDUPLEX)) {
+    if(SPI_DEVICE_HALFDUPLEX & rc522->config->spi.device_flags) {
         ret = spi_device_transmit(rc522->spi_handle, &(spi_transaction_t){
             .flags = SPI_TRANS_USE_TXDATA,
             .length = 8,
