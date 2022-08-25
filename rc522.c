@@ -25,10 +25,13 @@ static void rc522_task(void* arg);
 static esp_err_t rc522_write_n(rc522_handle_t rc522, uint8_t addr, uint8_t n, uint8_t *data)
 {
     uint8_t* buffer = (uint8_t*) malloc(n + 1); // FIXME: memcheck
-    buffer[0] = (addr << 1) & 0x7E;
+    buffer[0] = addr;
     memcpy(buffer + 1, data, n);
     esp_err_t err = rc522->config->send_handler(buffer, n + 1);
     free(buffer);
+    if(ESP_OK != err) {
+        ESP_LOGE(TAG, "Failed to write data (err: %s)", esp_err_to_name(err));
+    }
     return err;
 }
 
@@ -40,7 +43,12 @@ static inline esp_err_t rc522_write(rc522_handle_t rc522, uint8_t addr, uint8_t 
 static uint8_t* rc522_read_n(rc522_handle_t rc522, uint8_t addr, uint8_t n)
 {
     uint8_t* buffer = (uint8_t*) malloc(n); // FIXME: memcheck
-    rc522->config->receive_handler(buffer, n, ((addr << 1) & 0x7E) | 0x80);
+    esp_err_t err = rc522->config->receive_handler(buffer, n, addr);
+    if(ESP_OK != err) {
+        free(buffer);
+        buffer = NULL;
+        ESP_LOGE(TAG, "Failed to read data (err: %s)", esp_err_to_name(err));
+    }
     return buffer;
 }
 
