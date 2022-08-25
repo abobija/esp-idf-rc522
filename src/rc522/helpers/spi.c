@@ -1,6 +1,5 @@
 #include "rc522/helpers/spi.h"
 
-static spi_host_device_t _host;
 static int _miso_gpio;
 static int _mosi_gpio;
 static int _sck_gpio;
@@ -28,11 +27,11 @@ static esp_err_t rc522_spi_init()
 
     esp_err_t ret;
 
-    if(ESP_OK != (ret = spi_bus_initialize(_host, &buscfg, 0))) {
+    if(ESP_OK != (ret = spi_bus_initialize(RC522_SPI_HOST, &buscfg, 0))) {
         return ret;
     }
 
-    return spi_bus_add_device(_host, &devcfg, &_spi);
+    return spi_bus_add_device(RC522_SPI_HOST, &devcfg, &_spi);
 }
 
 static esp_err_t rc522_spi_send(uint8_t* buffer, uint8_t length)
@@ -61,12 +60,11 @@ static esp_err_t rc522_spi_receive(uint8_t* buffer, uint8_t length, uint8_t addr
 static void rc522_spi_remove()
 {
     spi_bus_remove_device(_spi);
-    spi_bus_free(_host);
+    spi_bus_free(RC522_SPI_HOST);
 }
 
-rc522_transport_t* rc522_spi(spi_host_device_t host, int miso_gpio, int mosi_gpio, int sck_gpio, int sda_gpio)
+rc522_transport_t* rc522_spi(int miso_gpio, int mosi_gpio, int sck_gpio, int sda_gpio)
 {
-    _host = host;
     _miso_gpio = miso_gpio;
     _mosi_gpio = mosi_gpio;
     _sck_gpio = sck_gpio;
