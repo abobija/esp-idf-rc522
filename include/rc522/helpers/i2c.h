@@ -4,6 +4,7 @@
 extern "C" {
 #endif
 
+#include <driver/i2c.h>
 #include "rc522.h"
 
 #define RC522_I2C_ADDRESS (0x28)

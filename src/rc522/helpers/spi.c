@@ -1,4 +1,4 @@
-#include "rc522_spi.h"
+#include "rc522/helpers/spi.h"
 
 static spi_device_handle_t spi;
 

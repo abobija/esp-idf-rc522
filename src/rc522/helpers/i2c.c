@@ -1,5 +1,4 @@
-#include <driver/i2c.h>
-#include "rc522_i2c.h"
+#include "rc522/helpers/i2c.h"
 
 static esp_err_t rc522_i2c_init()
 {
