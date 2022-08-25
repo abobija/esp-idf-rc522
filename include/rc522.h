@@ -14,15 +14,23 @@ ESP_EVENT_DECLARE_BASE(RC522_EVENTS);
 
 typedef struct rc522* rc522_handle_t;
 
-typedef esp_err_t(*rc522_send_handler_t)(uint8_t* buffer, uint8_t length);
-typedef esp_err_t(*rc522_receive_handler_t)(uint8_t* buffer, uint8_t lenght, uint8_t addr);
+typedef esp_err_t(*rc522_transport_init_fn_t)();
+typedef esp_err_t(*rc522_transport_send_fn_t)(uint8_t* buffer, uint8_t length);
+typedef esp_err_t(*rc522_transport_receive_fn_t)(uint8_t* buffer, uint8_t lenght, uint8_t addr);
+typedef void(*rc522_transport_remove_fn_t)();
+
+typedef struct {
+    rc522_transport_init_fn_t init;
+    rc522_transport_send_fn_t send;
+    rc522_transport_receive_fn_t receive;
+    rc522_transport_remove_fn_t remove;
+} rc522_transport_t;
 
 typedef struct {
     uint16_t scan_interval_ms;         /*<! How fast will ESP32 scan for nearby tags, in miliseconds. Default: 125ms */
     size_t task_stack_size;            /*<! Stack size of rc522 task (Default: 4 * 1024) */
     uint8_t task_priority;             /*<! Priority of rc522 task (Default: 4) */
-    rc522_send_handler_t send_handler;
-    rc522_receive_handler_t receive_handler;
+    rc522_transport_t* transport;
 } rc522_config_t;
 
 typedef enum {

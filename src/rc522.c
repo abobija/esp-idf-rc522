@@ -27,7 +27,7 @@ static esp_err_t rc522_write_n(rc522_handle_t rc522, uint8_t addr, uint8_t n, ui
     uint8_t* buffer = (uint8_t*) malloc(n + 1); // FIXME: memcheck
     buffer[0] = addr;
     memcpy(buffer + 1, data, n);
-    esp_err_t err = rc522->config->send_handler(buffer, n + 1);
+    esp_err_t err = rc522->config->transport->send(buffer, n + 1);
     free(buffer);
     if(ESP_OK != err) {
         ESP_LOGE(TAG, "Failed to write data (err: %s)", esp_err_to_name(err));
@@ -43,7 +43,7 @@ static inline esp_err_t rc522_write(rc522_handle_t rc522, uint8_t addr, uint8_t 
 static uint8_t* rc522_read_n(rc522_handle_t rc522, uint8_t addr, uint8_t n)
 {
     uint8_t* buffer = (uint8_t*) malloc(n); // FIXME: memcheck
-    esp_err_t err = rc522->config->receive_handler(buffer, n, addr);
+    esp_err_t err = rc522->config->transport->receive(buffer, n, addr);
     if(ESP_OK != err) {
         free(buffer);
         buffer = NULL;
@@ -89,18 +89,31 @@ static esp_err_t rc522_antenna_on(rc522_handle_t rc522)
     return rc522_write(rc522, 0x26, 0x60); // 43dB gain
 }
 
+static esp_err_t rc522_validate_transport(rc522_transport_t* transport)
+{
+    if(! transport) {
+        return ESP_ERR_INVALID_ARG;
+    }
+
+    if(! transport->receive || ! transport->receive) {
+        ESP_LOGE(TAG, "Both (send and receive) functions needs to be present in transport");
+        return ESP_ERR_INVALID_ARG;
+    }
+
+    return ESP_OK;
+}
+
 esp_err_t rc522_create(rc522_config_t* config, rc522_handle_t* out_rc522)
 {
     if(! config || ! out_rc522) {
         return ESP_ERR_INVALID_ARG;
     }
 
-    if(! config->send_handler || ! config->receive_handler) {
-        ESP_LOGE(TAG, "Both (send and receive) handlers need to be present in the configuration");
-        return ESP_ERR_INVALID_ARG;
-    }
+    esp_err_t ret;
 
-    esp_err_t err = ESP_OK;
+    if(ESP_OK != (ret = rc522_validate_transport(config->transport))) {
+        return ret;
+    }
 
     rc522_handle_t rc522 = calloc(1, sizeof(struct rc522)); // FIXME: memcheck
     rc522->config = calloc(1, sizeof(rc522_config_t)); // FIXME: memcheck
@@ -109,25 +122,28 @@ esp_err_t rc522_create(rc522_config_t* config, rc522_handle_t* out_rc522)
     rc522->config->scan_interval_ms = config->scan_interval_ms < 50 ? RC522_DEFAULT_SCAN_INTERVAL_MS : config->scan_interval_ms;
     rc522->config->task_stack_size  = config->task_stack_size == 0 ? RC522_DEFAULT_TACK_STACK_SIZE : config->task_stack_size;
     rc522->config->task_priority    = config->task_priority == 0 ? RC522_DEFAULT_TACK_STACK_PRIORITY : config->task_priority;
-    rc522->config->send_handler     = config->send_handler;
-    rc522->config->receive_handler  = config->receive_handler;
+    rc522->config->transport        = config->transport;
+
+    if(rc522->config->transport->init) {
+        rc522->config->transport->init();
+    }
 
     esp_event_loop_args_t event_args = {
         .queue_size = 1,
         .task_name = NULL, // no task will be created
     };
 
-    if(ESP_OK != (err = esp_event_loop_create(&event_args, &rc522->event_handle))) {
+    if(ESP_OK != (ret = esp_event_loop_create(&event_args, &rc522->event_handle))) {
         ESP_LOGE(TAG, "Cannot create event loop");
         rc522_destroy(rc522);
-        return err;
+        return ret;
     }
 
     rc522->running = true;
     if (xTaskCreate(rc522_task, "rc522_task", rc522->config->task_stack_size, rc522, rc522->config->task_priority, &rc522->task_handle) != pdTRUE) {
         ESP_LOGE(TAG, "Cannot create task");
         rc522_destroy(rc522);
-        return err;
+        return ret;
     }
 
     *out_rc522 = rc522;
@@ -387,9 +403,14 @@ void rc522_destroy(rc522_handle_t rc522)
         return;
     }
 
-    rc522_pause(rc522); // stop timer
+    rc522_pause(rc522); // stop task
     rc522->running = false; // task will delete himself
     // FIXME: Wait for task to exit
+    if(rc522->config->transport->remove) {
+        rc522->config->transport->remove();
+    }
+    free(rc522->config->transport);
+    rc522->config->transport = NULL;
     if(rc522->event_handle) {
         esp_event_loop_delete(rc522->event_handle);
         rc522->event_handle = NULL;
