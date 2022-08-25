@@ -39,6 +39,7 @@ typedef struct {
             int sck_gpio;
             int sda_gpio;
             int clock_speed_hz;
+            uint32_t device_flags;     /*<! Bitwise OR of SPI_DEVICE_* flags */
         } spi;
         struct {
             i2c_port_t port;
