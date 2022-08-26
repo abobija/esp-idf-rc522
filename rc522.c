@@ -17,6 +17,7 @@ struct rc522 {
     bool initialized;                      /*<! Set on the first start() when configuration is sent to rc522 */
     bool scanning;                         /*<! Whether the rc522 is in scanning or idle mode */
     bool tag_was_present_last_time;
+    bool bus_initialized_by_user;          /*<! Whether the bus has been initialized manually by the user, before calling rc522_create function */
 };
 
 ESP_EVENT_DEFINE_BASE(RC522_EVENTS);
@@ -147,7 +148,9 @@ static esp_err_t rc522_create_transport(rc522_handle_t rc522)
                     .flags = rc522->config->spi.device_flags,
                 };
 
-                if(! rc522->config->spi.bus_is_initialized) {
+                rc522->bus_initialized_by_user = rc522->config->spi.bus_is_initialized;
+
+                if(! rc522->bus_initialized_by_user) {
                     spi_bus_config_t buscfg = {
                         .miso_io_num = rc522->config->spi.miso_gpio,
                         .mosi_io_num = rc522->config->spi.mosi_gpio,
@@ -476,7 +479,9 @@ static void rc522_destroy_transport(rc522_handle_t rc522)
     switch(rc522->config->transport) {
         case RC522_TRANSPORT_SPI:
             spi_bus_remove_device(rc522->spi_handle);
-            spi_bus_free(rc522->config->spi.host);
+            if(rc522->bus_initialized_by_user) {
+                spi_bus_free(rc522->config->spi.host);
+            }
             break;
         case RC522_TRANSPORT_I2C:
             i2c_driver_delete(rc522->config->i2c.port);
