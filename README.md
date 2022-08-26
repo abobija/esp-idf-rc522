@@ -1,10 +1,8 @@
 # esp-idf-rc522
 
-C library for interfacing ESP32 with MFRC522 RFID card reader
+C library for interfacing ESP32 with MFRC522 RFID card reader.
 
-## Demo
-
-[![How To Connect MFRC522 With ESP32 | ESP IDF Component](https://img.youtube.com/vi/IHaccsDMg9s/mqdefault.jpg)](https://www.youtube.com/watch?v=IHaccsDMg9s)
+> Library currently just reads serial number of RFID tags, which is enough for most applications.
 
 ## How to use
 
@@ -12,32 +10,86 @@ This directory is an ESP-IDF component. Clone it (or add it as submodule) into `
 
 ## Example
 
+This is basic example of scanning RFID tags.
+
 ```c
-#include "esp_log.h"
+#include <esp_log.h>
+#include <inttypes.h>
 #include "rc522.h"
 
-static const char* TAG = "app";
+static const char* TAG = "rc522-demo";
+static rc522_handle_t scanner;
 
-void tag_handler(uint8_t* sn) { // serial number is always 5 bytes long
-    ESP_LOGI(TAG, "Tag: %#x %#x %#x %#x %#x",
-        sn[0], sn[1], sn[2], sn[3], sn[4]
-    );
+static void rc522_handler(void* arg, esp_event_base_t base, int32_t event_id, void* event_data)
+{
+    rc522_event_data_t* data = (rc522_event_data_t*) event_data;
+
+    switch(event_id) {
+        case RC522_EVENT_TAG_SCANNED: {
+                rc522_tag_t* tag = (rc522_tag_t*) data->ptr;
+                ESP_LOGI(TAG, "Tag scanned (sn: %" PRIu64 ")", tag->serial_number);
+            }
+            break;
+    }
 }
 
-void app_main(void) {
-    const rc522_start_args_t start_args = {
-        .miso_io  = 25,
-        .mosi_io  = 23,
-        .sck_io   = 19,
-        .sda_io   = 22,
-        .callback = &tag_handler,
-
-        // Uncomment next line for attaching RC522 to SPI2 bus. Default is VSPI_HOST (SPI3)
-        //.spi_host_id = HSPI_HOST
+void app_main()
+{
+    rc522_config_t config = {
+        .spi.host = VSPI_HOST,
+        .spi.miso_gpio = 25,
+        .spi.mosi_gpio = 23,
+        .spi.sck_gpio = 19,
+        .spi.sda_gpio = 22,
     };
 
-    rc522_start(start_args);
+    rc522_create(&config, &scanner);
+    rc522_register_events(scanner, RC522_EVENT_ANY, rc522_handler, NULL);
+    rc522_start(scanner);
 }
+```
+
+## FAQ
+
+### **How to use I2C instead of SPI?**
+
+Set the property `.transport` of the config structure to `RC522_TRANSPORT_I2C` and choose GPIOs for data (`.i2c.sda_gpio`) and clock (`.i2c.scl_gpio`):
+
+```c
+rc522_config_t config = {
+    .transport = RC522_TRANSPORT_I2C,
+    .i2c.sda_gpio = 18,
+    .i2c.scl_gpio = 19,
+};
+```
+
+### **How to use halfduplex in SPI transport?**
+
+Set the `.spi.device_flags` property of the config to `SPI_DEVICE_HALFDUPLEX`. Other device flags (`SPI_DEVICE_*`) can be set here as well by chaining them with bitwise OR (`|`) operator.
+
+```c
+rc522_config_t config = {
+    .spi.host = VSPI_HOST,
+    .spi.miso_gpio = 25,
+    .spi.mosi_gpio = 23,
+    .spi.sck_gpio = 19,
+    .spi.sda_gpio = 22,
+    .spi.device_flags = SPI_DEVICE_HALFDUPLEX,
+};
+```
+
+### **How to attach RC522 to existing SPI bus?**
+
+Let's say that spi bus `VSPI_HOST` has been already initialized, and rc522 needs to be attached to that bus. That can be accomplished with the next configuration. Property `.spi.bus_is_initialized` is required to be set to `true` in order to inform library to not initialize spi bus again.
+
+> NOTE: Property `.spi.bus_is_initialized` will be deprecated in the future once when [this issue](https://github.com/espressif/esp-idf/issues/8745) is resolved.
+
+```c
+rc522_config_t config = {
+    .spi.host = VSPI_HOST,
+    .spi.sda_gpio = 22,
+    .spi.bus_is_initialized = true,
+};
 ```
 
 ## Author

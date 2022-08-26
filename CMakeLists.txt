@@ -1,4 +1,5 @@
 idf_component_register(
-    SRCS "rc522.c"
-    INCLUDE_DIRS "."
+    INCLUDE_DIRS .
+    SRCS rc522.c
+    REQUIRES esp_event
 )
