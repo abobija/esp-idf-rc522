@@ -1,5 +1,4 @@
 version: "2.0.0"
 description: MFRC522 driver
 
-dependencies:
-  idf: "^4.1"
+
