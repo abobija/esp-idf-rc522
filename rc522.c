@@ -610,6 +610,8 @@ static void rc522_task(void* arg)
             free(serial_no_array);
             rc522_dispatch_event(rc522, RC522_EVENT_TAG_SCANNED, &tag);
             rc522->tag_was_present_last_time = true;
+        } else {
+            free(serial_no_array);
         }
 
         int delay_interval_ms = rc522->config->scan_interval_ms;
