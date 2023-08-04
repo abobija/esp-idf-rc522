@@ -504,7 +504,16 @@ void rc522_destroy(rc522_handle_t rc522)
 
     rc522_pause(rc522); // stop task
     rc522->running = false; // task will delete himself
-    // FIXME: Wait for task to exit
+    
+    /* Wait for task to exit */
+    eTaskState task_state;
+    for (int i = 0; i < 10; i++) {
+        vTaskDelay(20);
+        task_state = eTaskGetState(rc522->task_handle);
+        if (task_state == eDeleted)
+            break;
+    }
+
     rc522_destroy_transport(rc522);
     if(rc522->event_handle) {
         esp_event_loop_delete(rc522->event_handle);
