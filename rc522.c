@@ -210,7 +210,7 @@ esp_err_t rc522_create(rc522_config_t* config, rc522_handle_t* out_rc522)
 
     if(ESP_OK != (ret = rc522_create_transport(rc522))) {
         ESP_LOGE(TAG, "Cannot create transport");
-        rc522_destroy(rc522);
+        rc522_destroy(&rc522);
         return ret;
     }
 
@@ -221,14 +221,14 @@ esp_err_t rc522_create(rc522_config_t* config, rc522_handle_t* out_rc522)
 
     if(ESP_OK != (ret = esp_event_loop_create(&event_args, &rc522->event_handle))) {
         ESP_LOGE(TAG, "Cannot create event loop");
-        rc522_destroy(rc522);
+        rc522_destroy(&rc522);
         return ret;
     }
 
     rc522->running = true;
     if (xTaskCreate(rc522_task, "rc522_task", rc522->config->task_stack_size, rc522, rc522->config->task_priority, &rc522->task_handle) != pdTRUE) {
         ESP_LOGE(TAG, "Cannot create task");
-        rc522_destroy(rc522);
+        rc522_destroy(&rc522);
         return ret;
     }
 
@@ -440,7 +440,7 @@ esp_err_t rc522_start(rc522_handle_t rc522)
         for(uint8_t i = test_val; i < test_val + 2; i++) {
             if((err = rc522_write(rc522, test_addr, i)) != ESP_OK || rc522_read(rc522, test_addr) != i) {
                 ESP_LOGE(TAG, "Read/write test failed");
-                rc522_destroy(rc522);
+                rc522_destroy(&rc522);
                 
                 // ensure return of error even when failure of read test only.
                 if (err == ESP_OK) err = ESP_ERR_INVALID_STATE ;
@@ -499,29 +499,29 @@ static void rc522_destroy_transport(rc522_handle_t rc522)
     }
 }
 
-void rc522_destroy(rc522_handle_t rc522)
+void rc522_destroy(rc522_handle_t* rc522)
 {
-    if(! rc522) {
+    if(! rc522 || ! (*rc522)) {
         return;
     }
 
-    if(xTaskGetCurrentTaskHandle() == rc522->task_handle) {
+    if(xTaskGetCurrentTaskHandle() == (*rc522)->task_handle) {
         ESP_LOGE(TAG, "Cannot destroy rc522 from event handler");
         return;
     }
 
-    rc522_pause(rc522); // stop task
-    rc522->running = false; // task will delete himself
+    rc522_pause(*rc522); // stop task
+    (*rc522)->running = false; // task will delete himself
     // FIXME: Wait for task to exit
-    rc522_destroy_transport(rc522);
-    if(rc522->event_handle) {
-        esp_event_loop_delete(rc522->event_handle);
-        rc522->event_handle = NULL;
+    rc522_destroy_transport(*rc522);
+    if((*rc522)->event_handle) {
+        esp_event_loop_delete((*rc522)->event_handle);
+        (*rc522)->event_handle = NULL;
     }
-    free(rc522->config);
-    rc522->config = NULL;
-    free(rc522);
-    rc522 = NULL;
+    free((*rc522)->config);
+    (*rc522)->config = NULL;
+    free(*rc522);
+    *rc522 = NULL;
 }
 
 static esp_err_t rc522_dispatch_event(rc522_handle_t rc522, rc522_event_t event, void* data)
