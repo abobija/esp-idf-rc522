@@ -441,6 +441,10 @@ esp_err_t rc522_start(rc522_handle_t rc522)
             if((err = rc522_write(rc522, test_addr, i)) != ESP_OK || rc522_read(rc522, test_addr) != i) {
                 ESP_LOGE(TAG, "Read/write test failed");
                 rc522_destroy(rc522);
+                
+                // ensure return of error even when failure of read test only.
+                if (err == ESP_OK) err = ESP_ERR_INVALID_STATE ;
+
                 return err;
             }
         }
