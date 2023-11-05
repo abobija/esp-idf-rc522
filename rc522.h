@@ -19,7 +19,8 @@ extern "C" {
 
 ESP_EVENT_DECLARE_BASE(RC522_EVENTS);
 
-typedef struct rc522* rc522_handle_t;
+typedef struct rc522 rc522 ;
+typedef rc522* rc522_handle_t;
 
 typedef enum {
     RC522_TRANSPORT_SPI,
