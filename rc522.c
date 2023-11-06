@@ -479,7 +479,7 @@ static void rc522_destroy_transport(rc522_handle_t rc522)
     switch(rc522->config->transport) {
         case RC522_TRANSPORT_SPI:
             spi_bus_remove_device(rc522->spi_handle);
-            if(rc522->bus_initialized_by_user) {
+            if(!rc522->bus_initialized_by_user){
                 spi_bus_free(rc522->config->spi.host);
             }
             break;
