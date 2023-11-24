@@ -84,6 +84,10 @@ static uint8_t* rc522_read_n(rc522_handle_t rc522, uint8_t addr, uint8_t n)
 static inline uint8_t rc522_read(rc522_handle_t rc522, uint8_t addr)
 {
     uint8_t* buffer = rc522_read_n(rc522, addr, 1);
+
+    // If buffer is NULL, it's already freed and also we don't want to dereference it, so just returning some value indicating that there are some errors. All functions using this should check if return value equal to that
+    if (buffer == NULL) return 0;
+
     uint8_t res = buffer[0];
     free(buffer);
 
