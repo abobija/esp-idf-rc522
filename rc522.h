@@ -112,7 +112,7 @@ esp_err_t rc522_pause(rc522_handle_t rc522);
  * @brief Destroy RC522 and free all resources. Cannot be called from event handler.
  * @param rc522 Handle
  */
-void rc522_destroy(rc522_handle_t rc522);
+esp_err_t rc522_destroy(rc522_handle_t rc522);
 
 #ifdef __cplusplus
 }
