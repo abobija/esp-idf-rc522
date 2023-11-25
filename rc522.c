@@ -14,6 +14,7 @@ struct rc522 {
     TaskHandle_t task_handle;              /*<! Handle of task */
     esp_event_loop_handle_t event_handle;  /*<! Handle of event loop */
     spi_device_handle_t spi_handle;
+    // TODO: Use new 'status' field, instead of initialized, scanning, etc...
     bool initialized;                      /*<! Set on the first start() when configuration is sent to rc522 */
     bool scanning;                         /*<! Whether the rc522 is in scanning or idle mode */
     bool tag_was_present_last_time;
@@ -129,6 +130,7 @@ static esp_err_t rc522_antenna_on(rc522_handle_t rc522)
     return rc522_write(rc522, 0x26, 0x60); // 43dB gain
 }
 
+// TODO: return esp_err_t (and make it static?)
 rc522_config_t* rc522_clone_config(rc522_config_t* config)
 {
     rc522_config_t* new_config = calloc(1, sizeof(rc522_config_t)); // TODO: memcheck
@@ -275,6 +277,7 @@ static uint64_t rc522_sn_to_u64(uint8_t* sn)
     return result;
 }
 
+// TODO: return esp_err_t
 /* Returns pointer to dynamically allocated array of two element */
 static uint8_t* rc522_calculate_crc(rc522_handle_t rc522, uint8_t *data, uint8_t n)
 {
@@ -309,6 +312,7 @@ static uint8_t* rc522_calculate_crc(rc522_handle_t rc522, uint8_t *data, uint8_t
     return res;
 }
 
+// TODO: return esp_err_t
 static uint8_t* rc522_card_write(rc522_handle_t rc522, uint8_t cmd, uint8_t *data, uint8_t n, uint8_t* res_n)
 {
     uint8_t *result = NULL;
@@ -380,6 +384,7 @@ static uint8_t* rc522_card_write(rc522_handle_t rc522, uint8_t cmd, uint8_t *dat
     return result;
 }
 
+// TODO: return esp_err_t
 static uint8_t* rc522_request(rc522_handle_t rc522, uint8_t* res_n)
 {
     uint8_t* result = NULL;
@@ -396,6 +401,7 @@ static uint8_t* rc522_request(rc522_handle_t rc522, uint8_t* res_n)
     return result;
 }
 
+// TODO: return esp_err_t
 static uint8_t* rc522_anticoll(rc522_handle_t rc522)
 {
     uint8_t res_n;
@@ -405,12 +411,14 @@ static uint8_t* rc522_anticoll(rc522_handle_t rc522)
 
     if(result && res_n != 5) { // all cards/tags serial numbers is 5 bytes long (?)
         free(result);
+
         return NULL;
     }
 
     return result;
 }
 
+// TODO: return esp_err_t
 static uint8_t* rc522_get_tag(rc522_handle_t rc522)
 {
     uint8_t* result = NULL;
@@ -446,6 +454,7 @@ esp_err_t rc522_start(rc522_handle_t rc522)
     if(! rc522) {
         return ESP_ERR_INVALID_ARG;
     }
+
     if(rc522->scanning) { // Already in scan mode
         return ESP_OK;
     }
@@ -495,6 +504,7 @@ esp_err_t rc522_start(rc522_handle_t rc522)
     }
 
     rc522->scanning = true;
+
     return ESP_OK;
 }
 
@@ -503,14 +513,17 @@ esp_err_t rc522_pause(rc522_handle_t rc522)
     if(! rc522) {
         return ESP_ERR_INVALID_ARG;
     }
+
     if(! rc522->scanning) {
         return ESP_OK;
     }
+
     rc522->scanning = false;
 
     return ESP_OK;
 }
 
+// TODO: return esp_err_t
 static void rc522_destroy_transport(rc522_handle_t rc522)
 {
     switch(rc522->config->transport) {
@@ -528,6 +541,7 @@ static void rc522_destroy_transport(rc522_handle_t rc522)
     }
 }
 
+// TODO: return esp_err_t
 void rc522_destroy(rc522_handle_t rc522)
 {
     if(! rc522) {
@@ -555,6 +569,8 @@ void rc522_destroy(rc522_handle_t rc522)
 
 static esp_err_t rc522_dispatch_event(rc522_handle_t rc522, rc522_event_t event, void* data)
 {
+    esp_err_t err;
+
     if(! rc522) {
         return ESP_ERR_INVALID_ARG;
     }
@@ -563,7 +579,7 @@ static esp_err_t rc522_dispatch_event(rc522_handle_t rc522, rc522_event_t event,
         .rc522 = rc522,
         .ptr = data,
     };
-    esp_err_t err;
+
     if(ESP_OK != (err = esp_event_post_to(rc522->event_handle, RC522_EVENTS, event, &e_data, sizeof(rc522_event_data_t), portMAX_DELAY))) {
         return err;
     }
