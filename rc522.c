@@ -19,6 +19,9 @@ static const char* TAG = "rc522";
 #define __alloc_ret_guard(EXP) \
     if((EXP) == NULL) { return ESP_ERR_NO_MEM; }
 
+#define __err_ret_check(EXP) \
+    if((err = (EXP)) != ESP_OK) { return err; }
+
 struct rc522 {
     bool running;                          /*<! Indicates whether rc522 task is running or not */
     rc522_config_t* config;                /*<! Configuration */
@@ -105,42 +108,40 @@ static inline esp_err_t rc522_read(rc522_handle_t rc522, uint8_t addr, uint8_t* 
     return rc522_read_n(rc522, addr, 1, valueRef);
 }
 
-static inline esp_err_t rc522_set_bitmask(rc522_handle_t rc522, uint8_t addr, uint8_t mask)
+static esp_err_t rc522_set_bitmask(rc522_handle_t rc522, uint8_t addr, uint8_t mask)
 {
+    esp_err_t err = ESP_OK;
     uint8_t tmp;
 
-    rc522_read(rc522, addr, &tmp); // TODO: Check return
+    __err_ret_check(rc522_read(rc522, addr, &tmp));
 
     return rc522_write(rc522, addr, tmp | mask);
 }
 
-static inline esp_err_t rc522_clear_bitmask(rc522_handle_t rc522, uint8_t addr, uint8_t mask)
+static esp_err_t rc522_clear_bitmask(rc522_handle_t rc522, uint8_t addr, uint8_t mask)
 {
+    esp_err_t err = ESP_OK;
     uint8_t tmp;
 
-    rc522_read(rc522, addr, &tmp); // TODO: Check return
+    __err_ret_check(rc522_read(rc522, addr, &tmp));
 
     return rc522_write(rc522, addr, tmp & ~mask);
 }
 
-static esp_err_t rc522_firmware(rc522_handle_t rc522, uint8_t* result)
+static inline esp_err_t rc522_firmware(rc522_handle_t rc522, uint8_t* result)
 {
     return rc522_read(rc522, 0x37, result);
 }
 
 static esp_err_t rc522_antenna_on(rc522_handle_t rc522)
 {
-    esp_err_t err;
+    esp_err_t err = ESP_OK;
     uint8_t tmp;
 
-    rc522_read(rc522, 0x14, &tmp); // TODO: Check return
+    __err_ret_check(rc522_read(rc522, 0x14, &tmp));
 
     if(~ (tmp & 0x03)) {
-        err = rc522_set_bitmask(rc522, 0x14, 0x03); // TODO: Check return
-
-        if(err != ESP_OK) {
-            return err;
-        }
+        __err_ret_check(rc522_set_bitmask(rc522, 0x14, 0x03));
     }
 
     return rc522_write(rc522, 0x26, 0x60); // 43dB gain
