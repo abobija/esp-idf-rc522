@@ -14,6 +14,7 @@ struct rc522 {
     TaskHandle_t task_handle;              /*<! Handle of task */
     esp_event_loop_handle_t event_handle;  /*<! Handle of event loop */
     spi_device_handle_t spi_handle;
+    // TODO: Use new 'status' field, instead of initialized, scanning, etc...
     bool initialized;                      /*<! Set on the first start() when configuration is sent to rc522 */
     bool scanning;                         /*<! Whether the rc522 is in scanning or idle mode */
     bool tag_was_present_last_time;
@@ -31,7 +32,7 @@ static void rc522_task(void* arg);
 
 static esp_err_t rc522_write_n(rc522_handle_t rc522, uint8_t addr, uint8_t n, uint8_t *data)
 {
-    uint8_t* buffer = (uint8_t*) malloc(n + 1); // FIXME: memcheck
+    uint8_t* buffer = (uint8_t*) malloc(n + 1); // TODO: memcheck
     buffer[0] = addr;
     memcpy(buffer + 1, data, n);
     esp_err_t ret;
@@ -58,10 +59,10 @@ static inline esp_err_t rc522_write(rc522_handle_t rc522, uint8_t addr, uint8_t 
     return rc522_write_n(rc522, addr, 1, &val);
 }
 
-static uint8_t* rc522_read_n(rc522_handle_t rc522, uint8_t addr, uint8_t n)
+static esp_err_t rc522_read_n(rc522_handle_t rc522, uint8_t addr, uint8_t n, uint8_t* buffer)
 {
-    uint8_t* buffer = (uint8_t*) malloc(n); // FIXME: memcheck
     esp_err_t ret;
+
     switch(rc522->config->transport) {
         case RC522_TRANSPORT_SPI:
             ret = rc522_spi_receive(rc522, buffer, n, addr);
@@ -73,47 +74,54 @@ static uint8_t* rc522_read_n(rc522_handle_t rc522, uint8_t addr, uint8_t n)
             ESP_LOGE(TAG, "read: Unknown transport");
             ret = ESP_ERR_INVALID_STATE; // unknown transport
     }
+
     if(ESP_OK != ret) {
-        free(buffer);
-        buffer = NULL;
         ESP_LOGE(TAG, "Failed to read data (err: %s)", esp_err_to_name(ret));
     }
-    return buffer;
+
+    return ret;
 }
 
-static inline uint8_t rc522_read(rc522_handle_t rc522, uint8_t addr)
+static inline esp_err_t rc522_read(rc522_handle_t rc522, uint8_t addr, uint8_t* valueRef)
 {
-    uint8_t* buffer = rc522_read_n(rc522, addr, 1);
-
-    // If buffer is NULL, it's already freed and also we don't want to dereference it, so just returning some value indicating that there are some errors. All functions using this should check if return value equal to that
-    if (buffer == NULL) return 0;
-
-    uint8_t res = buffer[0];
-    free(buffer);
-
-    return res;
+    return rc522_read_n(rc522, addr, 1, valueRef);
 }
 
 static inline esp_err_t rc522_set_bitmask(rc522_handle_t rc522, uint8_t addr, uint8_t mask)
 {
-    return rc522_write(rc522, addr, rc522_read(rc522, addr) | mask);
+    uint8_t tmp;
+    rc522_read(rc522, addr, &tmp); // TODO: Check return
+
+    return rc522_write(rc522, addr, tmp | mask);
 }
 
 static inline esp_err_t rc522_clear_bitmask(rc522_handle_t rc522, uint8_t addr, uint8_t mask)
 {
-    return rc522_write(rc522, addr, rc522_read(rc522, addr) & ~mask);
+    uint8_t tmp;
+    rc522_read(rc522, addr, &tmp); // TODO: Check return
+
+    return rc522_write(rc522, addr, tmp & ~mask);
 }
 
+// TODO: return esp_err_t
 static inline uint8_t rc522_firmware(rc522_handle_t rc522)
 {
-    return rc522_read(rc522, 0x37);
+    uint8_t tmp;
+    rc522_read(rc522, 0x37, &tmp); // TODO: Check return
+
+    return tmp;
 }
 
 static esp_err_t rc522_antenna_on(rc522_handle_t rc522)
 {
     esp_err_t err;
-    if(~ (rc522_read(rc522, 0x14) & 0x03)) {
-        err = rc522_set_bitmask(rc522, 0x14, 0x03);
+
+    uint8_t tmp;
+    rc522_read(rc522, 0x14, &tmp); // TODO: Check return
+
+    if(~ (tmp & 0x03)) {
+        err = rc522_set_bitmask(rc522, 0x14, 0x03); // TODO: Check return
+
         if(err != ESP_OK) {
             return err;
         }
@@ -122,9 +130,10 @@ static esp_err_t rc522_antenna_on(rc522_handle_t rc522)
     return rc522_write(rc522, 0x26, 0x60); // 43dB gain
 }
 
+// TODO: return esp_err_t (and make it static?)
 rc522_config_t* rc522_clone_config(rc522_config_t* config)
 {
-    rc522_config_t* new_config = calloc(1, sizeof(rc522_config_t)); // FIXME: memcheck
+    rc522_config_t* new_config = calloc(1, sizeof(rc522_config_t)); // TODO: memcheck
     memcpy(new_config, config, sizeof(rc522_config_t));
 
     // defaults
@@ -205,7 +214,7 @@ esp_err_t rc522_create(rc522_config_t* config, rc522_handle_t* out_rc522)
 
     esp_err_t ret;
 
-    rc522_handle_t rc522 = calloc(1, sizeof(struct rc522)); // FIXME: memcheck
+    rc522_handle_t rc522 = calloc(1, sizeof(struct rc522)); // TODO: memcheck
     rc522->config = rc522_clone_config(config);
 
     if(ESP_OK != (ret = rc522_create_transport(rc522))) {
@@ -268,19 +277,20 @@ static uint64_t rc522_sn_to_u64(uint8_t* sn)
     return result;
 }
 
+// TODO: return esp_err_t
 /* Returns pointer to dynamically allocated array of two element */
 static uint8_t* rc522_calculate_crc(rc522_handle_t rc522, uint8_t *data, uint8_t n)
 {
-    rc522_clear_bitmask(rc522, 0x05, 0x04);
-    rc522_set_bitmask(rc522, 0x0A, 0x80);
-    rc522_write_n(rc522, 0x09, n, data);
-    rc522_write(rc522, 0x01, 0x03);
+    rc522_clear_bitmask(rc522, 0x05, 0x04); // TODO: Check return
+    rc522_set_bitmask(rc522, 0x0A, 0x80); // TODO: Check return
+    rc522_write_n(rc522, 0x09, n, data); // TODO: Check return
+    rc522_write(rc522, 0x01, 0x03); // TODO: Check return
 
     uint8_t i = 255;
     uint8_t nn = 0;
 
     for(;;) {
-        nn = rc522_read(rc522, 0x05);
+        rc522_read(rc522, 0x05, &nn); // TODO: Check return
         i--;
 
         if(! (i != 0 && ! (nn & 0x04))) {
@@ -288,13 +298,21 @@ static uint8_t* rc522_calculate_crc(rc522_handle_t rc522, uint8_t *data, uint8_t
         }
     }
 
-    uint8_t* res = (uint8_t*) malloc(2); // FIXME: memcheck
-    res[0] = rc522_read(rc522, 0x22);
-    res[1] = rc522_read(rc522, 0x21);
+    uint8_t* res = (uint8_t*) malloc(2); // TODO: memcheck
+
+    // TODO: Use read_n here to read into res[0], res[1]
+    uint8_t tmp;
+
+    rc522_read(rc522, 0x22, &tmp); // TODO: Check return
+    res[0] = tmp;
+
+    rc522_read(rc522, 0x21, &tmp); // TODO: Check return
+    res[1] = tmp;
 
     return res;
 }
 
+// TODO: return esp_err_t
 static uint8_t* rc522_card_write(rc522_handle_t rc522, uint8_t cmd, uint8_t *data, uint8_t n, uint8_t* res_n)
 {
     uint8_t *result = NULL;
@@ -302,6 +320,7 @@ static uint8_t* rc522_card_write(rc522_handle_t rc522, uint8_t cmd, uint8_t *dat
     uint8_t irq_wait = 0x00;
     uint8_t last_bits = 0;
     uint8_t nn = 0;
+    uint8_t tmp;
     
     if(cmd == 0x0E) {
         irq = 0x12;
@@ -312,21 +331,21 @@ static uint8_t* rc522_card_write(rc522_handle_t rc522, uint8_t cmd, uint8_t *dat
         irq_wait = 0x30;
     }
 
-    rc522_write(rc522, 0x02, irq | 0x80);
-    rc522_clear_bitmask(rc522, 0x04, 0x80);
-    rc522_set_bitmask(rc522, 0x0A, 0x80);
-    rc522_write(rc522, 0x01, 0x00);
-    rc522_write_n(rc522, 0x09, n, data);
-    rc522_write(rc522, 0x01, cmd);
+    rc522_write(rc522, 0x02, irq | 0x80); // TODO: Check return
+    rc522_clear_bitmask(rc522, 0x04, 0x80); // TODO: Check return
+    rc522_set_bitmask(rc522, 0x0A, 0x80); // TODO: Check return
+    rc522_write(rc522, 0x01, 0x00); // TODO: Check return
+    rc522_write_n(rc522, 0x09, n, data); // TODO: Check return
+    rc522_write(rc522, 0x01, cmd); // TODO: Check return
 
     if(cmd == 0x0C) {
-        rc522_set_bitmask(rc522, 0x0D, 0x80);
+        rc522_set_bitmask(rc522, 0x0D, 0x80); // TODO: Check return
     }
 
     uint16_t i = 1000;
 
     for(;;) {
-        nn = rc522_read(rc522, 0x04);
+        rc522_read(rc522, 0x04, &nn); // TODO: Check return
         i--;
 
         if(! (i != 0 && (((nn & 0x01) == 0) && ((nn & irq_wait) == 0)))) {
@@ -334,13 +353,17 @@ static uint8_t* rc522_card_write(rc522_handle_t rc522, uint8_t cmd, uint8_t *dat
         }
     }
 
-    rc522_clear_bitmask(rc522, 0x0D, 0x80);
+    rc522_clear_bitmask(rc522, 0x0D, 0x80); // TODO: Check return
 
     if(i != 0) {
-        if((rc522_read(rc522, 0x06) & 0x1B) == 0x00) {
+        rc522_read(rc522, 0x06, &tmp); // TODO: Check return
+
+        if((tmp & 0x1B) == 0x00) {
             if(cmd == 0x0C) {
-                nn = rc522_read(rc522, 0x0A);
-                last_bits = rc522_read(rc522, 0x0C) & 0x07;
+                rc522_read(rc522, 0x0A, &nn); // TODO: Check return
+                rc522_read(rc522, 0x0C, &tmp); // TODO: Check return
+
+                last_bits = tmp & 0x07;
 
                 if (last_bits != 0) {
                     *res_n = (nn - 1) + last_bits;
@@ -348,10 +371,11 @@ static uint8_t* rc522_card_write(rc522_handle_t rc522, uint8_t cmd, uint8_t *dat
                     *res_n = nn;
                 }
 
-                result = (uint8_t*) malloc(*res_n); // FIXME: memcheck
+                result = (uint8_t*) malloc(*res_n); // TODO: memcheck
 
                 for(i = 0; i < *res_n; i++) {
-                    result[i] = rc522_read(rc522, 0x09);
+                    rc522_read(rc522, 0x09, &tmp); // TODO: Check return
+                    result[i] = tmp;
                 }
             }
         }
@@ -360,6 +384,7 @@ static uint8_t* rc522_card_write(rc522_handle_t rc522, uint8_t cmd, uint8_t *dat
     return result;
 }
 
+// TODO: return esp_err_t
 static uint8_t* rc522_request(rc522_handle_t rc522, uint8_t* res_n)
 {
     uint8_t* result = NULL;
@@ -376,6 +401,7 @@ static uint8_t* rc522_request(rc522_handle_t rc522, uint8_t* res_n)
     return result;
 }
 
+// TODO: return esp_err_t
 static uint8_t* rc522_anticoll(rc522_handle_t rc522)
 {
     uint8_t res_n;
@@ -385,12 +411,14 @@ static uint8_t* rc522_anticoll(rc522_handle_t rc522)
 
     if(result && res_n != 5) { // all cards/tags serial numbers is 5 bytes long (?)
         free(result);
+
         return NULL;
     }
 
     return result;
 }
 
+// TODO: return esp_err_t
 static uint8_t* rc522_get_tag(rc522_handle_t rc522)
 {
     uint8_t* result = NULL;
@@ -426,6 +454,7 @@ esp_err_t rc522_start(rc522_handle_t rc522)
     if(! rc522) {
         return ESP_ERR_INVALID_ARG;
     }
+
     if(rc522->scanning) { // Already in scan mode
         return ESP_OK;
     }
@@ -437,24 +466,37 @@ esp_err_t rc522_start(rc522_handle_t rc522)
 
         // ---------- RW test ------------
         const uint8_t test_addr = 0x24, test_val = 0x25;
+        uint8_t tmp, pass = 0;
+
         for(uint8_t i = test_val; i < test_val + 2; i++) {
-            if((err = rc522_write(rc522, test_addr, i)) != ESP_OK || rc522_read(rc522, test_addr) != i) {
+            err = rc522_write(rc522, test_addr, i);
+
+            if(err == ESP_OK) {
+                err = rc522_read(rc522, test_addr, &tmp);
+
+                if(err == ESP_OK && tmp == i) {
+                    pass = 1;
+                }
+            }
+
+            if(pass != 1) {
                 ESP_LOGE(TAG, "Read/write test failed");
                 rc522_destroy(rc522);
+
                 return err;
             }
         }
         // ------- End of RW test --------
 
-        rc522_write(rc522, 0x01, 0x0F);
-        rc522_write(rc522, 0x2A, 0x8D);
-        rc522_write(rc522, 0x2B, 0x3E);
-        rc522_write(rc522, 0x2D, 0x1E);
-        rc522_write(rc522, 0x2C, 0x00);
-        rc522_write(rc522, 0x15, 0x40);
-        rc522_write(rc522, 0x11, 0x3D);
+        rc522_write(rc522, 0x01, 0x0F); // TODO: Check return
+        rc522_write(rc522, 0x2A, 0x8D); // TODO: Check return
+        rc522_write(rc522, 0x2B, 0x3E); // TODO: Check return
+        rc522_write(rc522, 0x2D, 0x1E); // TODO: Check return
+        rc522_write(rc522, 0x2C, 0x00); // TODO: Check return
+        rc522_write(rc522, 0x15, 0x40); // TODO: Check return
+        rc522_write(rc522, 0x11, 0x3D); // TODO: Check return
 
-        rc522_antenna_on(rc522);
+        rc522_antenna_on(rc522); // TODO: Check return
 
         rc522->initialized = true;
 
@@ -462,6 +504,7 @@ esp_err_t rc522_start(rc522_handle_t rc522)
     }
 
     rc522->scanning = true;
+
     return ESP_OK;
 }
 
@@ -470,14 +513,17 @@ esp_err_t rc522_pause(rc522_handle_t rc522)
     if(! rc522) {
         return ESP_ERR_INVALID_ARG;
     }
+
     if(! rc522->scanning) {
         return ESP_OK;
     }
+
     rc522->scanning = false;
 
     return ESP_OK;
 }
 
+// TODO: return esp_err_t
 static void rc522_destroy_transport(rc522_handle_t rc522)
 {
     switch(rc522->config->transport) {
@@ -495,6 +541,7 @@ static void rc522_destroy_transport(rc522_handle_t rc522)
     }
 }
 
+// TODO: return esp_err_t
 void rc522_destroy(rc522_handle_t rc522)
 {
     if(! rc522) {
@@ -508,7 +555,7 @@ void rc522_destroy(rc522_handle_t rc522)
 
     rc522_pause(rc522); // stop task
     rc522->running = false; // task will delete himself
-    // FIXME: Wait for task to exit
+    // TODO: Wait for task to exit
     rc522_destroy_transport(rc522);
     if(rc522->event_handle) {
         esp_event_loop_delete(rc522->event_handle);
@@ -522,6 +569,8 @@ void rc522_destroy(rc522_handle_t rc522)
 
 static esp_err_t rc522_dispatch_event(rc522_handle_t rc522, rc522_event_t event, void* data)
 {
+    esp_err_t err;
+
     if(! rc522) {
         return ESP_ERR_INVALID_ARG;
     }
@@ -530,7 +579,7 @@ static esp_err_t rc522_dispatch_event(rc522_handle_t rc522, rc522_event_t event,
         .rc522 = rc522,
         .ptr = data,
     };
-    esp_err_t err;
+
     if(ESP_OK != (err = esp_event_post_to(rc522->event_handle, RC522_EVENTS, event, &e_data, sizeof(rc522_event_data_t), portMAX_DELAY))) {
         return err;
     }
