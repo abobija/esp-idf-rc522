@@ -6,7 +6,7 @@ extern "C" {
 
 #include <esp_event.h>
 #include <driver/spi_master.h>
-#include <driver/i2c.h>
+#include <driver/i2c.h> // TODO: Log warning: This driver is an old driver, please migrate your application code to adapt `driver/i2c_master.h`
 
 #define RC522_I2C_ADDRESS (0x28)
 
@@ -112,7 +112,7 @@ esp_err_t rc522_pause(rc522_handle_t rc522);
  * @brief Destroy RC522 and free all resources. Cannot be called from event handler.
  * @param rc522 Handle
  */
-void rc522_destroy(rc522_handle_t rc522);
+esp_err_t rc522_destroy(rc522_handle_t rc522);
 
 #ifdef __cplusplus
 }
