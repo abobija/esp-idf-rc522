@@ -495,24 +495,37 @@ esp_err_t rc522_start(rc522_handle_t rc522)
 
         // ---------- RW test ------------
         const uint8_t test_addr = 0x24, test_val = 0x25;
+        uint8_t tmp, pass = 0;
+
         for(uint8_t i = test_val; i < test_val + 2; i++) {
-            if((err = rc522_write(rc522, test_addr, i)) != ESP_OK || rc522_read(rc522, test_addr) != i) {
+            err = rc522_write(rc522, test_addr, i);
+
+            if(err == ESP_OK) {
+                err = rc522_read_v2(rc522, test_addr, &tmp);
+
+                if(err == ESP_OK && tmp == i) {
+                    pass = 1;
+                }
+            }
+
+            if(pass != 1) {
                 ESP_LOGE(TAG, "Read/write test failed");
                 rc522_destroy(rc522);
+
                 return err;
             }
         }
         // ------- End of RW test --------
 
-        rc522_write(rc522, 0x01, 0x0F);
-        rc522_write(rc522, 0x2A, 0x8D);
-        rc522_write(rc522, 0x2B, 0x3E);
-        rc522_write(rc522, 0x2D, 0x1E);
-        rc522_write(rc522, 0x2C, 0x00);
-        rc522_write(rc522, 0x15, 0x40);
-        rc522_write(rc522, 0x11, 0x3D);
+        rc522_write(rc522, 0x01, 0x0F); // TODO: Check return
+        rc522_write(rc522, 0x2A, 0x8D); // TODO: Check return
+        rc522_write(rc522, 0x2B, 0x3E); // TODO: Check return
+        rc522_write(rc522, 0x2D, 0x1E); // TODO: Check return
+        rc522_write(rc522, 0x2C, 0x00); // TODO: Check return
+        rc522_write(rc522, 0x15, 0x40); // TODO: Check return
+        rc522_write(rc522, 0x11, 0x3D); // TODO: Check return
 
-        rc522_antenna_on(rc522);
+        rc522_antenna_on(rc522); // TODO: Check return
 
         rc522->initialized = true;
 
