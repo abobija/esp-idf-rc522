@@ -320,10 +320,10 @@ static esp_err_t rc522_calculate_crc(rc522_handle_t rc522, uint8_t *data, uint8_
     return ESP_OK;
 }
 
-// TODO: return esp_err_t
-static uint8_t* rc522_card_write(rc522_handle_t rc522, uint8_t cmd, uint8_t *data, uint8_t n, uint8_t* res_n)
+static esp_err_t rc522_card_write(rc522_handle_t rc522, uint8_t cmd, uint8_t *data, uint8_t n, uint8_t* res_n, uint8_t** result)
 {
-    uint8_t *result = NULL;
+    uint8_t* _result = NULL;
+    uint8_t _res_n = 0;
     uint8_t irq = 0x00;
     uint8_t irq_wait = 0x00;
     uint8_t last_bits = 0;
@@ -374,22 +374,25 @@ static uint8_t* rc522_card_write(rc522_handle_t rc522, uint8_t cmd, uint8_t *dat
                 last_bits = tmp & 0x07;
 
                 if (last_bits != 0) {
-                    *res_n = (nn - 1) + last_bits;
+                    _res_n = (nn - 1) + last_bits;
                 } else {
-                    *res_n = nn;
+                    _res_n = nn;
                 }
 
-                result = (uint8_t*) malloc(*res_n); // TODO: memcheck
+                _result = (uint8_t*) malloc(_res_n); // TODO: memcheck
 
-                for(i = 0; i < *res_n; i++) {
+                for(i = 0; i < _res_n; i++) {
                     rc522_read(rc522, 0x09, &tmp); // TODO: Check return
-                    result[i] = tmp;
+                    _result[i] = tmp;
                 }
             }
         }
     }
 
-    return result;
+    *res_n = _res_n;
+    *result = _result;
+
+    return ESP_OK;
 }
 
 static esp_err_t rc522_request(rc522_handle_t rc522, uint8_t* res_n, uint8_t** result)
@@ -399,8 +402,7 @@ static esp_err_t rc522_request(rc522_handle_t rc522, uint8_t* res_n, uint8_t** r
     uint8_t req_mode = 0x26;
 
     rc522_write(rc522, 0x0D, 0x07); // TODO: Check return
-
-    _result = rc522_card_write(rc522, 0x0C, &req_mode, 1, &_res_n);
+    rc522_card_write(rc522, 0x0C, &req_mode, 1, &_res_n, &_result); // TODO: Check return
 
     if(_res_n * 8 != 0x10) {
         free(_result);
@@ -420,7 +422,7 @@ static esp_err_t rc522_anticoll(rc522_handle_t rc522, uint8_t** result)
     uint8_t res_n;
 
     rc522_write(rc522, 0x0D, 0x00); // TODO: check return
-    _result = rc522_card_write(rc522, 0x0C, (uint8_t[]) { 0x93, 0x20 }, 2, &res_n);
+    rc522_card_write(rc522, 0x0C, (uint8_t[]) { 0x93, 0x20 }, 2, &res_n, &_result); // TODO: Check return
 
     if(_result && res_n != 5) { // all cards/tags serial numbers is 5 bytes long (?)
         free(_result);
@@ -449,7 +451,7 @@ static esp_err_t rc522_get_tag(rc522_handle_t rc522, uint8_t** result)
         if(_result != NULL) {
             uint8_t buf[] = { 0x50, 0x00, 0x00, 0x00 };
             rc522_calculate_crc(rc522, buf, 2, buf + 2); // TODO: Check return
-            res_data = rc522_card_write(rc522, 0x0C, buf, 4, &res_data_n);
+            rc522_card_write(rc522, 0x0C, buf, 4, &res_data_n, &res_data); // TODO: Check return
             free(res_data);
             rc522_clear_bitmask(rc522, 0x08, 0x08); // TODO: Check return
         }
