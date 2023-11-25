@@ -170,7 +170,7 @@ static esp_err_t rc522_clone_config(rc522_config_t* config, rc522_config_t** res
 
 static esp_err_t rc522_create_transport(rc522_handle_t rc522)
 {
-    esp_err_t ret;
+    esp_err_t err = ESP_OK;
 
     switch(rc522->config->transport) {
         case RC522_TRANSPORT_SPI: {
@@ -193,12 +193,10 @@ static esp_err_t rc522_create_transport(rc522_handle_t rc522)
                         .quadhd_io_num = -1,
                     };
 
-                    if(ESP_OK != (ret = spi_bus_initialize(rc522->config->spi.host, &buscfg, 0))) {
-                        break;
-                    }
+                    __err_ret_check(spi_bus_initialize(rc522->config->spi.host, &buscfg, 0));
                 }
 
-                ret = spi_bus_add_device(rc522->config->spi.host, &devcfg, &rc522->spi_handle);
+                __err_ret_check(spi_bus_add_device(rc522->config->spi.host, &devcfg, &rc522->spi_handle));
             }
             break;
         case RC522_TRANSPORT_I2C: {
@@ -211,20 +209,17 @@ static esp_err_t rc522_create_transport(rc522_handle_t rc522)
                     .master.clk_speed = rc522->config->i2c.clock_speed_hz,
                 };
 
-                if(ESP_OK != (ret = i2c_param_config(rc522->config->i2c.port, &conf))) {
-                    break;
-                }
-
-                ret = i2c_driver_install(rc522->config->i2c.port, conf.mode, false, false, 0x00);
+                __err_ret_check(i2c_param_config(rc522->config->i2c.port, &conf));
+                __err_ret_check(i2c_driver_install(rc522->config->i2c.port, conf.mode, false, false, 0x00));
             }
             break;
         default:
             ESP_LOGE(TAG, "create_transport: Unknown transport");
-            ret = ESP_ERR_INVALID_STATE; // unknown transport
+            err = ESP_ERR_INVALID_STATE; // unknown transport
             break;
     }
 
-    return ret;
+    return err;
 }
 
 esp_err_t rc522_create(rc522_config_t* config, rc522_handle_t* out_rc522)
