@@ -133,22 +133,23 @@ static esp_err_t rc522_antenna_on(rc522_handle_t rc522)
     return rc522_write(rc522, 0x26, 0x60); // 43dB gain
 }
 
-// TODO: return esp_err_t (and make it static?)
-rc522_config_t* rc522_clone_config(rc522_config_t* config)
+static esp_err_t rc522_clone_config(rc522_config_t* config, rc522_config_t** result)
 {
-    rc522_config_t* new_config = calloc(1, sizeof(rc522_config_t)); // TODO: memcheck
+    rc522_config_t* _clone_config = calloc(1, sizeof(rc522_config_t)); // TODO: memcheck
     
-    memcpy(new_config, config, sizeof(rc522_config_t));
+    memcpy(_clone_config, config, sizeof(rc522_config_t));
 
     // defaults
-    new_config->scan_interval_ms = config->scan_interval_ms < 50 ? RC522_DEFAULT_SCAN_INTERVAL_MS : config->scan_interval_ms;
-    new_config->task_stack_size = config->task_stack_size == 0 ? RC522_DEFAULT_TASK_STACK_SIZE : config->task_stack_size;
-    new_config->task_priority = config->task_priority == 0 ? RC522_DEFAULT_TASK_STACK_PRIORITY : config->task_priority;
-    new_config->spi.clock_speed_hz = config->spi.clock_speed_hz == 0 ? RC522_DEFAULT_SPI_CLOCK_SPEED_HZ : config->spi.clock_speed_hz;
-    new_config->i2c.rw_timeout_ms = config->i2c.rw_timeout_ms == 0 ? RC522_DEFAULT_I2C_RW_TIMEOUT_MS : config->i2c.rw_timeout_ms;
-    new_config->i2c.clock_speed_hz = config->i2c.clock_speed_hz == 0 ? RC522_DEFAULT_I2C_CLOCK_SPEED_HZ : config->i2c.clock_speed_hz;
+    _clone_config->scan_interval_ms = config->scan_interval_ms < 50 ? RC522_DEFAULT_SCAN_INTERVAL_MS : config->scan_interval_ms;
+    _clone_config->task_stack_size = config->task_stack_size == 0 ? RC522_DEFAULT_TASK_STACK_SIZE : config->task_stack_size;
+    _clone_config->task_priority = config->task_priority == 0 ? RC522_DEFAULT_TASK_STACK_PRIORITY : config->task_priority;
+    _clone_config->spi.clock_speed_hz = config->spi.clock_speed_hz == 0 ? RC522_DEFAULT_SPI_CLOCK_SPEED_HZ : config->spi.clock_speed_hz;
+    _clone_config->i2c.rw_timeout_ms = config->i2c.rw_timeout_ms == 0 ? RC522_DEFAULT_I2C_RW_TIMEOUT_MS : config->i2c.rw_timeout_ms;
+    _clone_config->i2c.clock_speed_hz = config->i2c.clock_speed_hz == 0 ? RC522_DEFAULT_I2C_CLOCK_SPEED_HZ : config->i2c.clock_speed_hz;
 
-    return new_config;
+    *result = _clone_config;
+
+    return ESP_OK;
 }
 
 static esp_err_t rc522_create_transport(rc522_handle_t rc522)
@@ -219,7 +220,7 @@ esp_err_t rc522_create(rc522_config_t* config, rc522_handle_t* out_rc522)
     esp_err_t ret;
     rc522_handle_t rc522 = calloc(1, sizeof(struct rc522)); // TODO: memcheck
 
-    rc522->config = rc522_clone_config(config);
+    rc522_clone_config(config, &(rc522->config)); // TODO: check return
 
     if(ESP_OK != (ret = rc522_create_transport(rc522))) {
         ESP_LOGE(TAG, "Cannot create transport");
