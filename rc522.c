@@ -32,11 +32,17 @@ static const char* TAG = "rc522";
         success_label: { on_success; goto exit_label; };  \
         exit_label: {};
 
-#define __err_jmp_condition(EXP, message) \
+#define __err_jmp_check(EXP) \
+    if((err = (EXP)) != ESP_OK) { goto error_label; }
+
+#define __err_jmp_check_with_log(EXP, message) \
+    if((err = (EXP)) != ESP_OK) { ESP_LOGE(TAG, message); goto error_label; }
+
+#define __err_jmp_condition_with_log(EXP, message) \
     if(EXP) { ESP_LOGE(TAG, message); goto error_label; }
 
-#define __err_jmp_check(EXP, message) \
-    if((err = (EXP)) != ESP_OK) { ESP_LOGE(TAG, message); goto error_label; }
+#define _FREE(ptr) \
+    if(ptr) { free(ptr); ptr = NULL; }
 
 struct rc522 {
     bool running;                          /*<! Indicates whether rc522 task is running or not */
@@ -249,12 +255,12 @@ esp_err_t rc522_create(rc522_config_t* config, rc522_handle_t* out_rc522)
     
     __alloc_ret_guard(rc522 = calloc(1, sizeof(struct rc522)));
 
-    __err_jmp_check(rc522_clone_config(
+    __err_jmp_check_with_log(rc522_clone_config(
         config, 
         &(rc522->config)
     ), "Fail to clone config");
 
-    __err_jmp_check(rc522_create_transport(
+    __err_jmp_check_with_log(rc522_create_transport(
         rc522
     ), "Fail to create transport");
 
@@ -263,14 +269,14 @@ esp_err_t rc522_create(rc522_config_t* config, rc522_handle_t* out_rc522)
         .task_name = NULL, // no task will be created
     };
 
-    __err_jmp_check(esp_event_loop_create(
+    __err_jmp_check_with_log(esp_event_loop_create(
         &event_args,
         &rc522->event_handle
     ), "Fail to create event loop");
 
     rc522->running = true;
 
-    __err_jmp_condition(pdTRUE != xTaskCreate(
+    __err_jmp_condition_with_log(pdTRUE != xTaskCreate(
         rc522_task,
         "rc522_task",
         rc522->config->task_stack_size,
@@ -481,29 +487,34 @@ static esp_err_t rc522_anticoll(rc522_handle_t rc522, uint8_t** result)
 
 static esp_err_t rc522_get_tag(rc522_handle_t rc522, uint8_t** result)
 {
+    esp_err_t err = ESP_OK;
     uint8_t* _result = NULL;
     uint8_t* res_data = NULL;
     uint8_t res_data_n;
 
-    rc522_request(rc522, &res_data_n, &res_data); // TODO: Check return
+    __err_jmp_check(rc522_request(rc522, &res_data_n, &res_data));
 
     if(res_data != NULL) {
-        free(res_data);
-
-        rc522_anticoll(rc522, &_result); // TODO: Check return
+        _FREE(res_data);
+        __err_jmp_check(rc522_anticoll(rc522, &_result));
 
         if(_result != NULL) {
             uint8_t buf[] = { 0x50, 0x00, 0x00, 0x00 };
-            rc522_calculate_crc(rc522, buf, 2, buf + 2); // TODO: Check return
-            rc522_card_write(rc522, 0x0C, buf, 4, &res_data_n, &res_data); // TODO: Check return
-            free(res_data);
-            rc522_clear_bitmask(rc522, 0x08, 0x08); // TODO: Check return
+            __err_jmp_check(rc522_calculate_crc(rc522, buf, 2, buf + 2));
+            __err_jmp_check(rc522_card_write(rc522, 0x0C, buf, 4, &res_data_n, &res_data));
+            _FREE(res_data);
+            __err_jmp_check(rc522_clear_bitmask(rc522, 0x08, 0x08));
         }
     }
 
-    *result = _result;
+    __labels({
+        _FREE(_result);
+        _FREE(res_data);
+    }, {
+        *result = _result;
+    });
 
-    return ESP_OK;
+    return err;
 }
 
 esp_err_t rc522_start(rc522_handle_t rc522)
