@@ -126,24 +126,39 @@ static inline esp_err_t rc522_read_v2(rc522_handle_t rc522, uint8_t addr, uint8_
 
 static inline esp_err_t rc522_set_bitmask(rc522_handle_t rc522, uint8_t addr, uint8_t mask)
 {
-    return rc522_write(rc522, addr, rc522_read(rc522, addr) | mask);
+    uint8_t value;
+    rc522_read_v2(rc522, addr, &value); // TODO: Check return
+
+    return rc522_write(rc522, addr, value | mask);
 }
 
 static inline esp_err_t rc522_clear_bitmask(rc522_handle_t rc522, uint8_t addr, uint8_t mask)
 {
-    return rc522_write(rc522, addr, rc522_read(rc522, addr) & ~mask);
+    uint8_t value;
+    rc522_read_v2(rc522, addr, &value); // TODO: Check return
+
+    return rc522_write(rc522, addr, value & ~mask);
 }
 
+// TODO: return esp_err_t
 static inline uint8_t rc522_firmware(rc522_handle_t rc522)
 {
-    return rc522_read(rc522, 0x37);
+    uint8_t value;
+    rc522_read_v2(rc522, 0x37, &value); // TODO: Check return
+
+    return value;
 }
 
 static esp_err_t rc522_antenna_on(rc522_handle_t rc522)
 {
     esp_err_t err;
-    if(~ (rc522_read(rc522, 0x14) & 0x03)) {
+
+    uint8_t value;
+    rc522_read_v2(rc522, 0x14, &value); // TODO: Check return
+
+    if(~ (value & 0x03)) {
         err = rc522_set_bitmask(rc522, 0x14, 0x03);
+
         if(err != ESP_OK) {
             return err;
         }
@@ -310,7 +325,7 @@ static uint8_t* rc522_calculate_crc(rc522_handle_t rc522, uint8_t *data, uint8_t
     uint8_t nn = 0;
 
     for(;;) {
-        nn = rc522_read(rc522, 0x05);
+        rc522_read_v2(rc522, 0x05, &nn); // TODO: Check return
         i--;
 
         if(! (i != 0 && ! (nn & 0x04))) {
@@ -319,8 +334,15 @@ static uint8_t* rc522_calculate_crc(rc522_handle_t rc522, uint8_t *data, uint8_t
     }
 
     uint8_t* res = (uint8_t*) malloc(2); // TODO: memcheck
-    res[0] = rc522_read(rc522, 0x22);
-    res[1] = rc522_read(rc522, 0x21);
+
+    // TODO: Use read_n here to read into res[0], res[1]
+    uint8_t value;
+
+    rc522_read_v2(rc522, 0x22, &value); // TODO: Check return
+    res[0] = value;
+
+    rc522_read_v2(rc522, 0x21, &value); // TODO: Check return
+    res[1] = value;
 
     return res;
 }
