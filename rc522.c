@@ -31,7 +31,7 @@ static void rc522_task(void* arg);
 
 static esp_err_t rc522_write_n(rc522_handle_t rc522, uint8_t addr, uint8_t n, uint8_t *data)
 {
-    uint8_t* buffer = (uint8_t*) malloc(n + 1); // FIXME: memcheck
+    uint8_t* buffer = (uint8_t*) malloc(n + 1); // TODO: memcheck
     buffer[0] = addr;
     memcpy(buffer + 1, data, n);
     esp_err_t ret;
@@ -60,7 +60,7 @@ static inline esp_err_t rc522_write(rc522_handle_t rc522, uint8_t addr, uint8_t 
 
 static uint8_t* rc522_read_n(rc522_handle_t rc522, uint8_t addr, uint8_t n)
 {
-    uint8_t* buffer = (uint8_t*) malloc(n); // FIXME: memcheck
+    uint8_t* buffer = (uint8_t*) malloc(n); // TODO: memcheck
     esp_err_t ret;
     switch(rc522->config->transport) {
         case RC522_TRANSPORT_SPI:
@@ -124,7 +124,7 @@ static esp_err_t rc522_antenna_on(rc522_handle_t rc522)
 
 rc522_config_t* rc522_clone_config(rc522_config_t* config)
 {
-    rc522_config_t* new_config = calloc(1, sizeof(rc522_config_t)); // FIXME: memcheck
+    rc522_config_t* new_config = calloc(1, sizeof(rc522_config_t)); // TODO: memcheck
     memcpy(new_config, config, sizeof(rc522_config_t));
 
     // defaults
@@ -205,7 +205,7 @@ esp_err_t rc522_create(rc522_config_t* config, rc522_handle_t* out_rc522)
 
     esp_err_t ret;
 
-    rc522_handle_t rc522 = calloc(1, sizeof(struct rc522)); // FIXME: memcheck
+    rc522_handle_t rc522 = calloc(1, sizeof(struct rc522)); // TODO: memcheck
     rc522->config = rc522_clone_config(config);
 
     if(ESP_OK != (ret = rc522_create_transport(rc522))) {
@@ -288,7 +288,7 @@ static uint8_t* rc522_calculate_crc(rc522_handle_t rc522, uint8_t *data, uint8_t
         }
     }
 
-    uint8_t* res = (uint8_t*) malloc(2); // FIXME: memcheck
+    uint8_t* res = (uint8_t*) malloc(2); // TODO: memcheck
     res[0] = rc522_read(rc522, 0x22);
     res[1] = rc522_read(rc522, 0x21);
 
@@ -348,7 +348,7 @@ static uint8_t* rc522_card_write(rc522_handle_t rc522, uint8_t cmd, uint8_t *dat
                     *res_n = nn;
                 }
 
-                result = (uint8_t*) malloc(*res_n); // FIXME: memcheck
+                result = (uint8_t*) malloc(*res_n); // TODO: memcheck
 
                 for(i = 0; i < *res_n; i++) {
                     result[i] = rc522_read(rc522, 0x09);
@@ -508,7 +508,7 @@ void rc522_destroy(rc522_handle_t rc522)
 
     rc522_pause(rc522); // stop task
     rc522->running = false; // task will delete himself
-    // FIXME: Wait for task to exit
+    // TODO: Wait for task to exit
     rc522_destroy_transport(rc522);
     if(rc522->event_handle) {
         esp_event_loop_delete(rc522->event_handle);
