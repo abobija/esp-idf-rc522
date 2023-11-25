@@ -409,21 +409,23 @@ static uint8_t* rc522_request(rc522_handle_t rc522, uint8_t* res_n)
     return result;
 }
 
-// TODO: return esp_err_t
-static uint8_t* rc522_anticoll(rc522_handle_t rc522)
+static esp_err_t rc522_anticoll(rc522_handle_t rc522, uint8_t** result)
 {
+    uint8_t* _result = NULL;
     uint8_t res_n;
 
-    rc522_write(rc522, 0x0D, 0x00);
-    uint8_t* result = rc522_card_write(rc522, 0x0C, (uint8_t[]) { 0x93, 0x20 }, 2, &res_n);
+    rc522_write(rc522, 0x0D, 0x00); // TODO: check return
+    _result = rc522_card_write(rc522, 0x0C, (uint8_t[]) { 0x93, 0x20 }, 2, &res_n);
 
-    if(result && res_n != 5) { // all cards/tags serial numbers is 5 bytes long (?)
-        free(result);
+    if(_result && res_n != 5) { // all cards/tags serial numbers is 5 bytes long (?)
+        free(_result);
 
-        return NULL;
+        return ESP_ERR_INVALID_RESPONSE; // TODO: return custom error
     }
 
-    return result;
+    *result = _result;
+
+    return ESP_OK;
 }
 
 static esp_err_t rc522_get_tag(rc522_handle_t rc522, uint8_t** result)
@@ -437,7 +439,7 @@ static esp_err_t rc522_get_tag(rc522_handle_t rc522, uint8_t** result)
     if(res_data != NULL) {
         free(res_data);
 
-        _result = rc522_anticoll(rc522);
+        rc522_anticoll(rc522, &_result); // TODO: Check return
 
         if(_result != NULL) {
             uint8_t buf[] = { 0x50, 0x00, 0x00, 0x00 };
