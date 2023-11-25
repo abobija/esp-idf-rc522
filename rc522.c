@@ -426,10 +426,9 @@ static uint8_t* rc522_anticoll(rc522_handle_t rc522)
     return result;
 }
 
-// TODO: return esp_err_t
-static uint8_t* rc522_get_tag(rc522_handle_t rc522)
+static esp_err_t rc522_get_tag(rc522_handle_t rc522, uint8_t** result)
 {
-    uint8_t* result = NULL;
+    uint8_t* _result = NULL;
     uint8_t* res_data = NULL;
     uint8_t res_data_n;
 
@@ -438,20 +437,20 @@ static uint8_t* rc522_get_tag(rc522_handle_t rc522)
     if(res_data != NULL) {
         free(res_data);
 
-        result = rc522_anticoll(rc522);
+        _result = rc522_anticoll(rc522);
 
-        if(result != NULL) {
+        if(_result != NULL) {
             uint8_t buf[] = { 0x50, 0x00, 0x00, 0x00 };
             rc522_calculate_crc(rc522, buf, 2, buf + 2); // TODO: Check return
             res_data = rc522_card_write(rc522, 0x0C, buf, 4, &res_data_n);
             free(res_data);
-            rc522_clear_bitmask(rc522, 0x08, 0x08);
-
-            return result;
+            rc522_clear_bitmask(rc522, 0x08, 0x08); // TODO: Check return
         }
     }
 
-    return NULL;
+    *result = _result;
+
+    return ESP_OK;
 }
 
 esp_err_t rc522_start(rc522_handle_t rc522)
@@ -672,7 +671,8 @@ static void rc522_task(void* arg)
             continue;
         }
 
-        uint8_t* serial_no_array = rc522_get_tag(rc522);
+        uint8_t* serial_no_array = NULL;
+        rc522_get_tag(rc522, &serial_no_array); // TODO: Check return
         
         if(! serial_no_array) {
             rc522->tag_was_present_last_time = false;
