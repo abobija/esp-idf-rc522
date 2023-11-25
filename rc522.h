@@ -6,7 +6,7 @@ extern "C" {
 
 #include <esp_event.h>
 #include <driver/spi_master.h>
-#include <driver/i2c.h>
+#include <driver/i2c.h> // TODO: Log warning: This driver is an old driver, please migrate your application code to adapt `driver/i2c_master.h`
 
 #define RC522_I2C_ADDRESS (0x28)
 
