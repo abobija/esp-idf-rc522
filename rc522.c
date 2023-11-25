@@ -286,9 +286,10 @@ static uint64_t rc522_sn_to_u64(uint8_t* sn)
     return result;
 }
 
-// TODO: return esp_err_t
-/* Returns pointer to dynamically allocated array of two element */
-static uint8_t* rc522_calculate_crc(rc522_handle_t rc522, uint8_t *data, uint8_t n)
+// Buffer should be length of 2, or more
+// Only first 2 elements will be used where the result will be stored
+// TODO: Use 2+ bytes data type instead of buffer
+static esp_err_t rc522_calculate_crc(rc522_handle_t rc522, uint8_t *data, uint8_t n, uint8_t* buffer)
 {
     rc522_clear_bitmask(rc522, 0x05, 0x04); // TODO: Check return
     rc522_set_bitmask(rc522, 0x0A, 0x80); // TODO: Check return
@@ -307,18 +308,16 @@ static uint8_t* rc522_calculate_crc(rc522_handle_t rc522, uint8_t *data, uint8_t
         }
     }
 
-    uint8_t* res = (uint8_t*) malloc(2); // TODO: memcheck
-
     // TODO: Use read_n here to read into res[0], res[1]
     uint8_t tmp;
 
     rc522_read(rc522, 0x22, &tmp); // TODO: Check return
-    res[0] = tmp;
+    buffer[0] = tmp;
 
     rc522_read(rc522, 0x21, &tmp); // TODO: Check return
-    res[1] = tmp;
+    buffer[1] = tmp;
 
-    return res;
+    return ESP_OK;
 }
 
 // TODO: return esp_err_t
@@ -443,10 +442,7 @@ static uint8_t* rc522_get_tag(rc522_handle_t rc522)
 
         if(result != NULL) {
             uint8_t buf[] = { 0x50, 0x00, 0x00, 0x00 };
-            uint8_t* crc = rc522_calculate_crc(rc522, buf, 2);
-            buf[2] = crc[0];
-            buf[3] = crc[1];
-            free(crc);
+            rc522_calculate_crc(rc522, buf, 2, buf + 2); // TODO: Check return
             res_data = rc522_card_write(rc522, 0x0C, buf, 4, &res_data_n);
             free(res_data);
             rc522_clear_bitmask(rc522, 0x08, 0x08);
