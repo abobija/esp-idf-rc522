@@ -22,24 +22,24 @@ static const char* TAG = "rc522";
 #define __err_ret_check(EXP) \
     if((err = (EXP)) != ESP_OK) { return err; }
 
-#define success_label __success_lbl
-#define error_label __error_lbl
-#define exit_label __exit_lbl
+#define __success_label __success_lbl
+#define __error_label __error_lbl
+#define __exit_label __exit_lbl
 
 #define __labels(on_error, on_success) \
-    goto success_label; \
-        error_label: { on_error; goto exit_label; };  \
-        success_label: { on_success; goto exit_label; };  \
-        exit_label: {};
+    goto __success_label; \
+        __error_label: { on_error; goto __exit_label; };  \
+        __success_label: { on_success; goto __exit_label; };  \
+        __exit_label: {};
 
 #define __err_jmp_check(EXP) \
-    if((err = (EXP)) != ESP_OK) { goto error_label; }
+    if((err = (EXP)) != ESP_OK) { goto __error_label; }
 
 #define __err_jmp_check_with_log(EXP, message) \
-    if((err = (EXP)) != ESP_OK) { ESP_LOGE(TAG, message); goto error_label; }
+    if((err = (EXP)) != ESP_OK) { ESP_LOGE(TAG, message); goto __error_label; }
 
 #define __err_jmp_condition_with_log(EXP, message) \
-    if(EXP) { ESP_LOGE(TAG, message); goto error_label; }
+    if(EXP) { ESP_LOGE(TAG, message); goto __error_label; }
 
 #define _FREE(ptr) \
     if(ptr) { free(ptr); ptr = NULL; }
@@ -330,7 +330,7 @@ static uint64_t rc522_sn_to_u64(uint8_t* sn)
 
 // Buffer should be length of 2, or more
 // Only first 2 elements will be used where the result will be stored
-// TODO: Use 2+ bytes data type instead of buffer
+// TODO: Use 2+ bytes data type instead of buffer array
 static esp_err_t rc522_calculate_crc(rc522_handle_t rc522, uint8_t *data, uint8_t n, uint8_t* buffer)
 {
     esp_err_t err = ESP_OK;
@@ -630,25 +630,20 @@ esp_err_t rc522_destroy(rc522_handle_t rc522)
         return ESP_ERR_INVALID_STATE;
     }
 
-    err = rc522_pause(rc522); // TODO: Check for return // stop task
-    rc522->running = false; // task will delete itself
+    err = rc522_pause(rc522); // stop task
+    rc522->running = false; // stop rc522 -> task will delete itself
 
     // TODO: Wait here for task to exit
 
-    err = rc522_destroy_transport(rc522); // TODO: Check for return
+    err = rc522_destroy_transport(rc522);
 
     if(rc522->event_handle) {
-        err = esp_event_loop_delete(rc522->event_handle); // TODO: Check for return
+        err = esp_event_loop_delete(rc522->event_handle); 
         rc522->event_handle = NULL;
     }
 
-    if(rc522->config != NULL) {
-        free(rc522->config);
-        rc522->config = NULL;
-    }
-
-    free(rc522);
-    rc522 = NULL;
+    _FREE(rc522->config);
+    _FREE(rc522);
 
     return err;
 }
@@ -666,7 +661,14 @@ static esp_err_t rc522_dispatch_event(rc522_handle_t rc522, rc522_event_t event,
         .ptr = data,
     };
 
-    __err_ret_check(esp_event_post_to(rc522->event_handle, RC522_EVENTS, event, &e_data, sizeof(rc522_event_data_t), portMAX_DELAY));
+    __err_ret_check(esp_event_post_to(
+        rc522->event_handle,
+        RC522_EVENTS,
+        event,
+        &e_data,
+        sizeof(rc522_event_data_t),
+        portMAX_DELAY
+    ));
 
     return esp_event_loop_run(rc522->event_handle, 0);
 }
@@ -715,12 +717,26 @@ static esp_err_t rc522_spi_receive(rc522_handle_t rc522, uint8_t* buffer, uint8_
 
 static inline esp_err_t rc522_i2c_send(rc522_handle_t rc522, uint8_t* buffer, uint8_t length)
 {
-    return i2c_master_write_to_device(rc522->config->i2c.port, RC522_I2C_ADDRESS, buffer, length, rc522->config->i2c.rw_timeout_ms / portTICK_PERIOD_MS);
+    return i2c_master_write_to_device(
+        rc522->config->i2c.port,
+        RC522_I2C_ADDRESS,
+        buffer,
+        length,
+        rc522->config->i2c.rw_timeout_ms / portTICK_PERIOD_MS
+    );
 }
 
 static inline esp_err_t rc522_i2c_receive(rc522_handle_t rc522, uint8_t* buffer, uint8_t length, uint8_t addr)
 {
-    return i2c_master_write_read_device(rc522->config->i2c.port, RC522_I2C_ADDRESS, &addr, 1, buffer, length, rc522->config->i2c.rw_timeout_ms / portTICK_PERIOD_MS);
+    return i2c_master_write_read_device(
+        rc522->config->i2c.port,
+        RC522_I2C_ADDRESS,
+        &addr,
+        1,
+        buffer,
+        length,
+        rc522->config->i2c.rw_timeout_ms / portTICK_PERIOD_MS
+    );
 }
 
 static void rc522_task(void* arg)
@@ -735,7 +751,13 @@ static void rc522_task(void* arg)
         }
 
         uint8_t* serial_no_array = NULL;
-        rc522_get_tag(rc522, &serial_no_array); // TODO: Check return
+
+        if(ESP_OK != rc522_get_tag(rc522, &serial_no_array)) {
+            // Tag is not present
+            //
+            // TODO: Implement logic to know when the error is due to
+            //       tag absence or some other protocol issue
+        }
         
         if(! serial_no_array) {
             rc522->tag_was_present_last_time = false;
@@ -743,11 +765,11 @@ static void rc522_task(void* arg)
             rc522_tag_t tag = {
                 .serial_number = rc522_sn_to_u64(serial_no_array),
             };
-            free(serial_no_array);
+            _FREE(serial_no_array);
             rc522_dispatch_event(rc522, RC522_EVENT_TAG_SCANNED, &tag);
             rc522->tag_was_present_last_time = true;
         } else {
-            free(serial_no_array);
+            _FREE(serial_no_array);
         }
 
         int delay_interval_ms = rc522->config->scan_interval_ms;
