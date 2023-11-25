@@ -157,7 +157,7 @@ static esp_err_t rc522_antenna_on(rc522_handle_t rc522)
     rc522_read_v2(rc522, 0x14, &tmp); // TODO: Check return
 
     if(~ (tmp & 0x03)) {
-        err = rc522_set_bitmask(rc522, 0x14, 0x03);
+        err = rc522_set_bitmask(rc522, 0x14, 0x03); // TODO: Check return
 
         if(err != ESP_OK) {
             return err;
@@ -316,10 +316,10 @@ static uint64_t rc522_sn_to_u64(uint8_t* sn)
 /* Returns pointer to dynamically allocated array of two element */
 static uint8_t* rc522_calculate_crc(rc522_handle_t rc522, uint8_t *data, uint8_t n)
 {
-    rc522_clear_bitmask(rc522, 0x05, 0x04);
-    rc522_set_bitmask(rc522, 0x0A, 0x80);
-    rc522_write_n(rc522, 0x09, n, data);
-    rc522_write(rc522, 0x01, 0x03);
+    rc522_clear_bitmask(rc522, 0x05, 0x04); // TODO: Check return
+    rc522_set_bitmask(rc522, 0x0A, 0x80); // TODO: Check return
+    rc522_write_n(rc522, 0x09, n, data); // TODO: Check return
+    rc522_write(rc522, 0x01, 0x03); // TODO: Check return
 
     uint8_t i = 255;
     uint8_t nn = 0;
@@ -354,6 +354,7 @@ static uint8_t* rc522_card_write(rc522_handle_t rc522, uint8_t cmd, uint8_t *dat
     uint8_t irq_wait = 0x00;
     uint8_t last_bits = 0;
     uint8_t nn = 0;
+    uint8_t tmp;
     
     if(cmd == 0x0E) {
         irq = 0x12;
@@ -364,15 +365,15 @@ static uint8_t* rc522_card_write(rc522_handle_t rc522, uint8_t cmd, uint8_t *dat
         irq_wait = 0x30;
     }
 
-    rc522_write(rc522, 0x02, irq | 0x80);
-    rc522_clear_bitmask(rc522, 0x04, 0x80);
-    rc522_set_bitmask(rc522, 0x0A, 0x80);
-    rc522_write(rc522, 0x01, 0x00);
-    rc522_write_n(rc522, 0x09, n, data);
-    rc522_write(rc522, 0x01, cmd);
+    rc522_write(rc522, 0x02, irq | 0x80); // TODO: Check return
+    rc522_clear_bitmask(rc522, 0x04, 0x80); // TODO: Check return
+    rc522_set_bitmask(rc522, 0x0A, 0x80); // TODO: Check return
+    rc522_write(rc522, 0x01, 0x00); // TODO: Check return
+    rc522_write_n(rc522, 0x09, n, data); // TODO: Check return
+    rc522_write(rc522, 0x01, cmd); // TODO: Check return
 
     if(cmd == 0x0C) {
-        rc522_set_bitmask(rc522, 0x0D, 0x80);
+        rc522_set_bitmask(rc522, 0x0D, 0x80); // TODO: Check return
     }
 
     uint16_t i = 1000;
@@ -386,13 +387,17 @@ static uint8_t* rc522_card_write(rc522_handle_t rc522, uint8_t cmd, uint8_t *dat
         }
     }
 
-    rc522_clear_bitmask(rc522, 0x0D, 0x80);
+    rc522_clear_bitmask(rc522, 0x0D, 0x80); // TODO: Check return
 
     if(i != 0) {
-        if((rc522_read(rc522, 0x06) & 0x1B) == 0x00) {
+        rc522_read_v2(rc522, 0x06, &tmp); // TODO: Check return
+
+        if((tmp & 0x1B) == 0x00) {
             if(cmd == 0x0C) {
-                nn = rc522_read(rc522, 0x0A);
-                last_bits = rc522_read(rc522, 0x0C) & 0x07;
+                rc522_read_v2(rc522, 0x0A, &nn); // TODO: Check return
+                rc522_read_v2(rc522, 0x0C, &tmp); // TODO: Check return
+
+                last_bits = tmp & 0x07;
 
                 if (last_bits != 0) {
                     *res_n = (nn - 1) + last_bits;
@@ -403,7 +408,8 @@ static uint8_t* rc522_card_write(rc522_handle_t rc522, uint8_t cmd, uint8_t *dat
                 result = (uint8_t*) malloc(*res_n); // TODO: memcheck
 
                 for(i = 0; i < *res_n; i++) {
-                    result[i] = rc522_read(rc522, 0x09);
+                    rc522_read_v2(rc522, 0x09, &tmp); // TODO: Check return
+                    result[i] = tmp;
                 }
             }
         }
