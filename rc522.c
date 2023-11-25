@@ -58,6 +58,7 @@ static inline esp_err_t rc522_write(rc522_handle_t rc522, uint8_t addr, uint8_t 
     return rc522_write_n(rc522, addr, 1, &val);
 }
 
+// TODO: Replace with v2
 static uint8_t* rc522_read_n(rc522_handle_t rc522, uint8_t addr, uint8_t n)
 {
     uint8_t* buffer = (uint8_t*) malloc(n); // TODO: memcheck
@@ -81,6 +82,30 @@ static uint8_t* rc522_read_n(rc522_handle_t rc522, uint8_t addr, uint8_t n)
     return buffer;
 }
 
+static esp_err_t rc522_read_n_v2(rc522_handle_t rc522, uint8_t addr, uint8_t n, uint8_t* buffer)
+{
+    esp_err_t ret;
+
+    switch(rc522->config->transport) {
+        case RC522_TRANSPORT_SPI:
+            ret = rc522_spi_receive(rc522, buffer, n, addr);
+            break;
+        case RC522_TRANSPORT_I2C:
+            ret = rc522_i2c_receive(rc522, buffer, n, addr);
+            break;
+        default:
+            ESP_LOGE(TAG, "read: Unknown transport");
+            ret = ESP_ERR_INVALID_STATE; // unknown transport
+    }
+
+    if(ESP_OK != ret) {
+        ESP_LOGE(TAG, "Failed to read data (err: %s)", esp_err_to_name(ret));
+    }
+
+    return ret;
+}
+
+// TODO: Replace with v2
 static inline uint8_t rc522_read(rc522_handle_t rc522, uint8_t addr)
 {
     uint8_t* buffer = rc522_read_n(rc522, addr, 1);
@@ -92,6 +117,11 @@ static inline uint8_t rc522_read(rc522_handle_t rc522, uint8_t addr)
     free(buffer);
 
     return res;
+}
+
+static inline esp_err_t rc522_read_v2(rc522_handle_t rc522, uint8_t addr, uint8_t* valueRef)
+{
+    return rc522_read_n_v2(rc522, addr, 1, valueRef);
 }
 
 static inline esp_err_t rc522_set_bitmask(rc522_handle_t rc522, uint8_t addr, uint8_t mask)
