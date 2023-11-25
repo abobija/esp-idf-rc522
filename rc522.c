@@ -532,51 +532,59 @@ esp_err_t rc522_pause(rc522_handle_t rc522)
     return ESP_OK;
 }
 
-// TODO: return esp_err_t
-static void rc522_destroy_transport(rc522_handle_t rc522)
+static esp_err_t rc522_destroy_transport(rc522_handle_t rc522)
 {
+    esp_err_t err;
+
     switch(rc522->config->transport) {
         case RC522_TRANSPORT_SPI:
-            spi_bus_remove_device(rc522->spi_handle);
+            err = spi_bus_remove_device(rc522->spi_handle); // TODO: Check return
             if(rc522->bus_initialized_by_user) {
-                spi_bus_free(rc522->config->spi.host);
+                err = spi_bus_free(rc522->config->spi.host); // TODO: Check return
             }
             break;
         case RC522_TRANSPORT_I2C:
-            i2c_driver_delete(rc522->config->i2c.port);
+            err = i2c_driver_delete(rc522->config->i2c.port); // TODO: Check return
             break;
         default:
             ESP_LOGW(TAG, "destroy_transport: Unknown transport");
+            err = ESP_ERR_INVALID_STATE; // TODO: return custom err
     }
+
+    return err;
 }
 
-// TODO: return esp_err_t
-void rc522_destroy(rc522_handle_t rc522)
+esp_err_t rc522_destroy(rc522_handle_t rc522)
 {
     if(! rc522) {
-        return;
+        return ESP_ERR_INVALID_ARG;
     }
 
     if(xTaskGetCurrentTaskHandle() == rc522->task_handle) {
         ESP_LOGE(TAG, "Cannot destroy rc522 from event handler");
-        return;
+
+        return ESP_ERR_INVALID_STATE; // TODO: return custom err
     }
 
-    rc522_pause(rc522); // stop task
+    rc522_pause(rc522); // stop task, TODO: Check for return
     rc522->running = false; // task will delete himself
-    // TODO: Wait for task to exit
-    rc522_destroy_transport(rc522);
+
+    // TODO: Wait here for task to exit
+
+   rc522_destroy_transport(rc522); // TODO: Check for return
 
     if(rc522->event_handle) {
-        esp_event_loop_delete(rc522->event_handle);
+        esp_event_loop_delete(rc522->event_handle); // TODO: Check for return
         rc522->event_handle = NULL;
     }
 
-    free(rc522->config);
+    free(rc522->config); // TODO: null-check
     rc522->config = NULL;
 
-    free(rc522);
+    free(rc522); // TODO: null-check
     rc522 = NULL;
+
+    return ESP_OK;
 }
 
 static esp_err_t rc522_dispatch_event(rc522_handle_t rc522, rc522_event_t event, void* data)
