@@ -22,6 +22,22 @@ static const char* TAG = "rc522";
 #define __err_ret_check(EXP) \
     if((err = (EXP)) != ESP_OK) { return err; }
 
+#define success_label __success_lbl
+#define error_label __error_lbl
+#define exit_label __exit_lbl
+
+#define __labels(on_error, on_success) \
+    goto success_label; \
+        error_label: { on_error; goto exit_label; };  \
+        success_label: { on_success; goto exit_label; };  \
+        exit_label: {};
+
+#define __err_jmp_condition(EXP, message) \
+    if(EXP) { ESP_LOGE(TAG, message); goto error_label; }
+
+#define __err_jmp_check(EXP, message) \
+    if((err = (EXP)) != ESP_OK) { ESP_LOGE(TAG, message); goto error_label; }
+
 struct rc522 {
     bool running;                          /*<! Indicates whether rc522 task is running or not */
     rc522_config_t* config;                /*<! Configuration */
@@ -228,43 +244,49 @@ esp_err_t rc522_create(rc522_config_t* config, rc522_handle_t* out_rc522)
         return ESP_ERR_INVALID_ARG;
     }
 
-    esp_err_t ret;
+    esp_err_t err = ESP_OK;
     rc522_handle_t rc522 = NULL;
     
     __alloc_ret_guard(rc522 = calloc(1, sizeof(struct rc522)));
 
-    rc522_clone_config(config, &(rc522->config)); // TODO: check return
+    __err_jmp_check(rc522_clone_config(
+        config, 
+        &(rc522->config)
+    ), "Fail to clone config");
 
-    if(ESP_OK != (ret = rc522_create_transport(rc522))) {
-        ESP_LOGE(TAG, "Cannot create transport");
-        rc522_destroy(rc522);
-
-        return ret;
-    }
+    __err_jmp_check(rc522_create_transport(
+        rc522
+    ), "Fail to create transport");
 
     esp_event_loop_args_t event_args = {
         .queue_size = 1,
         .task_name = NULL, // no task will be created
     };
 
-    if(ESP_OK != (ret = esp_event_loop_create(&event_args, &rc522->event_handle))) {
-        ESP_LOGE(TAG, "Cannot create event loop");
-        rc522_destroy(rc522);
-
-        return ret;
-    }
+    __err_jmp_check(esp_event_loop_create(
+        &event_args,
+        &rc522->event_handle
+    ), "Fail to create event loop");
 
     rc522->running = true;
-    if (xTaskCreate(rc522_task, "rc522_task", rc522->config->task_stack_size, rc522, rc522->config->task_priority, &rc522->task_handle) != pdTRUE) {
-        ESP_LOGE(TAG, "Cannot create task");
+
+    __err_jmp_condition(pdTRUE != xTaskCreate(
+        rc522_task,
+        "rc522_task",
+        rc522->config->task_stack_size,
+        rc522,
+        rc522->config->task_priority,
+        &rc522->task_handle
+    ), "Fail to create task");
+
+    __labels({
         rc522_destroy(rc522);
+        rc522 = NULL;
+    }, {
+        *out_rc522 = rc522;
+    });
 
-        return ret;
-    }
-
-    *out_rc522 = rc522;
-
-    return ESP_OK;
+    return err;
 }
 
 esp_err_t rc522_register_events(rc522_handle_t rc522, rc522_event_t event, esp_event_handler_t event_handler, void* event_handler_arg)
