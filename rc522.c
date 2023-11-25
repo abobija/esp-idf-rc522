@@ -392,21 +392,26 @@ static uint8_t* rc522_card_write(rc522_handle_t rc522, uint8_t cmd, uint8_t *dat
     return result;
 }
 
-// TODO: return esp_err_t
-static uint8_t* rc522_request(rc522_handle_t rc522, uint8_t* res_n)
+static esp_err_t rc522_request(rc522_handle_t rc522, uint8_t* res_n, uint8_t** result)
 {
-    uint8_t* result = NULL;
-    rc522_write(rc522, 0x0D, 0x07);
-
+    uint8_t* _result = NULL;
+    uint8_t _res_n = 0;
     uint8_t req_mode = 0x26;
-    result = rc522_card_write(rc522, 0x0C, &req_mode, 1, res_n);
 
-    if(*res_n * 8 != 0x10) {
-        free(result);
-        return NULL;
+    rc522_write(rc522, 0x0D, 0x07); // TODO: Check return
+
+    _result = rc522_card_write(rc522, 0x0C, &req_mode, 1, &_res_n);
+
+    if(_res_n * 8 != 0x10) {
+        free(_result);
+        
+        return ESP_ERR_INVALID_STATE; // TODO: return custom error
     }
 
-    return result;
+    *res_n = _res_n;
+    *result = _result;
+
+    return ESP_OK;
 }
 
 static esp_err_t rc522_anticoll(rc522_handle_t rc522, uint8_t** result)
@@ -434,7 +439,7 @@ static esp_err_t rc522_get_tag(rc522_handle_t rc522, uint8_t** result)
     uint8_t* res_data = NULL;
     uint8_t res_data_n;
 
-    res_data = rc522_request(rc522, &res_data_n);
+    rc522_request(rc522, &res_data_n, &res_data); // TODO: Check return
 
     if(res_data != NULL) {
         free(res_data);
