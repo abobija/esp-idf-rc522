@@ -32,10 +32,12 @@ static void rc522_task(void* arg);
 
 static esp_err_t rc522_write_n(rc522_handle_t rc522, uint8_t addr, uint8_t n, uint8_t *data)
 {
+    esp_err_t ret;
+
     uint8_t* buffer = (uint8_t*) malloc(n + 1); // TODO: memcheck
     buffer[0] = addr;
     memcpy(buffer + 1, data, n);
-    esp_err_t ret;
+
     switch(rc522->config->transport) {
         case RC522_TRANSPORT_SPI:
             ret = rc522_spi_send(rc522, buffer, n + 1);
@@ -47,10 +49,13 @@ static esp_err_t rc522_write_n(rc522_handle_t rc522, uint8_t addr, uint8_t n, ui
             ESP_LOGE(TAG, "write: Unknown transport");
             ret = ESP_ERR_INVALID_STATE; // unknown transport
     }
+
     free(buffer);
+
     if(ESP_OK != ret) {
         ESP_LOGE(TAG, "Failed to write data (err: %s)", esp_err_to_name(ret));
     }
+
     return ret;
 }
 
@@ -90,6 +95,7 @@ static inline esp_err_t rc522_read(rc522_handle_t rc522, uint8_t addr, uint8_t* 
 static inline esp_err_t rc522_set_bitmask(rc522_handle_t rc522, uint8_t addr, uint8_t mask)
 {
     uint8_t tmp;
+
     rc522_read(rc522, addr, &tmp); // TODO: Check return
 
     return rc522_write(rc522, addr, tmp | mask);
@@ -98,25 +104,22 @@ static inline esp_err_t rc522_set_bitmask(rc522_handle_t rc522, uint8_t addr, ui
 static inline esp_err_t rc522_clear_bitmask(rc522_handle_t rc522, uint8_t addr, uint8_t mask)
 {
     uint8_t tmp;
+
     rc522_read(rc522, addr, &tmp); // TODO: Check return
 
     return rc522_write(rc522, addr, tmp & ~mask);
 }
 
-// TODO: return esp_err_t
-static inline uint8_t rc522_firmware(rc522_handle_t rc522)
+static esp_err_t rc522_firmware(rc522_handle_t rc522, uint8_t* result)
 {
-    uint8_t tmp;
-    rc522_read(rc522, 0x37, &tmp); // TODO: Check return
-
-    return tmp;
+    return rc522_read(rc522, 0x37, result);
 }
 
 static esp_err_t rc522_antenna_on(rc522_handle_t rc522)
 {
     esp_err_t err;
-
     uint8_t tmp;
+
     rc522_read(rc522, 0x14, &tmp); // TODO: Check return
 
     if(~ (tmp & 0x03)) {
@@ -134,6 +137,7 @@ static esp_err_t rc522_antenna_on(rc522_handle_t rc522)
 rc522_config_t* rc522_clone_config(rc522_config_t* config)
 {
     rc522_config_t* new_config = calloc(1, sizeof(rc522_config_t)); // TODO: memcheck
+    
     memcpy(new_config, config, sizeof(rc522_config_t));
 
     // defaults
@@ -213,13 +217,14 @@ esp_err_t rc522_create(rc522_config_t* config, rc522_handle_t* out_rc522)
     }
 
     esp_err_t ret;
-
     rc522_handle_t rc522 = calloc(1, sizeof(struct rc522)); // TODO: memcheck
+
     rc522->config = rc522_clone_config(config);
 
     if(ESP_OK != (ret = rc522_create_transport(rc522))) {
         ESP_LOGE(TAG, "Cannot create transport");
         rc522_destroy(rc522);
+
         return ret;
     }
 
@@ -231,6 +236,7 @@ esp_err_t rc522_create(rc522_config_t* config, rc522_handle_t* out_rc522)
     if(ESP_OK != (ret = esp_event_loop_create(&event_args, &rc522->event_handle))) {
         ESP_LOGE(TAG, "Cannot create event loop");
         rc522_destroy(rc522);
+
         return ret;
     }
 
@@ -238,10 +244,12 @@ esp_err_t rc522_create(rc522_config_t* config, rc522_handle_t* out_rc522)
     if (xTaskCreate(rc522_task, "rc522_task", rc522->config->task_stack_size, rc522, rc522->config->task_priority, &rc522->task_handle) != pdTRUE) {
         ESP_LOGE(TAG, "Cannot create task");
         rc522_destroy(rc522);
+
         return ret;
     }
 
     *out_rc522 = rc522;
+
     return ESP_OK;
 }
 
@@ -265,11 +273,12 @@ esp_err_t rc522_unregister_events(rc522_handle_t rc522, rc522_event_t event, esp
 
 static uint64_t rc522_sn_to_u64(uint8_t* sn)
 {
+    uint64_t result = 0;
+
     if(! sn) {
         return 0;
     }
 
-    uint64_t result = 0;
     for(int i = 4; i >= 0; i--) {
         result |= ((uint64_t) sn[i] << (i * 8));
     }
@@ -459,6 +468,8 @@ esp_err_t rc522_start(rc522_handle_t rc522)
         return ESP_OK;
     }
 
+    uint8_t tmp = 0;
+
     if(! rc522->initialized) {
         // Initialization will be done only once, on the first call of start function
 
@@ -466,7 +477,7 @@ esp_err_t rc522_start(rc522_handle_t rc522)
 
         // ---------- RW test ------------
         const uint8_t test_addr = 0x24, test_val = 0x25;
-        uint8_t tmp, pass = 0;
+        uint8_t pass = 0;
 
         for(uint8_t i = test_val; i < test_val + 2; i++) {
             err = rc522_write(rc522, test_addr, i);
@@ -498,9 +509,11 @@ esp_err_t rc522_start(rc522_handle_t rc522)
 
         rc522_antenna_on(rc522); // TODO: Check return
 
+        rc522_firmware(rc522, &tmp); // TODO: Check return
+
         rc522->initialized = true;
 
-        ESP_LOGI(TAG, "Initialized (firmware v%d.0)", (rc522_firmware(rc522) & 0x03));
+        ESP_LOGI(TAG, "Initialized (firmware v%d.0)", (tmp & 0x03));
     }
 
     rc522->scanning = true;
@@ -557,12 +570,15 @@ void rc522_destroy(rc522_handle_t rc522)
     rc522->running = false; // task will delete himself
     // TODO: Wait for task to exit
     rc522_destroy_transport(rc522);
+
     if(rc522->event_handle) {
         esp_event_loop_delete(rc522->event_handle);
         rc522->event_handle = NULL;
     }
+
     free(rc522->config);
     rc522->config = NULL;
+
     free(rc522);
     rc522 = NULL;
 }
