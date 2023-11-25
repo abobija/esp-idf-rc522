@@ -125,9 +125,9 @@ static esp_err_t rc522_read_n(rc522_handle_t rc522, uint8_t addr, uint8_t n, uin
     return ret;
 }
 
-static inline esp_err_t rc522_read(rc522_handle_t rc522, uint8_t addr, uint8_t* valueRef)
+static inline esp_err_t rc522_read(rc522_handle_t rc522, uint8_t addr, uint8_t* value_ref)
 {
-    return rc522_read_n(rc522, addr, 1, valueRef);
+    return rc522_read_n(rc522, addr, 1, value_ref);
 }
 
 static esp_err_t rc522_set_bitmask(rc522_handle_t rc522, uint8_t addr, uint8_t mask)
