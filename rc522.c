@@ -305,16 +305,18 @@ static uint64_t rc522_sn_to_u64(uint8_t* sn)
 // TODO: Use 2+ bytes data type instead of buffer
 static esp_err_t rc522_calculate_crc(rc522_handle_t rc522, uint8_t *data, uint8_t n, uint8_t* buffer)
 {
-    rc522_clear_bitmask(rc522, 0x05, 0x04); // TODO: Check return
-    rc522_set_bitmask(rc522, 0x0A, 0x80); // TODO: Check return
-    rc522_write_n(rc522, 0x09, n, data); // TODO: Check return
-    rc522_write(rc522, 0x01, 0x03); // TODO: Check return
-
+    esp_err_t err = ESP_OK;
     uint8_t i = 255;
     uint8_t nn = 0;
 
+    __err_ret_check(rc522_clear_bitmask(rc522, 0x05, 0x04));
+    __err_ret_check(rc522_set_bitmask(rc522, 0x0A, 0x80));
+    __err_ret_check(rc522_write_n(rc522, 0x09, n, data));
+    __err_ret_check(rc522_write(rc522, 0x01, 0x03));
+
     for(;;) {
-        rc522_read(rc522, 0x05, &nn); // TODO: Check return
+        __err_ret_check(rc522_read(rc522, 0x05, &nn));
+
         i--;
 
         if(! (i != 0 && ! (nn & 0x04))) {
@@ -325,10 +327,10 @@ static esp_err_t rc522_calculate_crc(rc522_handle_t rc522, uint8_t *data, uint8_
     // TODO: Use read_n here to read into res[0], res[1]
     uint8_t tmp;
 
-    rc522_read(rc522, 0x22, &tmp); // TODO: Check return
+    __err_ret_check(rc522_read(rc522, 0x22, &tmp));
     buffer[0] = tmp;
 
-    rc522_read(rc522, 0x21, &tmp); // TODO: Check return
+    __err_ret_check(rc522_read(rc522, 0x21, &tmp));
     buffer[1] = tmp;
 
     return ESP_OK;
@@ -336,6 +338,7 @@ static esp_err_t rc522_calculate_crc(rc522_handle_t rc522, uint8_t *data, uint8_
 
 static esp_err_t rc522_card_write(rc522_handle_t rc522, uint8_t cmd, uint8_t *data, uint8_t n, uint8_t* res_n, uint8_t** result)
 {
+    esp_err_t err = ESP_OK;
     uint8_t* _result = NULL;
     uint8_t _res_n = 0;
     uint8_t irq = 0x00;
@@ -353,21 +356,22 @@ static esp_err_t rc522_card_write(rc522_handle_t rc522, uint8_t cmd, uint8_t *da
         irq_wait = 0x30;
     }
 
-    rc522_write(rc522, 0x02, irq | 0x80); // TODO: Check return
-    rc522_clear_bitmask(rc522, 0x04, 0x80); // TODO: Check return
-    rc522_set_bitmask(rc522, 0x0A, 0x80); // TODO: Check return
-    rc522_write(rc522, 0x01, 0x00); // TODO: Check return
-    rc522_write_n(rc522, 0x09, n, data); // TODO: Check return
-    rc522_write(rc522, 0x01, cmd); // TODO: Check return
+    __err_ret_check(rc522_write(rc522, 0x02, irq | 0x80));
+    __err_ret_check(rc522_clear_bitmask(rc522, 0x04, 0x80));
+    __err_ret_check(rc522_set_bitmask(rc522, 0x0A, 0x80));
+    __err_ret_check(rc522_write(rc522, 0x01, 0x00));
+    __err_ret_check(rc522_write_n(rc522, 0x09, n, data));
+    __err_ret_check(rc522_write(rc522, 0x01, cmd));
 
     if(cmd == 0x0C) {
-        rc522_set_bitmask(rc522, 0x0D, 0x80); // TODO: Check return
+        __err_ret_check(rc522_set_bitmask(rc522, 0x0D, 0x80));
     }
 
     uint16_t i = 1000;
 
     for(;;) {
-        rc522_read(rc522, 0x04, &nn); // TODO: Check return
+        __err_ret_check(rc522_read(rc522, 0x04, &nn));
+        
         i--;
 
         if(! (i != 0 && (((nn & 0x01) == 0) && ((nn & irq_wait) == 0)))) {
@@ -375,15 +379,15 @@ static esp_err_t rc522_card_write(rc522_handle_t rc522, uint8_t cmd, uint8_t *da
         }
     }
 
-    rc522_clear_bitmask(rc522, 0x0D, 0x80); // TODO: Check return
+    __err_ret_check(rc522_clear_bitmask(rc522, 0x0D, 0x80));
 
     if(i != 0) {
-        rc522_read(rc522, 0x06, &tmp); // TODO: Check return
+        __err_ret_check(rc522_read(rc522, 0x06, &tmp));
 
         if((tmp & 0x1B) == 0x00) {
             if(cmd == 0x0C) {
-                rc522_read(rc522, 0x0A, &nn); // TODO: Check return
-                rc522_read(rc522, 0x0C, &tmp); // TODO: Check return
+                __err_ret_check(rc522_read(rc522, 0x0A, &nn));
+                __err_ret_check(rc522_read(rc522, 0x0C, &tmp));
 
                 last_bits = tmp & 0x07;
 
@@ -397,7 +401,7 @@ static esp_err_t rc522_card_write(rc522_handle_t rc522, uint8_t cmd, uint8_t *da
                     __alloc_ret_guard(_result = (uint8_t*) malloc(_res_n));
 
                     for(i = 0; i < _res_n; i++) {
-                        rc522_read(rc522, 0x09, &tmp); // TODO: Check return
+                        __err_ret_check(rc522_read(rc522, 0x09, &tmp));
                         _result[i] = tmp;
                     }
                 }
