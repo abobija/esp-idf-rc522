@@ -8,6 +8,17 @@
 
 static const char* TAG = "rc522";
 
+/**
+ * @brief Macro guard for *alloc functions.
+ *        Wrapping memory allocation expression inside of this macro will ensure that
+ *        function, in which this macro is called, is going to immediately return
+ *        ESP_ERR_NO_MEM if *alloc function fail to reserve the memory.
+ * @param EXP Memory allocation expression
+ * @return Exit from caller if EXP returns NULL.
+*/
+#define __alloc_ret_guard(EXP) \
+    if((EXP) == NULL) { return ESP_ERR_NO_MEM; }
+
 struct rc522 {
     bool running;                          /*<! Indicates whether rc522 task is running or not */
     rc522_config_t* config;                /*<! Configuration */
@@ -33,8 +44,10 @@ static void rc522_task(void* arg);
 static esp_err_t rc522_write_n(rc522_handle_t rc522, uint8_t addr, uint8_t n, uint8_t *data)
 {
     esp_err_t ret;
+    uint8_t* buffer = NULL;
+    
+    __alloc_ret_guard(buffer = (uint8_t*) malloc(n + 1));
 
-    uint8_t* buffer = (uint8_t*) malloc(n + 1); // TODO: memcheck
     buffer[0] = addr;
     memcpy(buffer + 1, data, n);
 
@@ -135,7 +148,9 @@ static esp_err_t rc522_antenna_on(rc522_handle_t rc522)
 
 static esp_err_t rc522_clone_config(rc522_config_t* config, rc522_config_t** result)
 {
-    rc522_config_t* _clone_config = calloc(1, sizeof(rc522_config_t)); // TODO: memcheck
+    rc522_config_t* _clone_config = NULL;
+    
+    __alloc_ret_guard(_clone_config = calloc(1, sizeof(rc522_config_t)));
     
     memcpy(_clone_config, config, sizeof(rc522_config_t));
 
@@ -218,7 +233,9 @@ esp_err_t rc522_create(rc522_config_t* config, rc522_handle_t* out_rc522)
     }
 
     esp_err_t ret;
-    rc522_handle_t rc522 = calloc(1, sizeof(struct rc522)); // TODO: memcheck
+    rc522_handle_t rc522 = NULL;
+    
+    __alloc_ret_guard(rc522 = calloc(1, sizeof(struct rc522)));
 
     rc522_clone_config(config, &(rc522->config)); // TODO: check return
 
@@ -380,11 +397,13 @@ static esp_err_t rc522_card_write(rc522_handle_t rc522, uint8_t cmd, uint8_t *da
                     _res_n = nn;
                 }
 
-                _result = (uint8_t*) malloc(_res_n); // TODO: memcheck
+                if(_res_n > 0) {
+                    __alloc_ret_guard(_result = (uint8_t*) malloc(_res_n));
 
-                for(i = 0; i < _res_n; i++) {
-                    rc522_read(rc522, 0x09, &tmp); // TODO: Check return
-                    _result[i] = tmp;
+                    for(i = 0; i < _res_n; i++) {
+                        rc522_read(rc522, 0x09, &tmp); // TODO: Check return
+                        _result[i] = tmp;
+                    }
                 }
             }
         }
