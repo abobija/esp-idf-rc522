@@ -22,24 +22,24 @@ static const char* TAG = "rc522";
 #define ESP_ERR_RET_GUARD(EXP) \
     if((err = (EXP)) != ESP_OK) { return err; }
 
-#define __success_label __success_lbl
-#define __error_label __error_lbl
-#define __exit_label __exit_lbl
+#define SUCCESS_GUARD_GATE __success_guard_gate
+#define ERROR_GUARD_GATE __error_guard_gate
+#define EXIT_GUARD_GATE __exit_guard_gate
 
-#define __labels(on_error, on_success) \
-    goto __success_label; \
-        __error_label: { on_error; goto __exit_label; };  \
-        __success_label: { on_success; goto __exit_label; };  \
-        __exit_label: {};
+#define JMP_GUARD_GATES(on_error, on_success) \
+    goto SUCCESS_GUARD_GATE; \
+        ERROR_GUARD_GATE: { on_error; goto EXIT_GUARD_GATE; };  \
+        SUCCESS_GUARD_GATE: { on_success; goto EXIT_GUARD_GATE; };  \
+        EXIT_GUARD_GATE: {};
 
 #define ESP_ERR_JMP_GUARD(EXP) \
-    if((err = (EXP)) != ESP_OK) { goto __error_label; }
+    if((err = (EXP)) != ESP_OK) { goto ERROR_GUARD_GATE; }
 
 #define ESP_ERR_LOG_AND_JMP_GUARD(EXP, message) \
-    if((err = (EXP)) != ESP_OK) { ESP_LOGE(TAG, message); goto __error_label; }
+    if((err = (EXP)) != ESP_OK) { ESP_LOGE(TAG, message); goto ERROR_GUARD_GATE; }
 
 #define CONDITION_LOG_AND_JMP_GUARD(EXP, message) \
-    if(EXP) { ESP_LOGE(TAG, message); goto __error_label; }
+    if(EXP) { ESP_LOGE(TAG, message); goto ERROR_GUARD_GATE; }
 
 #define FREE(ptr) \
     if(ptr) { free(ptr); ptr = NULL; }
@@ -285,7 +285,7 @@ esp_err_t rc522_create(rc522_config_t* config, rc522_handle_t* out_rc522)
         &rc522->task_handle
     ), "Fail to create task");
 
-    __labels({
+    JMP_GUARD_GATES({
         rc522_destroy(rc522);
         rc522 = NULL;
     }, {
@@ -507,7 +507,7 @@ static esp_err_t rc522_get_tag(rc522_handle_t rc522, uint8_t** result)
         }
     }
 
-    __labels({
+    JMP_GUARD_GATES({
         FREE(_result);
         FREE(res_data);
     }, {
