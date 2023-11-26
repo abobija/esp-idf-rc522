@@ -32,7 +32,7 @@ static const char* TAG = "rc522";
         __success_label: { on_success; goto __exit_label; };  \
         __exit_label: {};
 
-#define __err_jmp_check(EXP) \
+#define ESP_ERR_JMP_GUARD(EXP) \
     if((err = (EXP)) != ESP_OK) { goto __error_label; }
 
 #define ESP_ERR_LOG_AND_JMP_GUARD(EXP, message) \
@@ -492,18 +492,18 @@ static esp_err_t rc522_get_tag(rc522_handle_t rc522, uint8_t** result)
     uint8_t* res_data = NULL;
     uint8_t res_data_n;
 
-    __err_jmp_check(rc522_request(rc522, &res_data_n, &res_data));
+    ESP_ERR_JMP_GUARD(rc522_request(rc522, &res_data_n, &res_data));
 
     if(res_data != NULL) {
         FREE(res_data);
-        __err_jmp_check(rc522_anticoll(rc522, &_result));
+        ESP_ERR_JMP_GUARD(rc522_anticoll(rc522, &_result));
 
         if(_result != NULL) {
             uint8_t buf[] = { 0x50, 0x00, 0x00, 0x00 };
-            __err_jmp_check(rc522_calculate_crc(rc522, buf, 2, buf + 2));
-            __err_jmp_check(rc522_card_write(rc522, 0x0C, buf, 4, &res_data_n, &res_data));
+            ESP_ERR_JMP_GUARD(rc522_calculate_crc(rc522, buf, 2, buf + 2));
+            ESP_ERR_JMP_GUARD(rc522_card_write(rc522, 0x0C, buf, 4, &res_data_n, &res_data));
             FREE(res_data);
-            __err_jmp_check(rc522_clear_bitmask(rc522, 0x08, 0x08));
+            ESP_ERR_JMP_GUARD(rc522_clear_bitmask(rc522, 0x08, 0x08));
         }
     }
 
