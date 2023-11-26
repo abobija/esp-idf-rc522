@@ -41,7 +41,7 @@ static const char* TAG = "rc522";
 #define __err_jmp_condition_with_log(EXP, message) \
     if(EXP) { ESP_LOGE(TAG, message); goto __error_label; }
 
-#define _FREE(ptr) \
+#define FREE(ptr) \
     if(ptr) { free(ptr); ptr = NULL; }
 
 struct rc522 {
@@ -495,21 +495,21 @@ static esp_err_t rc522_get_tag(rc522_handle_t rc522, uint8_t** result)
     __err_jmp_check(rc522_request(rc522, &res_data_n, &res_data));
 
     if(res_data != NULL) {
-        _FREE(res_data);
+        FREE(res_data);
         __err_jmp_check(rc522_anticoll(rc522, &_result));
 
         if(_result != NULL) {
             uint8_t buf[] = { 0x50, 0x00, 0x00, 0x00 };
             __err_jmp_check(rc522_calculate_crc(rc522, buf, 2, buf + 2));
             __err_jmp_check(rc522_card_write(rc522, 0x0C, buf, 4, &res_data_n, &res_data));
-            _FREE(res_data);
+            FREE(res_data);
             __err_jmp_check(rc522_clear_bitmask(rc522, 0x08, 0x08));
         }
     }
 
     __labels({
-        _FREE(_result);
-        _FREE(res_data);
+        FREE(_result);
+        FREE(res_data);
     }, {
         *result = _result;
     });
@@ -602,7 +602,7 @@ static esp_err_t rc522_destroy_transport(rc522_handle_t rc522)
         case RC522_TRANSPORT_SPI:
             err = spi_bus_remove_device(rc522->spi_handle);
             if(rc522->bus_initialized_by_user) {
-                err = spi_bus_free(rc522->config->spi.host);
+                err = spi_busFREE(rc522->config->spi.host);
             }
             break;
         case RC522_TRANSPORT_I2C:
@@ -642,8 +642,8 @@ esp_err_t rc522_destroy(rc522_handle_t rc522)
         rc522->event_handle = NULL;
     }
 
-    _FREE(rc522->config);
-    _FREE(rc522);
+    FREE(rc522->config);
+    FREE(rc522);
 
     return err;
 }
@@ -765,11 +765,11 @@ static void rc522_task(void* arg)
             rc522_tag_t tag = {
                 .serial_number = rc522_sn_to_u64(serial_no_array),
             };
-            _FREE(serial_no_array);
+            FREE(serial_no_array);
             rc522_dispatch_event(rc522, RC522_EVENT_TAG_SCANNED, &tag);
             rc522->tag_was_present_last_time = true;
         } else {
-            _FREE(serial_no_array);
+            FREE(serial_no_array);
         }
 
         int delay_interval_ms = rc522->config->scan_interval_ms;
