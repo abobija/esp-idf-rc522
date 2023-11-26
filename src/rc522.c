@@ -5,6 +5,7 @@
 #include <string.h>
 
 #include "rc522.h"
+#include "rc522_registers.h"
 #include "guards.h"
 
 static const char* TAG = "rc522";
@@ -127,7 +128,7 @@ static esp_err_t rc522_clear_bitmask(rc522_handle_t rc522, uint8_t addr, uint8_t
 
 static inline esp_err_t rc522_firmware(rc522_handle_t rc522, uint8_t* result)
 {
-    return rc522_read(rc522, 0x37, result);
+    return rc522_read(rc522, RC522_VERSION_REG, result);
 }
 
 static esp_err_t rc522_antenna_on(rc522_handle_t rc522)
@@ -135,13 +136,13 @@ static esp_err_t rc522_antenna_on(rc522_handle_t rc522)
     esp_err_t err = ESP_OK;
     uint8_t tmp;
 
-    ESP_ERR_RET_GUARD(rc522_read(rc522, 0x14, &tmp));
+    ESP_ERR_RET_GUARD(rc522_read(rc522, RC522_TX_CONTROL_REG, &tmp));
 
     if(~ (tmp & 0x03)) {
-        ESP_ERR_RET_GUARD(rc522_set_bitmask(rc522, 0x14, 0x03));
+        ESP_ERR_RET_GUARD(rc522_set_bitmask(rc522, RC522_TX_CONTROL_REG, 0x03));
     }
 
-    return rc522_write(rc522, 0x26, 0x60); // 43dB gain
+    return rc522_write(rc522, RC522_RF_CFG_REG, 0x60); // 43dB gain
 }
 
 static esp_err_t rc522_clone_config(rc522_config_t* config, rc522_config_t** result)
@@ -312,13 +313,13 @@ static esp_err_t rc522_calculate_crc(rc522_handle_t rc522, uint8_t *data, uint8_
     uint8_t i = 255;
     uint8_t nn = 0;
 
-    ESP_ERR_RET_GUARD(rc522_clear_bitmask(rc522, 0x05, 0x04));
-    ESP_ERR_RET_GUARD(rc522_set_bitmask(rc522, 0x0A, 0x80));
-    ESP_ERR_RET_GUARD(rc522_write_n(rc522, 0x09, n, data));
-    ESP_ERR_RET_GUARD(rc522_write(rc522, 0x01, 0x03));
+    ESP_ERR_RET_GUARD(rc522_clear_bitmask(rc522, RC522_DIV_INT_REQ_REG, 0x04));
+    ESP_ERR_RET_GUARD(rc522_set_bitmask(rc522, RC522_FIFO_LEVEL_REG, 0x80));
+    ESP_ERR_RET_GUARD(rc522_write_n(rc522, RC522_FIFO_DATA_REG, n, data));
+    ESP_ERR_RET_GUARD(rc522_write(rc522, RC522_COMMAND_REG, 0x03));
 
     for(;;) {
-        ESP_ERR_RET_GUARD(rc522_read(rc522, 0x05, &nn));
+        ESP_ERR_RET_GUARD(rc522_read(rc522, RC522_DIV_INT_REQ_REG, &nn));
 
         i--;
 
@@ -327,13 +328,12 @@ static esp_err_t rc522_calculate_crc(rc522_handle_t rc522, uint8_t *data, uint8_
         }
     }
 
-    // TODO: Use read_n here to read into res[0], res[1]
     uint8_t tmp;
 
-    ESP_ERR_RET_GUARD(rc522_read(rc522, 0x22, &tmp));
+    ESP_ERR_RET_GUARD(rc522_read(rc522, RC522_CRC_RESULT_LSB_REG, &tmp));
     buffer[0] = tmp;
 
-    ESP_ERR_RET_GUARD(rc522_read(rc522, 0x21, &tmp));
+    ESP_ERR_RET_GUARD(rc522_read(rc522, RC522_CRC_RESULT_MSB_REG, &tmp));
     buffer[1] = tmp;
 
     return ESP_OK;
@@ -359,21 +359,21 @@ static esp_err_t rc522_card_write(rc522_handle_t rc522, uint8_t cmd, uint8_t *da
         irq_wait = 0x30;
     }
 
-    ESP_ERR_RET_GUARD(rc522_write(rc522, 0x02, irq | 0x80));
-    ESP_ERR_RET_GUARD(rc522_clear_bitmask(rc522, 0x04, 0x80));
-    ESP_ERR_RET_GUARD(rc522_set_bitmask(rc522, 0x0A, 0x80));
-    ESP_ERR_RET_GUARD(rc522_write(rc522, 0x01, 0x00));
-    ESP_ERR_RET_GUARD(rc522_write_n(rc522, 0x09, n, data));
-    ESP_ERR_RET_GUARD(rc522_write(rc522, 0x01, cmd));
+    ESP_ERR_RET_GUARD(rc522_write(rc522, RC522_COMM_INT_EN_REG, irq | 0x80));
+    ESP_ERR_RET_GUARD(rc522_clear_bitmask(rc522, RC522_COMM_INT_REQ_REG, 0x80));
+    ESP_ERR_RET_GUARD(rc522_set_bitmask(rc522, RC522_FIFO_LEVEL_REG, 0x80));
+    ESP_ERR_RET_GUARD(rc522_write(rc522, RC522_COMMAND_REG, 0x00));
+    ESP_ERR_RET_GUARD(rc522_write_n(rc522, RC522_FIFO_DATA_REG, n, data));
+    ESP_ERR_RET_GUARD(rc522_write(rc522, RC522_COMMAND_REG, cmd));
 
     if(cmd == 0x0C) {
-        ESP_ERR_RET_GUARD(rc522_set_bitmask(rc522, 0x0D, 0x80));
+        ESP_ERR_RET_GUARD(rc522_set_bitmask(rc522, RC522_BIT_FRAMING_REG, 0x80));
     }
 
     uint16_t i = 1000;
 
     for(;;) {
-        ESP_ERR_RET_GUARD(rc522_read(rc522, 0x04, &nn));
+        ESP_ERR_RET_GUARD(rc522_read(rc522, RC522_COMM_INT_REQ_REG, &nn));
 
         i--;
 
@@ -382,15 +382,15 @@ static esp_err_t rc522_card_write(rc522_handle_t rc522, uint8_t cmd, uint8_t *da
         }
     }
 
-    ESP_ERR_RET_GUARD(rc522_clear_bitmask(rc522, 0x0D, 0x80));
+    ESP_ERR_RET_GUARD(rc522_clear_bitmask(rc522, RC522_BIT_FRAMING_REG, 0x80));
 
     if(i != 0) {
-        ESP_ERR_RET_GUARD(rc522_read(rc522, 0x06, &tmp));
+        ESP_ERR_RET_GUARD(rc522_read(rc522, RC522_ERROR_REG, &tmp));
 
         if((tmp & 0x1B) == 0x00) {
             if(cmd == 0x0C) {
-                ESP_ERR_RET_GUARD(rc522_read(rc522, 0x0A, &nn));
-                ESP_ERR_RET_GUARD(rc522_read(rc522, 0x0C, &tmp));
+                ESP_ERR_RET_GUARD(rc522_read(rc522, RC522_FIFO_LEVEL_REG, &nn));
+                ESP_ERR_RET_GUARD(rc522_read(rc522, RC522_CONTROL_REG, &tmp));
 
                 last_bits = tmp & 0x07;
 
@@ -404,7 +404,7 @@ static esp_err_t rc522_card_write(rc522_handle_t rc522, uint8_t cmd, uint8_t *da
                     ALLOC_RET_GUARD(_result = (uint8_t*) malloc(_res_n));
 
                     for(i = 0; i < _res_n; i++) {
-                        ESP_ERR_RET_GUARD(rc522_read(rc522, 0x09, &tmp));
+                        ESP_ERR_RET_GUARD(rc522_read(rc522, RC522_FIFO_DATA_REG, &tmp)); // TODO: Possible memory leak! Use jump guards within this func
                         _result[i] = tmp;
                     }
                 }
@@ -425,7 +425,7 @@ static esp_err_t rc522_request(rc522_handle_t rc522, uint8_t* res_n, uint8_t** r
     uint8_t _res_n = 0;
     uint8_t req_mode = 0x26;
 
-    ESP_ERR_RET_GUARD(rc522_write(rc522, 0x0D, 0x07));
+    ESP_ERR_RET_GUARD(rc522_write(rc522, RC522_BIT_FRAMING_REG, 0x07));
     ESP_ERR_RET_GUARD(rc522_card_write(rc522, 0x0C, &req_mode, 1, &_res_n, &_result));
 
     if(_res_n * 8 != 0x10) {
@@ -446,9 +446,13 @@ static esp_err_t rc522_anticoll(rc522_handle_t rc522, uint8_t** result)
     uint8_t* _result = NULL;
     uint8_t res_n;
 
-    ESP_ERR_RET_GUARD(rc522_write(rc522, 0x0D, 0x00));
+    ESP_ERR_RET_GUARD(rc522_write(rc522, RC522_BIT_FRAMING_REG, 0x00));
     ESP_ERR_RET_GUARD(rc522_card_write(rc522, 0x0C, (uint8_t[]) { 0x93, 0x20 }, 2, &res_n, &_result));
 
+    // TODO: Some cards have length of 4, and some of them have length of 7 bytes
+    //       here we are using one extra byte which is not part of UID.
+    //       Implement logic to determine the length of the UID and use that info
+    //       to retrieve the serial number aka UID
     if(_result && res_n != 5) { // all cards/tags serial numbers is 5 bytes long (??)
         free(_result);
 
@@ -478,7 +482,7 @@ static esp_err_t rc522_get_tag(rc522_handle_t rc522, uint8_t** result)
             ESP_ERR_JMP_GUARD(rc522_calculate_crc(rc522, buf, 2, buf + 2));
             ESP_ERR_JMP_GUARD(rc522_card_write(rc522, 0x0C, buf, 4, &res_data_n, &res_data));
             FREE(res_data);
-            ESP_ERR_JMP_GUARD(rc522_clear_bitmask(rc522, 0x08, 0x08));
+            ESP_ERR_JMP_GUARD(rc522_clear_bitmask(rc522, RC522_STATUS_2_REG, 0x08));
         }
     }
 
@@ -510,7 +514,9 @@ esp_err_t rc522_start(rc522_handle_t rc522)
         // Initialization will be done only once, on the first call of start function
 
         // ---------- RW test ------------
-        const uint8_t test_addr = 0x24, test_val = 0x25;
+        // TODO: Use less sensitive register for the test, or return the value
+        //       of this register to the previous state at the end of the test
+        const uint8_t test_addr = RC522_MOD_WIDTH_REG, test_val = 0x25;
         uint8_t pass = 0;
 
         for(uint8_t i = test_val; i < test_val + 2; i++) {
@@ -533,13 +539,13 @@ esp_err_t rc522_start(rc522_handle_t rc522)
         }
         // ------- End of RW test --------
 
-        ESP_ERR_RET_GUARD(rc522_write(rc522, 0x01, 0x0F));
-        ESP_ERR_RET_GUARD(rc522_write(rc522, 0x2A, 0x8D));
-        ESP_ERR_RET_GUARD(rc522_write(rc522, 0x2B, 0x3E));
-        ESP_ERR_RET_GUARD(rc522_write(rc522, 0x2D, 0x1E));
-        ESP_ERR_RET_GUARD(rc522_write(rc522, 0x2C, 0x00));
-        ESP_ERR_RET_GUARD(rc522_write(rc522, 0x15, 0x40));
-        ESP_ERR_RET_GUARD(rc522_write(rc522, 0x11, 0x3D));
+        ESP_ERR_RET_GUARD(rc522_write(rc522, RC522_COMMAND_REG, 0x0F));
+        ESP_ERR_RET_GUARD(rc522_write(rc522, RC522_TIMER_MODE_REG, 0x8D));
+        ESP_ERR_RET_GUARD(rc522_write(rc522, RC522_TIMER_PRESCALER_REG, 0x3E));
+        ESP_ERR_RET_GUARD(rc522_write(rc522, RC522_TIMER_RELOAD_LSB_REG, 0x1E));
+        ESP_ERR_RET_GUARD(rc522_write(rc522, RC522_TIMER_RELOAD_MSB_REG, 0x00));
+        ESP_ERR_RET_GUARD(rc522_write(rc522, RC522_TX_ASK_REG, 0x40));
+        ESP_ERR_RET_GUARD(rc522_write(rc522, RC522_MODE_REG, 0x3D));
 
         ESP_ERR_RET_GUARD(rc522_antenna_on(rc522));
         ESP_ERR_RET_GUARD(rc522_firmware(rc522, &tmp));
