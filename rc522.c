@@ -602,7 +602,7 @@ static esp_err_t rc522_destroy_transport(rc522_handle_t rc522)
         case RC522_TRANSPORT_SPI:
             err = spi_bus_remove_device(rc522->spi_handle);
             if(rc522->bus_initialized_by_user) {
-                err = spi_busFREE(rc522->config->spi.host);
+                err = spi_bus_free(rc522->config->spi.host);
             }
             break;
         case RC522_TRANSPORT_I2C:
