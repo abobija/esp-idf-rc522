@@ -35,7 +35,7 @@ static const char* TAG = "rc522";
 #define __err_jmp_check(EXP) \
     if((err = (EXP)) != ESP_OK) { goto __error_label; }
 
-#define __err_jmp_check_with_log(EXP, message) \
+#define ESP_ERR_LOG_AND_JMP_GUARD(EXP, message) \
     if((err = (EXP)) != ESP_OK) { ESP_LOGE(TAG, message); goto __error_label; }
 
 #define __err_jmp_condition_with_log(EXP, message) \
@@ -255,12 +255,12 @@ esp_err_t rc522_create(rc522_config_t* config, rc522_handle_t* out_rc522)
     
     ALLOC_RET_GUARD(rc522 = calloc(1, sizeof(struct rc522)));
 
-    __err_jmp_check_with_log(rc522_clone_config(
+    ESP_ERR_LOG_AND_JMP_GUARD(rc522_clone_config(
         config, 
         &(rc522->config)
     ), "Fail to clone config");
 
-    __err_jmp_check_with_log(rc522_create_transport(
+    ESP_ERR_LOG_AND_JMP_GUARD(rc522_create_transport(
         rc522
     ), "Fail to create transport");
 
@@ -269,7 +269,7 @@ esp_err_t rc522_create(rc522_config_t* config, rc522_handle_t* out_rc522)
         .task_name = NULL, // no task will be created
     };
 
-    __err_jmp_check_with_log(esp_event_loop_create(
+    ESP_ERR_LOG_AND_JMP_GUARD(esp_event_loop_create(
         &event_args,
         &rc522->event_handle
     ), "Fail to create event loop");
