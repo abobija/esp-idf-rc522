@@ -38,7 +38,7 @@ static const char* TAG = "rc522";
 #define ESP_ERR_LOG_AND_JMP_GUARD(EXP, message) \
     if((err = (EXP)) != ESP_OK) { ESP_LOGE(TAG, message); goto __error_label; }
 
-#define __err_jmp_condition_with_log(EXP, message) \
+#define CONDITION_LOG_AND_JMP_GUARD(EXP, message) \
     if(EXP) { ESP_LOGE(TAG, message); goto __error_label; }
 
 #define FREE(ptr) \
@@ -276,7 +276,7 @@ esp_err_t rc522_create(rc522_config_t* config, rc522_handle_t* out_rc522)
 
     rc522->running = true;
 
-    __err_jmp_condition_with_log(pdTRUE != xTaskCreate(
+    CONDITION_LOG_AND_JMP_GUARD(pdTRUE != xTaskCreate(
         rc522_task,
         "rc522_task",
         rc522->config->task_stack_size,
