@@ -16,7 +16,7 @@ static const char* TAG = "rc522";
  * @param EXP Memory allocation expression
  * @return Exit from caller if EXP returns NULL.
 */
-#define __alloc_ret_guard(EXP) \
+#define ALLOC_RET_GUARD(EXP) \
     if((EXP) == NULL) { return ESP_ERR_NO_MEM; }
 
 #define __err_ret_check(EXP) \
@@ -71,7 +71,7 @@ static esp_err_t rc522_write_n(rc522_handle_t rc522, uint8_t addr, uint8_t n, ui
     esp_err_t ret;
     uint8_t* buffer = NULL;
     
-    __alloc_ret_guard(buffer = (uint8_t*) malloc(n + 1));
+    ALLOC_RET_GUARD(buffer = (uint8_t*) malloc(n + 1));
 
     buffer[0] = addr;
     memcpy(buffer + 1, data, n);
@@ -173,7 +173,7 @@ static esp_err_t rc522_clone_config(rc522_config_t* config, rc522_config_t** res
 {
     rc522_config_t* _clone_config = NULL;
     
-    __alloc_ret_guard(_clone_config = calloc(1, sizeof(rc522_config_t)));
+    ALLOC_RET_GUARD(_clone_config = calloc(1, sizeof(rc522_config_t)));
     
     memcpy(_clone_config, config, sizeof(rc522_config_t));
 
@@ -253,7 +253,7 @@ esp_err_t rc522_create(rc522_config_t* config, rc522_handle_t* out_rc522)
     esp_err_t err = ESP_OK;
     rc522_handle_t rc522 = NULL;
     
-    __alloc_ret_guard(rc522 = calloc(1, sizeof(struct rc522)));
+    ALLOC_RET_GUARD(rc522 = calloc(1, sizeof(struct rc522)));
 
     __err_jmp_check_with_log(rc522_clone_config(
         config, 
@@ -426,7 +426,7 @@ static esp_err_t rc522_card_write(rc522_handle_t rc522, uint8_t cmd, uint8_t *da
                 }
 
                 if(_res_n > 0) {
-                    __alloc_ret_guard(_result = (uint8_t*) malloc(_res_n));
+                    ALLOC_RET_GUARD(_result = (uint8_t*) malloc(_res_n));
 
                     for(i = 0; i < _res_n; i++) {
                         __err_ret_check(rc522_read(rc522, 0x09, &tmp));
