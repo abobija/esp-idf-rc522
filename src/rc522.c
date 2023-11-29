@@ -44,34 +44,33 @@ static void rc522_task(void* arg);
 
 static esp_err_t rc522_write_n(rc522_handle_t rc522, uint8_t addr, uint8_t n, uint8_t *data)
 {
-    esp_err_t ret;
+    esp_err_t err = ESP_OK;
     uint8_t* buffer = NULL;
     
     // TODO: Find a way to send address + data without memory allocation
-    ALLOC_RET_GUARD(buffer = (uint8_t*) malloc(n + 1));
+    ALLOC_JMP_GUARD(buffer = (uint8_t*) malloc(n + 1));
 
     buffer[0] = addr;
     memcpy(buffer + 1, data, n);
 
     switch(rc522->config->transport) {
         case RC522_TRANSPORT_SPI:
-            ret = rc522_spi_send(rc522, buffer, n + 1);
+            ESP_ERR_JMP_GUARD(rc522_spi_send(rc522, buffer, n + 1));
             break;
         case RC522_TRANSPORT_I2C:
-            ret = rc522_i2c_send(rc522, buffer, n + 1);
+            ESP_ERR_JMP_GUARD(rc522_i2c_send(rc522, buffer, n + 1));
             break;
         default:
-            ESP_LOGE(TAG, "write: Unknown transport");
-            ret = ESP_ERR_INVALID_STATE; // unknown transport
+            ESP_ERR_LOG_AND_JMP_GUARD(ESP_ERR_INVALID_STATE, "write: Unknown transport");
     }
 
-    free(buffer);
+    JMP_GUARD_GATES({
+        ESP_LOGE(TAG, "Failed to write data (err: %s)", esp_err_to_name(err));
+    }, {});
 
-    if(ESP_OK != ret) {
-        ESP_LOGE(TAG, "Failed to write data (err: %s)", esp_err_to_name(ret));
-    }
+    FREE(buffer);
 
-    return ret;
+    return err;
 }
 
 static inline esp_err_t rc522_write(rc522_handle_t rc522, uint8_t addr, uint8_t val)
