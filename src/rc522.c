@@ -62,6 +62,7 @@ static esp_err_t rc522_write_n(rc522_handle_t rc522, uint8_t addr, uint8_t n, ui
             break;
         default:
             ESP_ERR_LOG_AND_JMP_GUARD(ESP_ERR_INVALID_STATE, "write: Unknown transport");
+            break;
     }
 
     JMP_GUARD_GATES({
@@ -80,25 +81,25 @@ static inline esp_err_t rc522_write(rc522_handle_t rc522, uint8_t addr, uint8_t 
 
 static esp_err_t rc522_read_n(rc522_handle_t rc522, uint8_t addr, uint8_t n, uint8_t* buffer)
 {
-    esp_err_t ret;
+    esp_err_t err;
 
     switch(rc522->config->transport) {
         case RC522_TRANSPORT_SPI:
-            ret = rc522_spi_receive(rc522, buffer, n, addr);
+            ESP_ERR_JMP_GUARD(rc522_spi_receive(rc522, buffer, n, addr));
             break;
         case RC522_TRANSPORT_I2C:
-            ret = rc522_i2c_receive(rc522, buffer, n, addr);
+            ESP_ERR_JMP_GUARD(rc522_i2c_receive(rc522, buffer, n, addr));
             break;
         default:
-            ESP_LOGE(TAG, "read: Unknown transport");
-            ret = ESP_ERR_INVALID_STATE; // unknown transport
+            ESP_ERR_LOG_AND_JMP_GUARD(ESP_ERR_INVALID_STATE, "read: Unknown transport");
+            break;
     }
 
-    if(ESP_OK != ret) {
-        ESP_LOGE(TAG, "Failed to read data (err: %s)", esp_err_to_name(ret));
-    }
+    JMP_GUARD_GATES({
+        ESP_LOGE(TAG, "Failed to read data (err: %s)", esp_err_to_name(err));
+    }, {});
 
-    return ret;
+    return err;
 }
 
 static inline esp_err_t rc522_read(rc522_handle_t rc522, uint8_t addr, uint8_t* value_ref)
