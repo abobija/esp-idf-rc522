@@ -522,6 +522,7 @@ esp_err_t rc522_start(rc522_handle_t rc522)
     if(! rc522->initialized) {
         // Initialization will be done only once, on the first call of start function
 
+        // TODO: Extract test in dedicated function
         // ---------- RW test ------------
         // TODO: Use less sensitive register for the test, or return the value
         //       of this register to the previous state at the end of the test
