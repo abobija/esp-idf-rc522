@@ -3,26 +3,6 @@
 #include <esp_err.h>
 
 /**
- * @brief Macro guard for memory allocation functions.
- *        This macro ensures that if a memory allocation expression fails (returns NULL),
- *        the function in which this macro is used will immediately return with ESP_ERR_NO_MEM.
- *        It's useful for handling memory allocation failures gracefully in functions.
- * @param EXP Memory allocation expression (e.g., a call to malloc).
- * @return Exits the caller function with ESP_ERR_NO_MEM if EXP evaluates to NULL.
- */
-#define ALLOC_RET_GUARD(EXP) \
-    if((EXP) == NULL) { return ESP_ERR_NO_MEM; }
-
-/**
- * @brief Macro guard for ESP error handling.
- *        This macro checks if the result of EXP is not ESP_OK and, if so, returns the error code.
- * @param EXP Expression that returns an esp_err_t value.
- * @return Returns the error code if EXP is not ESP_OK.
- */
-#define ESP_ERR_RET_GUARD(EXP) \
-    if((err = (EXP)) != ESP_OK) { return err; }
-
-/**
  * @brief Label for success guard gate in macros.
  *        Used as a goto label to handle successful execution paths in macros.
  */
@@ -77,3 +57,23 @@
  */
 #define CONDITION_LOG_AND_JMP_GUARD(EXP, message) \
     if(EXP) { ESP_LOGE(TAG, message); goto ERROR_GUARD_GATE; }
+
+/**
+ * @brief Macro guard for memory allocation functions.
+ *        This macro ensures that if a memory allocation expression fails (returns NULL),
+ *        the function in which this macro is used will immediately return with ESP_ERR_NO_MEM.
+ *        It's useful for handling memory allocation failures gracefully in functions.
+ * @param EXP Memory allocation expression (e.g., a call to malloc).
+ * @return Exits the caller function with ESP_ERR_NO_MEM if EXP evaluates to NULL.
+ */
+#define ALLOC_RET_GUARD(EXP) \
+    if((EXP) == NULL) { return ESP_ERR_NO_MEM; }
+
+/**
+ * @brief Macro guard for ESP error handling.
+ *        This macro checks if the result of EXP is not ESP_OK and, if so, returns the error code.
+ * @param EXP Expression that returns an esp_err_t value.
+ * @return Returns the error code if EXP is not ESP_OK.
+ */
+#define ESP_ERR_RET_GUARD(EXP) \
+    if((err = (EXP)) != ESP_OK) { return err; }
