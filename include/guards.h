@@ -59,6 +59,18 @@
     if(EXP) { ESP_LOGE(TAG, message); goto ERROR_GUARD_GATE; }
 
 /**
+ * @brief Macro guard for memory allocation with jump to error handling.
+ *        This macro checks if a memory allocation expression (EXP) fails (i.e., returns NULL).
+ *        If the allocation fails, it jumps to the ERROR_GUARD_GATE label.
+ *        This is typically used in functions where error handling is centralized
+ *        at a specific label (ERROR_GUARD_GATE) for cleaner and more manageable code.
+ *        It helps in avoiding deep nesting of error checks after each allocation.
+ * @param EXP Memory allocation expression (e.g., a call to malloc).
+ */
+#define ALLOC_JMP_GUARD(EXP) \
+    if((EXP) == NULL) { goto ERROR_GUARD_GATE; }
+
+/**
  * @brief Macro guard for memory allocation functions.
  *        This macro ensures that if a memory allocation expression fails (returns NULL),
  *        the function in which this macro is used will immediately return with ESP_ERR_NO_MEM.
