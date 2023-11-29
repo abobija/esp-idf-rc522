@@ -68,7 +68,7 @@
  * @param EXP Memory allocation expression (e.g., a call to malloc).
  */
 #define ALLOC_JMP_GUARD(EXP) \
-    if((EXP) == NULL) { goto ERROR_GUARD_GATE; }
+    if((EXP) == NULL) { err = ESP_ERR_NO_MEM; goto ERROR_GUARD_GATE; }
 
 /**
  * @brief Macro guard for memory allocation functions.
