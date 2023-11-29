@@ -44,33 +44,34 @@ static void rc522_task(void* arg);
 
 static esp_err_t rc522_write_n(rc522_handle_t rc522, uint8_t addr, uint8_t n, uint8_t *data)
 {
-    esp_err_t ret;
+    esp_err_t err = ESP_OK;
     uint8_t* buffer = NULL;
     
-    ALLOC_RET_GUARD(buffer = (uint8_t*) malloc(n + 1));
+    // TODO: Find a way to send address + data without memory allocation
+    ALLOC_JMP_GUARD(buffer = (uint8_t*) malloc(n + 1));
 
     buffer[0] = addr;
     memcpy(buffer + 1, data, n);
 
     switch(rc522->config->transport) {
         case RC522_TRANSPORT_SPI:
-            ret = rc522_spi_send(rc522, buffer, n + 1);
+            ESP_ERR_JMP_GUARD(rc522_spi_send(rc522, buffer, n + 1));
             break;
         case RC522_TRANSPORT_I2C:
-            ret = rc522_i2c_send(rc522, buffer, n + 1);
+            ESP_ERR_JMP_GUARD(rc522_i2c_send(rc522, buffer, n + 1));
             break;
         default:
-            ESP_LOGE(TAG, "write: Unknown transport");
-            ret = ESP_ERR_INVALID_STATE; // unknown transport
+            ESP_ERR_LOG_AND_JMP_GUARD(ESP_ERR_INVALID_STATE, "write: Unknown transport");
+            break;
     }
 
-    free(buffer);
+    JMP_GUARD_GATES({
+        ESP_LOGE(TAG, "Failed to write data (err: %s)", esp_err_to_name(err));
+    }, {});
 
-    if(ESP_OK != ret) {
-        ESP_LOGE(TAG, "Failed to write data (err: %s)", esp_err_to_name(ret));
-    }
+    FREE(buffer);
 
-    return ret;
+    return err;
 }
 
 static inline esp_err_t rc522_write(rc522_handle_t rc522, uint8_t addr, uint8_t val)
@@ -80,25 +81,25 @@ static inline esp_err_t rc522_write(rc522_handle_t rc522, uint8_t addr, uint8_t 
 
 static esp_err_t rc522_read_n(rc522_handle_t rc522, uint8_t addr, uint8_t n, uint8_t* buffer)
 {
-    esp_err_t ret;
+    esp_err_t err;
 
     switch(rc522->config->transport) {
         case RC522_TRANSPORT_SPI:
-            ret = rc522_spi_receive(rc522, buffer, n, addr);
+            ESP_ERR_JMP_GUARD(rc522_spi_receive(rc522, buffer, n, addr));
             break;
         case RC522_TRANSPORT_I2C:
-            ret = rc522_i2c_receive(rc522, buffer, n, addr);
+            ESP_ERR_JMP_GUARD(rc522_i2c_receive(rc522, buffer, n, addr));
             break;
         default:
-            ESP_LOGE(TAG, "read: Unknown transport");
-            ret = ESP_ERR_INVALID_STATE; // unknown transport
+            ESP_ERR_LOG_AND_JMP_GUARD(ESP_ERR_INVALID_STATE, "read: Unknown transport");
+            break;
     }
 
-    if(ESP_OK != ret) {
-        ESP_LOGE(TAG, "Failed to read data (err: %s)", esp_err_to_name(ret));
-    }
+    JMP_GUARD_GATES({
+        ESP_LOGE(TAG, "Failed to read data (err: %s)", esp_err_to_name(err));
+    }, {});
 
-    return ret;
+    return err;
 }
 
 static inline esp_err_t rc522_read(rc522_handle_t rc522, uint8_t addr, uint8_t* value_ref)
@@ -359,21 +360,21 @@ static esp_err_t rc522_card_write(rc522_handle_t rc522, uint8_t cmd, uint8_t *da
         irq_wait = 0x30;
     }
 
-    ESP_ERR_RET_GUARD(rc522_write(rc522, RC522_COMM_INT_EN_REG, irq | 0x80));
-    ESP_ERR_RET_GUARD(rc522_clear_bitmask(rc522, RC522_COMM_INT_REQ_REG, 0x80));
-    ESP_ERR_RET_GUARD(rc522_set_bitmask(rc522, RC522_FIFO_LEVEL_REG, 0x80));
-    ESP_ERR_RET_GUARD(rc522_write(rc522, RC522_COMMAND_REG, 0x00));
-    ESP_ERR_RET_GUARD(rc522_write_n(rc522, RC522_FIFO_DATA_REG, n, data));
-    ESP_ERR_RET_GUARD(rc522_write(rc522, RC522_COMMAND_REG, cmd));
+    ESP_ERR_JMP_GUARD(rc522_write(rc522, RC522_COMM_INT_EN_REG, irq | 0x80));
+    ESP_ERR_JMP_GUARD(rc522_clear_bitmask(rc522, RC522_COMM_INT_REQ_REG, 0x80));
+    ESP_ERR_JMP_GUARD(rc522_set_bitmask(rc522, RC522_FIFO_LEVEL_REG, 0x80));
+    ESP_ERR_JMP_GUARD(rc522_write(rc522, RC522_COMMAND_REG, 0x00));
+    ESP_ERR_JMP_GUARD(rc522_write_n(rc522, RC522_FIFO_DATA_REG, n, data));
+    ESP_ERR_JMP_GUARD(rc522_write(rc522, RC522_COMMAND_REG, cmd));
 
     if(cmd == 0x0C) {
-        ESP_ERR_RET_GUARD(rc522_set_bitmask(rc522, RC522_BIT_FRAMING_REG, 0x80));
+        ESP_ERR_JMP_GUARD(rc522_set_bitmask(rc522, RC522_BIT_FRAMING_REG, 0x80));
     }
 
     uint16_t i = 1000;
 
     for(;;) {
-        ESP_ERR_RET_GUARD(rc522_read(rc522, RC522_COMM_INT_REQ_REG, &nn));
+        ESP_ERR_JMP_GUARD(rc522_read(rc522, RC522_COMM_INT_REQ_REG, &nn));
 
         i--;
 
@@ -382,15 +383,15 @@ static esp_err_t rc522_card_write(rc522_handle_t rc522, uint8_t cmd, uint8_t *da
         }
     }
 
-    ESP_ERR_RET_GUARD(rc522_clear_bitmask(rc522, RC522_BIT_FRAMING_REG, 0x80));
+    ESP_ERR_JMP_GUARD(rc522_clear_bitmask(rc522, RC522_BIT_FRAMING_REG, 0x80));
 
     if(i != 0) {
-        ESP_ERR_RET_GUARD(rc522_read(rc522, RC522_ERROR_REG, &tmp));
+        ESP_ERR_JMP_GUARD(rc522_read(rc522, RC522_ERROR_REG, &tmp));
 
         if((tmp & 0x1B) == 0x00) {
             if(cmd == 0x0C) {
-                ESP_ERR_RET_GUARD(rc522_read(rc522, RC522_FIFO_LEVEL_REG, &nn));
-                ESP_ERR_RET_GUARD(rc522_read(rc522, RC522_CONTROL_REG, &tmp));
+                ESP_ERR_JMP_GUARD(rc522_read(rc522, RC522_FIFO_LEVEL_REG, &nn));
+                ESP_ERR_JMP_GUARD(rc522_read(rc522, RC522_CONTROL_REG, &tmp));
 
                 last_bits = tmp & 0x07;
 
@@ -401,10 +402,10 @@ static esp_err_t rc522_card_write(rc522_handle_t rc522, uint8_t cmd, uint8_t *da
                 }
 
                 if(_res_n > 0) {
-                    ALLOC_RET_GUARD(_result = (uint8_t*) malloc(_res_n));
+                    ALLOC_JMP_GUARD(_result = (uint8_t*) malloc(_res_n));
 
                     for(i = 0; i < _res_n; i++) {
-                        ESP_ERR_RET_GUARD(rc522_read(rc522, RC522_FIFO_DATA_REG, &tmp)); // TODO: Possible memory leak! Use jump guards within this func
+                        ESP_ERR_JMP_GUARD(rc522_read(rc522, RC522_FIFO_DATA_REG, &tmp));
                         _result[i] = tmp;
                     }
                 }
@@ -412,10 +413,15 @@ static esp_err_t rc522_card_write(rc522_handle_t rc522, uint8_t cmd, uint8_t *da
         }
     }
 
-    *res_n = _res_n;
-    *result = _result;
+    JMP_GUARD_GATES({
+        FREE(_result);
+        _res_n = 0;
+    }, {
+        *res_n = _res_n;
+        *result = _result;
+    });
 
-    return ESP_OK;
+    return err;
 }
 
 static esp_err_t rc522_request(rc522_handle_t rc522, uint8_t* res_n, uint8_t** result)
@@ -444,22 +450,25 @@ static esp_err_t rc522_anticoll(rc522_handle_t rc522, uint8_t** result)
 {
     esp_err_t err = ESP_OK;
     uint8_t* _result = NULL;
-    uint8_t res_n;
+    uint8_t _res_n;
 
-    ESP_ERR_RET_GUARD(rc522_write(rc522, RC522_BIT_FRAMING_REG, 0x00));
-    ESP_ERR_RET_GUARD(rc522_card_write(rc522, 0x0C, (uint8_t[]) { 0x93, 0x20 }, 2, &res_n, &_result));
+    ESP_ERR_JMP_GUARD(rc522_write(rc522, RC522_BIT_FRAMING_REG, 0x00));
+    ESP_ERR_JMP_GUARD(rc522_card_write(rc522, 0x0C, (uint8_t[]) { 0x93, 0x20 }, 2, &_res_n, &_result));
 
     // TODO: Some cards have length of 4, and some of them have length of 7 bytes
     //       here we are using one extra byte which is not part of UID.
     //       Implement logic to determine the length of the UID and use that info
     //       to retrieve the serial number aka UID
-    if(_result && res_n != 5) { // all cards/tags serial numbers is 5 bytes long (??)
-        free(_result);
-
-        return ESP_ERR_INVALID_RESPONSE;
+    if(_result && _res_n != 5) { // all cards/tags serial numbers is 5 bytes long (??)
+        ESP_ERR_LOG_AND_JMP_GUARD(ESP_ERR_INVALID_RESPONSE, "invalid length of serial number");
     }
 
-    *result = _result;
+    JMP_GUARD_GATES({
+        FREE(_result);
+        _res_n = 0;
+    }, {
+        *result = _result;
+    });
 
     return err;
 }
@@ -513,6 +522,7 @@ esp_err_t rc522_start(rc522_handle_t rc522)
     if(! rc522->initialized) {
         // Initialization will be done only once, on the first call of start function
 
+        // TODO: Extract test in dedicated function
         // ---------- RW test ------------
         // TODO: Use less sensitive register for the test, or return the value
         //       of this register to the previous state at the end of the test
