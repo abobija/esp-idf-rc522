@@ -47,6 +47,7 @@ static esp_err_t rc522_write_n(rc522_handle_t rc522, uint8_t addr, uint8_t n, ui
     esp_err_t ret;
     uint8_t* buffer = NULL;
     
+    // TODO: Find a way to send address + data without memory allocation
     ALLOC_RET_GUARD(buffer = (uint8_t*) malloc(n + 1));
 
     buffer[0] = addr;
