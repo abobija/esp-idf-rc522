@@ -41,10 +41,10 @@ typedef struct {
             int clock_speed_hz;
             uint32_t device_flags;     /*<! Bitwise OR of SPI_DEVICE_* flags */
             /**
-             * @brief Set to true if the bus is already initialized. 
+             * @brief Set to true if the bus is already initialized.
              *        NOTE: This property will be removed in future,
              *        once when https://github.com/espressif/esp-idf/issues/8745 is resolved
-             * 
+             *
              */
             bool bus_is_initialized;
         } spi;
