@@ -21,7 +21,7 @@ static void rc522_handler(void* arg, esp_event_base_t base, int32_t event_id, vo
 void app_main()
 {
     rc522_config_t config = {
-        .spi.host = VSPI_HOST,
+        .spi.host = SPI3_HOST,
         .spi.miso_gpio = 25,
         .spi.mosi_gpio = 23,
         .spi.sck_gpio = 19,
