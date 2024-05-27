@@ -8,8 +8,11 @@ jobs:
   static-check:
     runs-on: ubuntu-latest
     steps:
+      - name: Install homebrew
+        run: >
+          echo 'eval "$(/home/linuxbrew/.linuxbrew/bin/brew shellenv)"' >> $GITHUB_ENV
       - name: Install cppcheck
-        run: eval "$(/home/linuxbrew/.linuxbrew/bin/brew shellenv)" && brew install cppcheck
+        run: brew install cppcheck
       - uses: actions/checkout@v4
       - uses: actions/setup-python@v5
         with:
