@@ -1,0 +1,36 @@
+name: Check and build
+
+on:
+  pull_request:
+  push:
+
+jobs:
+  static-check:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - uses: pre-commit/action@v3.0.1
+
+  build-example:
+    runs-on: ubuntu-latest
+    needs: static-check
+    strategy:
+      matrix:
+        target: [esp32, esp32s3]
+        idf_version: [v4.4.7, v5.1.4, v5.2.1]
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - name: esp-idf build
+        uses: espressif/esp-idf-ci-action@v1
+        with:
+          esp_idf_version: ${{ matrix.idf_version }}
+          target: ${{ matrix.target }}
+          path: 'example'
+          command: >
+            idf.py build size
