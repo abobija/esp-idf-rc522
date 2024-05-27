@@ -4,9 +4,9 @@
 extern "C" {
 #endif
 
-#include <esp_event.h>
+#include <driver/i2c.h>  // TODO: Log warning: This driver is an old driver, please migrate your application code to adapt `driver/i2c_master.h`
 #include <driver/spi_master.h>
-#include <driver/i2c.h> // TODO: Log warning: This driver is an old driver, please migrate your application code to adapt `driver/i2c_master.h`
+#include <esp_event.h>
 
 #define RC522_I2C_ADDRESS (0x28)
 
@@ -21,25 +21,28 @@ ESP_EVENT_DECLARE_BASE(RC522_EVENTS);
 
 typedef struct rc522* rc522_handle_t;
 
-typedef enum {
+typedef enum
+{
     RC522_TRANSPORT_SPI,
     RC522_TRANSPORT_I2C,
 } rc522_transport_t;
 
-typedef struct {
-    uint16_t scan_interval_ms;         /*<! How fast will ESP32 scan for nearby tags, in miliseconds */
-    size_t task_stack_size;            /*<! Stack size of rc522 task */
-    uint8_t task_priority;             /*<! Priority of rc522 task */
-    rc522_transport_t transport;       /*<! Transport that will be used. Defaults to SPI */
+typedef struct
+{
+    uint16_t scan_interval_ms;   /*<! How fast will ESP32 scan for nearby tags, in miliseconds */
+    size_t task_stack_size;      /*<! Stack size of rc522 task */
+    uint8_t task_priority;       /*<! Priority of rc522 task */
+    rc522_transport_t transport; /*<! Transport that will be used. Defaults to SPI */
     union {
-        struct {
+        struct
+        {
             spi_host_device_t host;
             int miso_gpio;
             int mosi_gpio;
             int sck_gpio;
             int sda_gpio;
             int clock_speed_hz;
-            uint32_t device_flags;     /*<! Bitwise OR of SPI_DEVICE_* flags */
+            uint32_t device_flags; /*<! Bitwise OR of SPI_DEVICE_* flags */
             /**
              * @brief Set to true if the bus is already initialized.
              *        NOTE: This property will be removed in future,
@@ -48,7 +51,8 @@ typedef struct {
              */
             bool bus_is_initialized;
         } spi;
-        struct {
+        struct
+        {
             i2c_port_t port;
             int sda_gpio;
             int scl_gpio;
@@ -58,18 +62,21 @@ typedef struct {
     };
 } rc522_config_t;
 
-typedef enum {
+typedef enum
+{
     RC522_EVENT_ANY = ESP_EVENT_ANY_ID,
     RC522_EVENT_NONE,
-    RC522_EVENT_TAG_SCANNED,             /*<! Tag scanned */
+    RC522_EVENT_TAG_SCANNED, /*<! Tag scanned */
 } rc522_event_t;
 
-typedef struct {
+typedef struct
+{
     rc522_handle_t rc522;
     void* ptr;
 } rc522_event_data_t;
 
-typedef struct {
+typedef struct
+{
     uint64_t serial_number;
 } rc522_tag_t;
 
@@ -82,7 +89,8 @@ typedef struct {
  */
 esp_err_t rc522_create(rc522_config_t* config, rc522_handle_t* out_rc522);
 
-esp_err_t rc522_register_events(rc522_handle_t rc522, rc522_event_t event, esp_event_handler_t event_handler, void* event_handler_arg);
+esp_err_t rc522_register_events(
+    rc522_handle_t rc522, rc522_event_t event, esp_event_handler_t event_handler, void* event_handler_arg);
 
 esp_err_t rc522_unregister_events(rc522_handle_t rc522, rc522_event_t event, esp_event_handler_t event_handler);
 
