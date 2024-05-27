@@ -9,7 +9,7 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - name: enable homebrew
-        run: eval "$(/home/linuxbrew/.linuxbrew/bin/brew shellenv)
+        run: eval "$(/home/linuxbrew/.linuxbrew/bin/brew shellenv)"
       - name: Install cppcheck
         run: brew install cppcheck
       - uses: actions/checkout@v4
