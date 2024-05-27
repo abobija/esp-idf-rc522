@@ -6,9 +6,9 @@ Language: Cpp
 ColumnLimit: 120
 BreakBeforeBraces: Custom
 BraceWrapping:
-  AfterEnum: true
   AfterFunction: true
-  AfterStruct: true
+  AfterEnum: false
+  AfterStruct: false
   SplitEmptyFunction: false
 DerivePointerAlignment: false
 PointerAlignment: Left

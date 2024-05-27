@@ -1,4 +1,5 @@
 --style=otbs
+--indent-switches
 --attach-namespaces
 --attach-classes
 --indent=spaces=4

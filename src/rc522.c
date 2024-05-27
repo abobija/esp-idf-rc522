@@ -24,8 +24,7 @@ static const char* TAG = "rc522";
         ptr = NULL; \
     }
 
-struct rc522
-{
+struct rc522 {
     bool running;                         /*<! Indicates whether rc522 task is running or not */
     rc522_config_t* config;               /*<! Configuration */
     TaskHandle_t task_handle;             /*<! Handle of task */
@@ -48,6 +47,7 @@ static esp_err_t rc522_i2c_receive(rc522_handle_t rc522, uint8_t* buffer, uint8_
 
 static void rc522_task(void* arg);
 
+// cppcheck-suppress constParameterPointer
 static esp_err_t rc522_write_n(rc522_handle_t rc522, uint8_t addr, uint8_t n, uint8_t* data)
 {
     esp_err_t err = ESP_OK;
@@ -111,7 +111,6 @@ static inline esp_err_t rc522_read(rc522_handle_t rc522, uint8_t addr, uint8_t* 
 
 static esp_err_t rc522_set_bitmask(rc522_handle_t rc522, uint8_t addr, uint8_t mask)
 {
-    esp_err_t err = ESP_OK;
     uint8_t tmp;
 
     ESP_ERR_RET_GUARD(rc522_read(rc522, addr, &tmp));
@@ -121,7 +120,6 @@ static esp_err_t rc522_set_bitmask(rc522_handle_t rc522, uint8_t addr, uint8_t m
 
 static esp_err_t rc522_clear_bitmask(rc522_handle_t rc522, uint8_t addr, uint8_t mask)
 {
-    esp_err_t err = ESP_OK;
     uint8_t tmp;
 
     ESP_ERR_RET_GUARD(rc522_read(rc522, addr, &tmp));
@@ -136,7 +134,6 @@ static inline esp_err_t rc522_firmware(rc522_handle_t rc522, uint8_t* result)
 
 static esp_err_t rc522_antenna_on(rc522_handle_t rc522)
 {
-    esp_err_t err = ESP_OK;
     uint8_t tmp;
 
     ESP_ERR_RET_GUARD(rc522_read(rc522, RC522_TX_CONTROL_REG, &tmp));
@@ -288,6 +285,7 @@ esp_err_t rc522_unregister_events(rc522_handle_t rc522, rc522_event_t event, esp
     return esp_event_handler_unregister_with(rc522->event_handle, RC522_EVENTS, event, event_handler);
 }
 
+// cppcheck-suppress constParameterPointer
 static uint64_t rc522_sn_to_u64(uint8_t* sn)
 {
     uint64_t result = 0;
@@ -308,7 +306,6 @@ static uint64_t rc522_sn_to_u64(uint8_t* sn)
 // TODO: Use 2+ bytes data type instead of buffer array
 static esp_err_t rc522_calculate_crc(rc522_handle_t rc522, uint8_t* data, uint8_t n, uint8_t* buffer)
 {
-    esp_err_t err = ESP_OK;
     uint8_t i = 255;
     uint8_t nn = 0;
 
@@ -346,7 +343,6 @@ static esp_err_t rc522_card_write(
     uint8_t _res_n = 0;
     uint8_t irq = 0x00;
     uint8_t irq_wait = 0x00;
-    uint8_t last_bits = 0;
     uint8_t nn = 0;
     uint8_t tmp;
 
@@ -391,7 +387,7 @@ static esp_err_t rc522_card_write(
                 ESP_ERR_JMP_GUARD(rc522_read(rc522, RC522_FIFO_LEVEL_REG, &nn));
                 ESP_ERR_JMP_GUARD(rc522_read(rc522, RC522_CONTROL_REG, &tmp));
 
-                last_bits = tmp & 0x07;
+                uint8_t last_bits = tmp & 0x07;
 
                 if (last_bits != 0) {
                     _res_n = (nn - 1) + last_bits;
@@ -507,8 +503,6 @@ static esp_err_t rc522_get_tag(rc522_handle_t rc522, uint8_t** result)
 
 esp_err_t rc522_start(rc522_handle_t rc522)
 {
-    esp_err_t err = ESP_OK;
-
     if (!rc522) {
         return ESP_ERR_INVALID_ARG;
     }
@@ -530,7 +524,7 @@ esp_err_t rc522_start(rc522_handle_t rc522)
         uint8_t pass = 0;
 
         for (uint8_t i = test_val; i < test_val + 2; i++) {
-            err = rc522_write(rc522, test_addr, i);
+            esp_err_t err = rc522_write(rc522, test_addr, i);
 
             if (err == ESP_OK) {
                 err = rc522_read(rc522, test_addr, &tmp);
@@ -626,6 +620,7 @@ esp_err_t rc522_destroy(rc522_handle_t rc522)
 
     // TODO: Wait here for task to exit
 
+    // cppcheck-suppress redundantAssignment
     err = rc522_destroy_transport(rc522);
 
     if (rc522->event_handle) {
@@ -634,6 +629,7 @@ esp_err_t rc522_destroy(rc522_handle_t rc522)
     }
 
     FREE(rc522->config);
+    // cppcheck-suppress unreadVariable
     FREE(rc522);
 
     return err;
@@ -641,8 +637,6 @@ esp_err_t rc522_destroy(rc522_handle_t rc522)
 
 static esp_err_t rc522_dispatch_event(rc522_handle_t rc522, rc522_event_t event, void* data)
 {
-    esp_err_t err;
-
     if (!rc522) {
         return ESP_ERR_INVALID_ARG;
     }

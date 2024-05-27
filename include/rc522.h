@@ -21,21 +21,18 @@ ESP_EVENT_DECLARE_BASE(RC522_EVENTS);
 
 typedef struct rc522* rc522_handle_t;
 
-typedef enum
-{
+typedef enum {
     RC522_TRANSPORT_SPI,
     RC522_TRANSPORT_I2C,
 } rc522_transport_t;
 
-typedef struct
-{
+typedef struct {
     uint16_t scan_interval_ms;   /*<! How fast will ESP32 scan for nearby tags, in miliseconds */
     size_t task_stack_size;      /*<! Stack size of rc522 task */
     uint8_t task_priority;       /*<! Priority of rc522 task */
     rc522_transport_t transport; /*<! Transport that will be used. Defaults to SPI */
     union {
-        struct
-        {
+        struct {
             spi_host_device_t host;
             int miso_gpio;
             int mosi_gpio;
@@ -51,8 +48,7 @@ typedef struct
              */
             bool bus_is_initialized;
         } spi;
-        struct
-        {
+        struct {
             i2c_port_t port;
             int sda_gpio;
             int scl_gpio;
@@ -62,21 +58,18 @@ typedef struct
     };
 } rc522_config_t;
 
-typedef enum
-{
+typedef enum {
     RC522_EVENT_ANY = ESP_EVENT_ANY_ID,
     RC522_EVENT_NONE,
     RC522_EVENT_TAG_SCANNED, /*<! Tag scanned */
 } rc522_event_t;
 
-typedef struct
-{
+typedef struct {
     rc522_handle_t rc522;
     void* ptr;
 } rc522_event_data_t;
 
-typedef struct
-{
+typedef struct {
     uint64_t serial_number;
 } rc522_tag_t;
 

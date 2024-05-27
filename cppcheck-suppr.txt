@@ -1,0 +1,4 @@
+unusedStructMember
+missingInclude
+checkersReport
+normalCheckLevelMaxBranches
