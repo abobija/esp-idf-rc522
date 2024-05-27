@@ -10,7 +10,13 @@ jobs:
     steps:
       - name: Install homebrew
         run: >
-          echo 'eval "$(/home/linuxbrew/.linuxbrew/bin/brew shellenv)"' >> $GITHUB_ENV
+          eval "$(/home/linuxbrew/.linuxbrew/bin/brew shellenv)";
+          echo "HOMEBREW_PREFIX=$(echo $HOMEBREW_PREFIX)" >> $GITHUB_ENV;
+          echo "HOMEBREW_CELLAR=$(echo $HOMEBREW_CELLAR)" >> $GITHUB_ENV;
+          echo "HOMEBREW_REPOSITORY=$(echo $HOMEBREW_REPOSITORY)" >> $GITHUB_ENV;
+          echo "PATH=$(echo $PATH)" >> $GITHUB_ENV;
+          echo "MANPATH=$(echo $MANPATH)" >> $GITHUB_ENV;
+          echo "INFOPATH=$(echo $INFOPATH)" >> $GITHUB_ENV
       - name: Install cppcheck
         run: brew install cppcheck
       - uses: actions/checkout@v4
