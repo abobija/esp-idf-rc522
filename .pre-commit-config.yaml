@@ -14,4 +14,4 @@ repos:
     rev: v1.3.5
     hooks:
       - id: cppcheck
-        args: [--inline-suppr, --suppressions-list=cppcheck-suppr.txt]
+        args: ["--inline-suppr", "--suppressions-list=cppcheck-suppr.txt"]
