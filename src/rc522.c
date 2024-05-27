@@ -111,6 +111,8 @@ static inline esp_err_t rc522_read(rc522_handle_t rc522, uint8_t addr, uint8_t* 
 
 static esp_err_t rc522_set_bitmask(rc522_handle_t rc522, uint8_t addr, uint8_t mask)
 {
+    // cppcheck-suppress unreadVariable
+    esp_err_t err = ESP_OK;  // The err variable is needed for the ESP_ERR_JMP_GUARD macro
     uint8_t tmp;
 
     ESP_ERR_RET_GUARD(rc522_read(rc522, addr, &tmp));
@@ -120,6 +122,8 @@ static esp_err_t rc522_set_bitmask(rc522_handle_t rc522, uint8_t addr, uint8_t m
 
 static esp_err_t rc522_clear_bitmask(rc522_handle_t rc522, uint8_t addr, uint8_t mask)
 {
+    // cppcheck-suppress unreadVariable
+    esp_err_t err = ESP_OK;  // The err variable is needed for the ESP_ERR_RET_GUARD macro
     uint8_t tmp;
 
     ESP_ERR_RET_GUARD(rc522_read(rc522, addr, &tmp));
@@ -134,6 +138,8 @@ static inline esp_err_t rc522_firmware(rc522_handle_t rc522, uint8_t* result)
 
 static esp_err_t rc522_antenna_on(rc522_handle_t rc522)
 {
+    // cppcheck-suppress unreadVariable
+    esp_err_t err = ESP_OK;  // The err variable is needed for the ESP_ERR_RET_GUARD macro
     uint8_t tmp;
 
     ESP_ERR_RET_GUARD(rc522_read(rc522, RC522_TX_CONTROL_REG, &tmp));
@@ -306,6 +312,8 @@ static uint64_t rc522_sn_to_u64(uint8_t* sn)
 // TODO: Use 2+ bytes data type instead of buffer array
 static esp_err_t rc522_calculate_crc(rc522_handle_t rc522, uint8_t* data, uint8_t n, uint8_t* buffer)
 {
+    // cppcheck-suppress unreadVariable
+    esp_err_t err = ESP_OK;  // The err variable is needed for the ESP_ERR_RET_GUARD macro
     uint8_t i = 255;
     uint8_t nn = 0;
 
@@ -503,6 +511,9 @@ static esp_err_t rc522_get_tag(rc522_handle_t rc522, uint8_t** result)
 
 esp_err_t rc522_start(rc522_handle_t rc522)
 {
+    // cppcheck-suppress unreadVariable
+    esp_err_t err = ESP_OK;  // The err variable is needed for the ESP_ERR_RET_GUARD macro
+
     if (!rc522) {
         return ESP_ERR_INVALID_ARG;
     }
@@ -524,7 +535,7 @@ esp_err_t rc522_start(rc522_handle_t rc522)
         uint8_t pass = 0;
 
         for (uint8_t i = test_val; i < test_val + 2; i++) {
-            esp_err_t err = rc522_write(rc522, test_addr, i);
+            err = rc522_write(rc522, test_addr, i);
 
             if (err == ESP_OK) {
                 err = rc522_read(rc522, test_addr, &tmp);
@@ -637,6 +648,9 @@ esp_err_t rc522_destroy(rc522_handle_t rc522)
 
 static esp_err_t rc522_dispatch_event(rc522_handle_t rc522, rc522_event_t event, void* data)
 {
+    // cppcheck-suppress unreadVariable
+    esp_err_t err = ESP_OK;  // The err variable is needed for the ESP_ERR_RET_GUARD macro
+
     if (!rc522) {
         return ESP_ERR_INVALID_ARG;
     }
