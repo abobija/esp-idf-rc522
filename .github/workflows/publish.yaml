@@ -1,0 +1,18 @@
+name: Publish component
+
+on:
+  release:
+    types: [published]
+
+jobs:
+  publish:
+    runs-on: ubuntu-latest
+
+    steps:
+      - uses: actions/checkout@v4
+      - name: Upload component to the registry
+        uses: espressif/upload-components-ci-action@v1
+        with:
+          namespace: abobija
+          name: rc522
+          api_token: ${{ secrets.IDF_COMPONENTS_API_TOKEN }}
