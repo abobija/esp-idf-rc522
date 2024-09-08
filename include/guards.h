@@ -27,18 +27,27 @@
  * @param on_success Code to execute on success.
  */
 #define JMP_GUARD_GATES(on_error, on_success) \
-    goto SUCCESS_GUARD_GATE; \
-        ERROR_GUARD_GATE: { on_error; goto EXIT_GUARD_GATE; };  \
-        SUCCESS_GUARD_GATE: { on_success; goto EXIT_GUARD_GATE; };  \
-        EXIT_GUARD_GATE: {};
+    goto SUCCESS_GUARD_GATE;                  \
+    ERROR_GUARD_GATE: {                       \
+        on_error;                             \
+        goto EXIT_GUARD_GATE;                 \
+    };                                        \
+    SUCCESS_GUARD_GATE: {                     \
+        on_success;                           \
+        goto EXIT_GUARD_GATE;                 \
+    };                                        \
+    EXIT_GUARD_GATE: {                        \
+    };
 
 /**
  * @brief Macro guard for jumping to an error handler on ESP error.
  *        Checks the result of EXP and if it's not ESP_OK, jumps to ERROR_GUARD_GATE.
  * @param EXP Expression that returns an esp_err_t value.
  */
-#define ESP_ERR_JMP_GUARD(EXP) \
-    if((err = (EXP)) != ESP_OK) { goto ERROR_GUARD_GATE; }
+#define ESP_ERR_JMP_GUARD(EXP)     \
+    if ((err = (EXP)) != ESP_OK) { \
+        goto ERROR_GUARD_GATE;     \
+    }
 
 /**
  * @brief Macro for logging an error message and jumping to an error handler on ESP error.
@@ -47,7 +56,10 @@
  * @param message The message to log on error.
  */
 #define ESP_ERR_LOG_AND_JMP_GUARD(EXP, message) \
-    if((err = (EXP)) != ESP_OK) { ESP_LOGE(TAG, message); goto ERROR_GUARD_GATE; }
+    if ((err = (EXP)) != ESP_OK) {              \
+        ESP_LOGE(TAG, message);                 \
+        goto ERROR_GUARD_GATE;                  \
+    }
 
 /**
  * @brief Macro for conditionally logging an error message and jumping to an error handler.
@@ -56,7 +68,10 @@
  * @param message The message to log if EXP is true.
  */
 #define CONDITION_LOG_AND_JMP_GUARD(EXP, message) \
-    if(EXP) { ESP_LOGE(TAG, message); goto ERROR_GUARD_GATE; }
+    if (EXP) {                                    \
+        ESP_LOGE(TAG, message);                   \
+        goto ERROR_GUARD_GATE;                    \
+    }
 
 /**
  * @brief Macro guard for memory allocation with jump to error handling.
@@ -67,8 +82,11 @@
  *        It helps in avoiding deep nesting of error checks after each allocation.
  * @param EXP Memory allocation expression (e.g., a call to malloc).
  */
-#define ALLOC_JMP_GUARD(EXP) \
-    if((EXP) == NULL) { err = ESP_ERR_NO_MEM; goto ERROR_GUARD_GATE; }
+#define ALLOC_JMP_GUARD(EXP)   \
+    if ((EXP) == NULL) {       \
+        err = ESP_ERR_NO_MEM;  \
+        goto ERROR_GUARD_GATE; \
+    }
 
 /**
  * @brief Macro guard for memory allocation functions.
@@ -78,8 +96,10 @@
  * @param EXP Memory allocation expression (e.g., a call to malloc).
  * @return Exits the caller function with ESP_ERR_NO_MEM if EXP evaluates to NULL.
  */
-#define ALLOC_RET_GUARD(EXP) \
-    if((EXP) == NULL) { return ESP_ERR_NO_MEM; }
+#define ALLOC_RET_GUARD(EXP)   \
+    if ((EXP) == NULL) {       \
+        return ESP_ERR_NO_MEM; \
+    }
 
 /**
  * @brief Macro guard for ESP error handling.
@@ -87,5 +107,7 @@
  * @param EXP Expression that returns an esp_err_t value.
  * @return Returns the error code if EXP is not ESP_OK.
  */
-#define ESP_ERR_RET_GUARD(EXP) \
-    if((err = (EXP)) != ESP_OK) { return err; }
+#define ESP_ERR_RET_GUARD(EXP)     \
+    if ((err = (EXP)) != ESP_OK) { \
+        return err;                \
+    }
