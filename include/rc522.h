@@ -1,12 +1,12 @@
 #pragma once
 
-#ifdef __cplusplus
-extern "C" {
-#endif
-
 #include <esp_event.h>
 #include <driver/spi_master.h>
 #include <driver/i2c.h> // TODO: Log warning: This driver is an old driver, please migrate your application code to adapt `driver/i2c_master.h`
+
+#ifdef __cplusplus
+extern "C" {
+#endif
 
 #define RC522_I2C_ADDRESS (0x28)
 
@@ -96,8 +96,8 @@ esp_err_t rc522_register_events(
 esp_err_t rc522_unregister_events(rc522_handle_t rc522, rc522_event_t event, esp_event_handler_t event_handler);
 
 /**
- * @brief Start to scan tags. If already started, ESP_OK will just be returned. Initialization function had to be
- *        called before this one.
+ * @brief Start to scan tags. If already started, ESP_OK will just be returned.
+ *        Initialization function had to be called before this one.
  * @param rc522 Handle
  * @return ESP_OK on success
  */
