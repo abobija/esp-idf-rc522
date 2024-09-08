@@ -1,7 +1,10 @@
 # esp-idf-rc522
 
-C library for interfacing ESP32 with MFRC522 RFID card reader.
+[![Component Registry](https://components.espressif.com/components/abobija/rc522/badge.svg)](https://components.espressif.com/components/abobija/rc522)
 
+C library for interfacing ESP32 with MFRC522 RFID card reader, packaged as ESP-IDF component.
+
+> [!NOTE]
 > Library currently just reads serial number of RFID tags, which is enough for most applications.
 
 ## How to use
@@ -82,7 +85,8 @@ rc522_config_t config = {
 
 Let's say that spi bus `VSPI_HOST` has been already initialized, and rc522 needs to be attached to that bus. That can be accomplished with the next configuration. Property `.spi.bus_is_initialized` is required to be set to `true` in order to inform library to not initialize spi bus again.
 
-> NOTE: Property `.spi.bus_is_initialized` will be deprecated in the future once when [this issue](https://github.com/espressif/esp-idf/issues/8745) is resolved.
+> [!NOTE]
+> Property `.spi.bus_is_initialized` will be deprecated in the future once when [this issue](https://github.com/espressif/esp-idf/issues/8745) is resolved.
 
 ```c
 rc522_config_t config = {
