@@ -1,4 +1,4 @@
-name: clang-format Check
+name: Check Formatting
 
 on:
   pull_request_target:
@@ -7,16 +7,9 @@ jobs:
   clang-format-check:
     runs-on: ubuntu-latest
 
-    strategy:
-      matrix:
-        path:
-          - include
-          - src
-
     steps:
       - uses: actions/checkout@v4
       - name: 'clang-format check'
         uses: jidicula/clang-format-action@v4.13.0
         with:
           clang-format-version: 18
-          check-path: ${{ matrix.path }}
