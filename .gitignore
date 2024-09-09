@@ -1,5 +1,6 @@
 /dist
-/build
+**/build/
 sdkconfig.old
 sdkconfig
 .vscode
+/examples/**/dependencies.lock
