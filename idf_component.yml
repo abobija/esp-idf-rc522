@@ -11,4 +11,4 @@ tags:
   - mfrc522
   - contactless
 dependencies:
-  idf: ">5.0.0"
+  idf: "^5"
