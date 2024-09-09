@@ -1,5 +1,5 @@
 /dist
-/build
+**/build/
 sdkconfig.old
 sdkconfig
 .vscode
