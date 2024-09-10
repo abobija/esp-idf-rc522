@@ -101,12 +101,12 @@ static esp_err_t rc522_spi_receive(
         });
 }
 
-static esp_err_t send(uint8_t *buffer, uint8_t length)
+static esp_err_t rc522_send(uint8_t *buffer, uint8_t length)
 {
     return rc522_spi_send(rc522_spi_handle, buffer, length);
 }
 
-static esp_err_t receive(uint8_t *buffer, uint8_t length, uint8_t address)
+static esp_err_t rc522_receive(uint8_t *buffer, uint8_t length, uint8_t address)
 {
     return rc522_spi_receive(rc522_spi_handle, buffer, length, address);
 }
@@ -129,8 +129,8 @@ void app_main()
     rc522_spi_attach(&rc522_spi_handle);
 
     rc522_config_t config = {
-        .send_handler = &send,
-        .receive_handler = &receive,
+        .send_handler = &rc522_send,
+        .receive_handler = &rc522_receive,
     };
 
     rc522_create(&config, &rc522_handle);
