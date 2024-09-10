@@ -186,7 +186,7 @@ esp_err_t rc522_unregister_events(rc522_handle_t rc522, rc522_event_t event, esp
     return esp_event_handler_unregister_with(rc522->event_handle, RC522_EVENTS, event, event_handler);
 }
 
-static uint64_t rc522_sn_to_u64(uint8_t *sn)
+static uint64_t rc522_uid_to_u64(uint8_t *sn)
 {
     uint64_t result = 0;
 
@@ -358,9 +358,9 @@ static esp_err_t rc522_anticoll(rc522_handle_t rc522, uint8_t **result)
     // TODO: Some cards have length of 4, and some of them have length of 7 bytes
     //       here we are using one extra byte which is not part of UID.
     //       Implement logic to determine the length of the UID and use that info
-    //       to retrieve the serial number aka UID
-    if (_result && _res_n != 5) { // all cards/tags serial numbers is 5 bytes long (??)
-        ESP_ERR_LOG_AND_JMP_GUARD(ESP_ERR_INVALID_RESPONSE, "invalid length of serial number");
+    //       to retrieve the real UID
+    if (_result && _res_n != 5) { // UID of all cards/tags is 5 bytes long (??)
+        ESP_ERR_LOG_AND_JMP_GUARD(ESP_ERR_INVALID_RESPONSE, "invalid length of UID");
     }
 
     JMP_GUARD_GATES(
@@ -549,28 +549,28 @@ static void rc522_task(void *arg)
             continue;
         }
 
-        uint8_t *serial_no_array = NULL;
+        uint8_t *uid_bytes = NULL;
 
-        if (ESP_OK != rc522_get_tag(rc522, &serial_no_array)) {
+        if (ESP_OK != rc522_get_tag(rc522, &uid_bytes)) {
             // Tag is not present
             //
             // TODO: Implement logic to know when the error is due to
             //       tag absence or some other protocol issue
         }
 
-        if (!serial_no_array) {
+        if (!uid_bytes) {
             rc522->tag_was_present_last_time = false;
         }
         else if (!rc522->tag_was_present_last_time) {
             rc522_tag_t tag = {
-                .serial_number = rc522_sn_to_u64(serial_no_array),
+                .uid = rc522_uid_to_u64(uid_bytes),
             };
-            FREE(serial_no_array);
+            FREE(uid_bytes);
             rc522_dispatch_event(rc522, RC522_EVENT_TAG_SCANNED, &tag);
             rc522->tag_was_present_last_time = true;
         }
         else {
-            FREE(serial_no_array);
+            FREE(uid_bytes);
         }
 
         int delay_interval_ms = rc522->config->scan_interval_ms;

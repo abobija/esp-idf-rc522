@@ -35,7 +35,7 @@ static void rc522_event_handler(void *arg, esp_event_base_t base, int32_t event_
     switch (event_id) {
         case RC522_EVENT_TAG_SCANNED: {
             rc522_tag_t *tag = (rc522_tag_t *)data->ptr;
-            ESP_LOGI(TAG, "Tag scanned (sn: %" PRIu64 ")", tag->serial_number);
+            ESP_LOGI(TAG, "Tag scanned (UID: 0x%" PRIX64 ")", tag->uid);
         } break;
     }
 }

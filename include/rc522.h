@@ -41,7 +41,7 @@ typedef struct
 
 typedef struct
 {
-    uint64_t serial_number;
+    uint64_t uid;
 } rc522_tag_t;
 
 /**
