@@ -17,7 +17,7 @@ idf.py add-dependency "abobija/rc522"
 
 ## Example project
 
-> [!NOTE]
+> [!TIP]
 > To find more examples, go to [examples](examples) folder.
 
 To run basic example, create it as follows:
