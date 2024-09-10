@@ -5,7 +5,7 @@
 This repository contains ESP-IDF library for communication with MFRC522 RFID card reader, packaged as ESP-IDF component.
 
 > [!NOTE]
-> Library currently just reads UID of RFID tags, which is enough for most applications.
+> Component currently supports only reading of UIDs of RFID tags, which is enough for most applications. Feel free to open PR if you want to implement read/write data to the cards.
 
 ## How to use
 
@@ -36,7 +36,11 @@ And flash it to the board:
 idf.py -p PORT flash monitor
 ```
 
-The example uses [helpers/spi.h](include/rc522/helpers/spi.h) for wiring GPIOs.
+Visit [examples/basic](examples/basic) to check wiring RC522 with ESP chip for this particular example.
+
+## More examples
+
+To find more examples, go to [examples](examples) folder.
 
 ## Author
 
