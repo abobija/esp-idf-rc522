@@ -42,11 +42,6 @@ Visit [examples/basic](examples/basic) to check wiring RC522 with ESP chip for t
 
 To find more examples, go to [examples](examples) folder.
 
-## Author
-
-GitHub: [abobija](https://github.com/abobija)<br>
-Homepage: [abobija.com](https://abobija.com)
-
 ## License
 
 [MIT](LICENSE)
