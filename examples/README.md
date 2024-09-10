@@ -26,4 +26,4 @@ And flash it to the board:
 idf.py -p PORT flash monitor
 ```
 
-Visit [examples/basic](examples/basic) to check wiring RC522 with ESP chip for this particular example.
+Visit [basic](basic) example to check wiring RC522 with ESP chip for this particular example.
