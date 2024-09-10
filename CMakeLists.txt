@@ -4,9 +4,7 @@ idf_component_register(
     SRCS
         src/rc522.c
         src/rc522/helpers/spi.c
-        src/rc522/helpers/i2c.c
     REQUIRES
         esp_event
         esp_driver_spi
-        driver
 )

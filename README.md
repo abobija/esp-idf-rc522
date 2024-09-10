@@ -17,6 +17,9 @@ idf.py add-dependency "abobija/rc522"
 
 ## Example
 
+> [!NOTE]
+> To find more examples, go to [examples](examples) folder.
+
 To run basic example, create it as follows:
 
 ```bash
@@ -37,10 +40,6 @@ idf.py -p PORT flash monitor
 ```
 
 Visit [examples/basic](examples/basic) to check wiring RC522 with ESP chip for this particular example.
-
-## More examples
-
-To find more examples, go to [examples](examples) folder.
 
 ## License
 
