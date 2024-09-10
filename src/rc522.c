@@ -5,8 +5,8 @@
 #include <string.h>
 
 #include "rc522.h"
-#include "rc522_registers.h"
-#include "guards.h"
+#include "rc522/guards.h"
+#include "rc522/registers.h"
 
 static const char *TAG = "RC522";
 
