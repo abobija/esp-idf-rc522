@@ -2,7 +2,7 @@
 
 [![Component Registry](https://components.espressif.com/components/abobija/rc522/badge.svg)](https://components.espressif.com/components/abobija/rc522)
 
-This repository contains ESP-IDF library for communication with MFRC522 RFID card reader, packaged as ESP-IDF component.
+This repository contains ESP-IDF library for communication with MFRC522 RFID card reader, packaged as ESP-IDF component. Library supports SPI and I2C protocols.
 
 > [!NOTE]
 > Component currently supports only reading of UIDs of RFID tags, which is enough for most applications. Feel free to open PR if you want to implement read/write data to the cards.
