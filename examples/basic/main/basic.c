@@ -9,25 +9,16 @@ static const char *TAG = "rc522-demo";
 static rc522_handle_t rc522_handle;
 static spi_device_handle_t rc522_spi_handle;
 
-/**
- * Send data to RC522
- */
 static esp_err_t send(uint8_t *buffer, uint8_t length)
 {
     return rc522_spi_send(rc522_spi_handle, buffer, length);
 }
 
-/**
- * Receive data from RC522
- */
 static esp_err_t receive(uint8_t *buffer, uint8_t length, uint8_t address)
 {
     return rc522_spi_receive(rc522_spi_handle, buffer, length, address);
 }
 
-/**
- * Handle RC522 events, e.g. when tag is scanned, etc...
- */
 static void rc522_event_handler(void *arg, esp_event_base_t base, int32_t event_id, void *event_data)
 {
     rc522_event_data_t *data = (rc522_event_data_t *)event_data;
