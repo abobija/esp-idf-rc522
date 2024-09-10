@@ -55,13 +55,19 @@ static esp_err_t spi_attach()
  */
 static esp_err_t send(uint8_t *buffer, uint8_t length)
 {
+    uint8_t first_byte_origin = buffer[0];
+
     buffer[0] = (buffer[0] << 1) & 0x7E;
 
-    return spi_device_transmit(rc522_spi_handle,
+    esp_err_t ret = spi_device_transmit(rc522_spi_handle,
         &(spi_transaction_t) {
             .length = 8 * length,
             .tx_buffer = buffer,
         });
+
+    buffer[0] = first_byte_origin;
+
+    return ret;
 }
 
 /*
