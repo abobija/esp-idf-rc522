@@ -4,7 +4,7 @@
 #include "rc522.h"
 #include "rc522/helpers/spi.h"
 
-static const char *TAG = "rc522-demo";
+static const char *TAG = "rc522-basic-example";
 
 static rc522_handle_t rc522_handle;
 static spi_device_handle_t rc522_spi_handle;

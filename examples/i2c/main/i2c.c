@@ -4,7 +4,7 @@
 #include "rc522.h"
 #include "rc522/helpers/i2c.h"
 
-static const char *TAG = "rc522-i2c-demo";
+static const char *TAG = "rc522-i2c-example";
 
 static rc522_handle_t rc522_handle;
 
