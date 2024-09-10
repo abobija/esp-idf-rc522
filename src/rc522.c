@@ -8,20 +8,9 @@
 #include "rc522_registers.h"
 #include "guards.h"
 
-static const char *TAG = "rc522";
+static const char *TAG = "RC522";
 
-/**
- * @brief Macro for safely freeing memory.
- *        This macro checks if the pointer is not NULL before calling the free function.
- *        After freeing the memory, it sets the pointer to NULL to prevent dangling pointer issues.
- *        This helps in avoiding double free errors and improves the safety of memory management.
- * @param ptr Pointer to the memory to be freed.
- */
-#define FREE(ptr)   \
-    if (ptr) {      \
-        free(ptr);  \
-        ptr = NULL; \
-    }
+ESP_EVENT_DEFINE_BASE(RC522_EVENTS);
 
 struct rc522
 {
@@ -29,21 +18,11 @@ struct rc522
     rc522_config_t *config;               /*<! Configuration */
     TaskHandle_t task_handle;             /*<! Handle of task */
     esp_event_loop_handle_t event_handle; /*<! Handle of event loop */
-    spi_device_handle_t spi_handle;
     // TODO: Use new 'status' field, instead of initialized, scanning, etc...
     bool initialized; /*<! Set on the first start() when configuration is sent to rc522 */
     bool scanning;    /*<! Whether the rc522 is in scanning or idle mode */
     bool tag_was_present_last_time;
-    bool bus_initialized_by_user; /*<! Whether the bus has been initialized manually by the user, before calling
-                                     rc522_create function */
 };
-
-ESP_EVENT_DEFINE_BASE(RC522_EVENTS);
-
-static esp_err_t rc522_spi_send(rc522_handle_t rc522, uint8_t *buffer, uint8_t length);
-static esp_err_t rc522_spi_receive(rc522_handle_t rc522, uint8_t *buffer, uint8_t length, uint8_t addr);
-static esp_err_t rc522_i2c_send(rc522_handle_t rc522, uint8_t *buffer, uint8_t length);
-static esp_err_t rc522_i2c_receive(rc522_handle_t rc522, uint8_t *buffer, uint8_t length, uint8_t addr);
 
 static void rc522_task(void *arg);
 
@@ -58,17 +37,7 @@ static esp_err_t rc522_write_n(rc522_handle_t rc522, uint8_t addr, uint8_t n, ui
     buffer[0] = addr;
     memcpy(buffer + 1, data, n);
 
-    switch (rc522->config->transport) {
-        case RC522_TRANSPORT_SPI:
-            ESP_ERR_JMP_GUARD(rc522_spi_send(rc522, buffer, n + 1));
-            break;
-        case RC522_TRANSPORT_I2C:
-            ESP_ERR_JMP_GUARD(rc522_i2c_send(rc522, buffer, n + 1));
-            break;
-        default:
-            ESP_ERR_LOG_AND_JMP_GUARD(ESP_ERR_INVALID_STATE, "write: Unknown transport");
-            break;
-    }
+    ESP_ERR_JMP_GUARD(rc522->config->send_handler(buffer, n + 1));
 
     JMP_GUARD_GATES({ ESP_LOGE(TAG, "Failed to write data (err: %s)", esp_err_to_name(err)); }, {});
 
@@ -86,17 +55,7 @@ static esp_err_t rc522_read_n(rc522_handle_t rc522, uint8_t addr, uint8_t n, uin
 {
     esp_err_t err;
 
-    switch (rc522->config->transport) {
-        case RC522_TRANSPORT_SPI:
-            ESP_ERR_JMP_GUARD(rc522_spi_receive(rc522, buffer, n, addr));
-            break;
-        case RC522_TRANSPORT_I2C:
-            ESP_ERR_JMP_GUARD(rc522_i2c_receive(rc522, buffer, n, addr));
-            break;
-        default:
-            ESP_ERR_LOG_AND_JMP_GUARD(ESP_ERR_INVALID_STATE, "read: Unknown transport");
-            break;
-    }
+    ESP_ERR_JMP_GUARD(rc522->config->receive_handler(buffer, n, addr));
 
     JMP_GUARD_GATES({ ESP_LOGE(TAG, "Failed to read data (err: %s)", esp_err_to_name(err)); }, {});
 
@@ -162,68 +121,10 @@ static esp_err_t rc522_clone_config(rc522_config_t *config, rc522_config_t **res
         config->task_stack_size == 0 ? RC522_DEFAULT_TASK_STACK_SIZE : config->task_stack_size;
     _clone_config->task_priority =
         config->task_priority == 0 ? RC522_DEFAULT_TASK_STACK_PRIORITY : config->task_priority;
-    _clone_config->spi.clock_speed_hz =
-        config->spi.clock_speed_hz == 0 ? RC522_DEFAULT_SPI_CLOCK_SPEED_HZ : config->spi.clock_speed_hz;
-    _clone_config->i2c.rw_timeout_ms =
-        config->i2c.rw_timeout_ms == 0 ? RC522_DEFAULT_I2C_RW_TIMEOUT_MS : config->i2c.rw_timeout_ms;
-    _clone_config->i2c.clock_speed_hz =
-        config->i2c.clock_speed_hz == 0 ? RC522_DEFAULT_I2C_CLOCK_SPEED_HZ : config->i2c.clock_speed_hz;
 
     *result = _clone_config;
 
     return ESP_OK;
-}
-
-static esp_err_t rc522_create_transport(rc522_handle_t rc522)
-{
-    esp_err_t err = ESP_OK;
-
-    switch (rc522->config->transport) {
-        case RC522_TRANSPORT_SPI: {
-            spi_device_interface_config_t devcfg = {
-                .clock_speed_hz = rc522->config->spi.clock_speed_hz,
-                .mode = 0,
-                .spics_io_num = rc522->config->spi.sda_gpio,
-                .queue_size = 7,
-                .flags = rc522->config->spi.device_flags,
-            };
-
-            rc522->bus_initialized_by_user = rc522->config->spi.bus_is_initialized;
-
-            if (!rc522->bus_initialized_by_user) {
-                spi_bus_config_t buscfg = {
-                    .miso_io_num = rc522->config->spi.miso_gpio,
-                    .mosi_io_num = rc522->config->spi.mosi_gpio,
-                    .sclk_io_num = rc522->config->spi.sck_gpio,
-                    .quadwp_io_num = -1,
-                    .quadhd_io_num = -1,
-                };
-
-                ESP_ERR_RET_GUARD(spi_bus_initialize(rc522->config->spi.host, &buscfg, 0));
-            }
-
-            ESP_ERR_RET_GUARD(spi_bus_add_device(rc522->config->spi.host, &devcfg, &rc522->spi_handle));
-        } break;
-        case RC522_TRANSPORT_I2C: {
-            i2c_config_t conf = {
-                .mode = I2C_MODE_MASTER,
-                .sda_io_num = rc522->config->i2c.sda_gpio,
-                .scl_io_num = rc522->config->i2c.scl_gpio,
-                .sda_pullup_en = GPIO_PULLUP_ENABLE,
-                .scl_pullup_en = GPIO_PULLUP_ENABLE,
-                .master.clk_speed = rc522->config->i2c.clock_speed_hz,
-            };
-
-            ESP_ERR_RET_GUARD(i2c_param_config(rc522->config->i2c.port, &conf));
-            ESP_ERR_RET_GUARD(i2c_driver_install(rc522->config->i2c.port, conf.mode, false, false, 0x00));
-        } break;
-        default:
-            ESP_LOGE(TAG, "create_transport: Unknown transport");
-            err = ESP_ERR_INVALID_STATE; // unknown transport
-            break;
-    }
-
-    return err;
 }
 
 esp_err_t rc522_create(rc522_config_t *config, rc522_handle_t *out_rc522)
@@ -238,8 +139,6 @@ esp_err_t rc522_create(rc522_config_t *config, rc522_handle_t *out_rc522)
     ALLOC_RET_GUARD(rc522 = calloc(1, sizeof(struct rc522)));
 
     ESP_ERR_LOG_AND_JMP_GUARD(rc522_clone_config(config, &(rc522->config)), "Fail to clone config");
-
-    ESP_ERR_LOG_AND_JMP_GUARD(rc522_create_transport(rc522), "Fail to create transport");
 
     esp_event_loop_args_t event_args = {
         .queue_size = 1,
@@ -586,28 +485,6 @@ esp_err_t rc522_pause(rc522_handle_t rc522)
     return ESP_OK;
 }
 
-static esp_err_t rc522_destroy_transport(rc522_handle_t rc522)
-{
-    esp_err_t err;
-
-    switch (rc522->config->transport) {
-        case RC522_TRANSPORT_SPI:
-            err = spi_bus_remove_device(rc522->spi_handle);
-            if (rc522->bus_initialized_by_user) {
-                err = spi_bus_free(rc522->config->spi.host);
-            }
-            break;
-        case RC522_TRANSPORT_I2C:
-            err = i2c_driver_delete(rc522->config->i2c.port);
-            break;
-        default:
-            ESP_LOGW(TAG, "destroy_transport: Unknown transport");
-            err = ESP_ERR_INVALID_STATE;
-    }
-
-    return err;
-}
-
 esp_err_t rc522_destroy(rc522_handle_t rc522)
 {
     esp_err_t err = ESP_OK;
@@ -626,8 +503,6 @@ esp_err_t rc522_destroy(rc522_handle_t rc522)
     rc522->running = false;   // stop rc522 -> task will delete itself
 
     // TODO: Wait here for task to exit
-
-    err = rc522_destroy_transport(rc522);
 
     if (rc522->event_handle) {
         err = esp_event_loop_delete(rc522->event_handle);
@@ -661,73 +536,6 @@ static esp_err_t rc522_dispatch_event(rc522_handle_t rc522, rc522_event_t event,
         portMAX_DELAY));
 
     return esp_event_loop_run(rc522->event_handle, 0);
-}
-
-static esp_err_t rc522_spi_send(rc522_handle_t rc522, uint8_t *buffer, uint8_t length)
-{
-    buffer[0] = (buffer[0] << 1) & 0x7E;
-
-    return spi_device_transmit(rc522->spi_handle,
-        &(spi_transaction_t) {
-            .length = 8 * length,
-            .tx_buffer = buffer,
-        });
-}
-
-static esp_err_t rc522_spi_receive(rc522_handle_t rc522, uint8_t *buffer, uint8_t length, uint8_t addr)
-{
-    esp_err_t err = ESP_OK;
-
-    addr = ((addr << 1) & 0x7E) | 0x80;
-
-    if (SPI_DEVICE_HALFDUPLEX & rc522->config->spi.device_flags) {
-        ESP_ERR_RET_GUARD(spi_device_transmit(rc522->spi_handle,
-            &(spi_transaction_t) {
-                .flags = SPI_TRANS_USE_TXDATA,
-                .length = 8,
-                .tx_data[0] = addr,
-                .rxlength = 8 * length,
-                .rx_buffer = buffer,
-            }));
-    }
-    else { // Fullduplex
-        ESP_ERR_RET_GUARD(spi_device_transmit(rc522->spi_handle,
-            &(spi_transaction_t) {
-                .flags = SPI_TRANS_USE_TXDATA,
-                .length = 8,
-                .tx_data[0] = addr,
-            }));
-
-        ESP_ERR_RET_GUARD(spi_device_transmit(rc522->spi_handle,
-            &(spi_transaction_t) {
-                .flags = 0x00,
-                .length = 8,
-                .rxlength = 8 * length,
-                .rx_buffer = buffer,
-            }));
-    }
-
-    return err;
-}
-
-static inline esp_err_t rc522_i2c_send(rc522_handle_t rc522, uint8_t *buffer, uint8_t length)
-{
-    return i2c_master_write_to_device(rc522->config->i2c.port,
-        RC522_I2C_ADDRESS,
-        buffer,
-        length,
-        rc522->config->i2c.rw_timeout_ms / portTICK_PERIOD_MS);
-}
-
-static inline esp_err_t rc522_i2c_receive(rc522_handle_t rc522, uint8_t *buffer, uint8_t length, uint8_t addr)
-{
-    return i2c_master_write_read_device(rc522->config->i2c.port,
-        RC522_I2C_ADDRESS,
-        &addr,
-        1,
-        buffer,
-        length,
-        rc522->config->i2c.rw_timeout_ms / portTICK_PERIOD_MS);
 }
 
 static void rc522_task(void *arg)

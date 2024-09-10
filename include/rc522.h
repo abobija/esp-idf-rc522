@@ -1,66 +1,29 @@
 #pragma once
 
 #include <esp_event.h>
-#include <driver/spi_master.h>
-#include <driver/i2c.h> // TODO: Log warning: This driver is an old driver, please migrate your application code to adapt `driver/i2c_master.h`
 
 #ifdef __cplusplus
 extern "C" {
 #endif
 
-#define RC522_I2C_ADDRESS (0x28)
-
 #define RC522_DEFAULT_SCAN_INTERVAL_MS    (125)
 #define RC522_DEFAULT_TASK_STACK_SIZE     (4 * 1024)
 #define RC522_DEFAULT_TASK_STACK_PRIORITY (4)
-#define RC522_DEFAULT_SPI_CLOCK_SPEED_HZ  (5000000)
-#define RC522_DEFAULT_I2C_RW_TIMEOUT_MS   (1000)
-#define RC522_DEFAULT_I2C_CLOCK_SPEED_HZ  (100000)
 
 ESP_EVENT_DECLARE_BASE(RC522_EVENTS);
 
 typedef struct rc522 *rc522_handle_t;
 
-typedef enum
-{
-    RC522_TRANSPORT_SPI,
-    RC522_TRANSPORT_I2C,
-} rc522_transport_t;
+typedef esp_err_t (*rc522_send_handler_t)(uint8_t *buffer, uint8_t length);
+typedef esp_err_t (*rc522_receive_handler_t)(uint8_t *buffer, uint8_t length, uint8_t address);
 
 typedef struct
 {
-    uint16_t scan_interval_ms;   /*<! How fast will ESP32 scan for nearby tags, in miliseconds */
-    size_t task_stack_size;      /*<! Stack size of rc522 task */
-    uint8_t task_priority;       /*<! Priority of rc522 task */
-    rc522_transport_t transport; /*<! Transport that will be used. Defaults to SPI */
-    union
-    {
-        struct
-        {
-            spi_host_device_t host;
-            int miso_gpio;
-            int mosi_gpio;
-            int sck_gpio;
-            int sda_gpio;
-            int clock_speed_hz;
-            uint32_t device_flags; /*<! Bitwise OR of SPI_DEVICE_* flags */
-            /**
-             * @brief Set to true if the bus is already initialized.
-             *        NOTE: This property will be removed in future,
-             *        once when https://github.com/espressif/esp-idf/issues/8745 is resolved
-             *
-             */
-            bool bus_is_initialized;
-        } spi;
-        struct
-        {
-            i2c_port_t port;
-            int sda_gpio;
-            int scl_gpio;
-            int rw_timeout_ms;
-            uint32_t clock_speed_hz;
-        } i2c;
-    };
+    rc522_send_handler_t send_handler;
+    rc522_receive_handler_t receive_handler;
+    uint16_t scan_interval_ms; /*<! How fast will ESP32 scan for nearby tags, in miliseconds */
+    size_t task_stack_size;    /*<! Stack size of rc522 task */
+    uint8_t task_priority;     /*<! Priority of rc522 task */
 } rc522_config_t;
 
 typedef enum

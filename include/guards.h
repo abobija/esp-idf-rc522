@@ -111,3 +111,16 @@
     if ((err = (EXP)) != ESP_OK) { \
         return err;                \
     }
+
+/**
+ * @brief Macro for safely freeing memory.
+ *        This macro checks if the pointer is not NULL before calling the free function.
+ *        After freeing the memory, it sets the pointer to NULL to prevent dangling pointer issues.
+ *        This helps in avoiding double free errors and improves the safety of memory management.
+ * @param ptr Pointer to the memory to be freed.
+ */
+#define FREE(ptr)   \
+    if (ptr) {      \
+        free(ptr);  \
+        ptr = NULL; \
+    }
