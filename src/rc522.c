@@ -211,7 +211,7 @@ static esp_err_t rc522_calculate_crc(rc522_handle_t rc522, uint8_t *data, uint8_
     ESP_RETURN_ON_ERROR(rc522_clear_bitmask(rc522, RC522_DIV_INT_REQ_REG, 0x04), TAG, "");
     ESP_RETURN_ON_ERROR(rc522_set_bitmask(rc522, RC522_FIFO_LEVEL_REG, 0x80), TAG, "");
     ESP_RETURN_ON_ERROR(rc522_write_n(rc522, RC522_FIFO_DATA_REG, n, data), TAG, "");
-    ESP_RETURN_ON_ERROR(rc522_write(rc522, RC522_COMMAND_REG, 0x03), TAG, "");
+    ESP_RETURN_ON_ERROR(rc522_write(rc522, RC522_COMMAND_REG, RC522_CMD_CALC_CRC), TAG, "");
 
     uint8_t i = 255;
 
@@ -247,11 +247,11 @@ static esp_err_t rc522_card_write(
     uint8_t irq_wait = 0x00;
     uint8_t nn = 0;
 
-    if (cmd == 0x0E) {
+    if (cmd == RC522_CMD_MF_AUTH) {
         irq = 0x12;
         irq_wait = 0x10;
     }
-    else if (cmd == 0x0C) {
+    else if (cmd == RC522_CMD_TRANSCEIVE) {
         irq = 0x77;
         irq_wait = 0x30;
     }
@@ -259,11 +259,11 @@ static esp_err_t rc522_card_write(
     ESP_RETURN_ON_ERROR(rc522_write(rc522, RC522_COMM_INT_EN_REG, irq | 0x80), TAG, "");
     ESP_RETURN_ON_ERROR(rc522_clear_bitmask(rc522, RC522_COMM_INT_REQ_REG, 0x80), TAG, "");
     ESP_RETURN_ON_ERROR(rc522_set_bitmask(rc522, RC522_FIFO_LEVEL_REG, 0x80), TAG, "");
-    ESP_RETURN_ON_ERROR(rc522_write(rc522, RC522_COMMAND_REG, 0x00), TAG, "");
+    ESP_RETURN_ON_ERROR(rc522_write(rc522, RC522_COMMAND_REG, RC522_CMD_IDLE), TAG, "");
     ESP_RETURN_ON_ERROR(rc522_write_n(rc522, RC522_FIFO_DATA_REG, n, data), TAG, "");
     ESP_RETURN_ON_ERROR(rc522_write(rc522, RC522_COMMAND_REG, cmd), TAG, "");
 
-    if (cmd == 0x0C) {
+    if (cmd == RC522_CMD_TRANSCEIVE) {
         ESP_RETURN_ON_ERROR(rc522_set_bitmask(rc522, RC522_BIT_FRAMING_REG, 0x80), TAG, "");
     }
 
@@ -286,7 +286,7 @@ static esp_err_t rc522_card_write(
         ESP_RETURN_ON_ERROR(rc522_read(rc522, RC522_ERROR_REG, &tmp), TAG, "");
 
         if ((tmp & 0x1B) == 0x00) {
-            if (cmd == 0x0C) {
+            if (cmd == RC522_CMD_TRANSCEIVE) {
                 ESP_RETURN_ON_ERROR(rc522_read(rc522, RC522_FIFO_LEVEL_REG, &nn), TAG, "");
                 ESP_RETURN_ON_ERROR(rc522_read(rc522, RC522_CONTROL_REG, &tmp), TAG, "");
 
@@ -467,7 +467,7 @@ esp_err_t rc522_start(rc522_handle_t rc522)
     ESP_RETURN_ON_ERROR(rc522_rw_test(rc522, RC522_MOD_WIDTH_REG, 5), TAG, "RW test failed");
 
     const uint8_t map[][2] = {
-        { RC522_COMMAND_REG, 0x0F },
+        { RC522_COMMAND_REG, RC522_CMD_SOFT_RESET },
         { RC522_TIMER_MODE_REG, 0x8D },
         { RC522_TIMER_PRESCALER_REG, 0x3E },
         { RC522_TIMER_RELOAD_LSB_REG, 0x1E },
