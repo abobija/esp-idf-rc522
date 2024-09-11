@@ -116,17 +116,11 @@ static inline esp_err_t rc522_firmware(rc522_handle_t rc522, uint8_t *result)
     return ESP_OK;
 }
 
-static esp_err_t rc522_antenna_on(rc522_handle_t rc522)
+static esp_err_t rc522_antenna_on(rc522_handle_t rc522, rc522_rx_gain_t gain)
 {
-    uint8_t value;
+    ESP_RETURN_ON_ERROR(rc522_set_bitmask(rc522, RC522_TX_CONTROL_REG, RC522_TX1_RF_EN | RC522_TX2_RF_EN), TAG, "");
 
-    ESP_RETURN_ON_ERROR(rc522_read(rc522, RC522_TX_CONTROL_REG, &value), TAG, "");
-
-    if (~(value & 0x03)) {
-        ESP_RETURN_ON_ERROR(rc522_set_bitmask(rc522, RC522_TX_CONTROL_REG, 0x03), TAG, "");
-    }
-
-    return rc522_write(rc522, RC522_RF_CFG_REG, 0x60); // 43dB gain
+    return rc522_write(rc522, RC522_RF_CFG_REG, gain);
 }
 
 static esp_err_t rc522_clone_config(rc522_config_t *config, rc522_config_t **result)
@@ -486,7 +480,7 @@ esp_err_t rc522_start(rc522_handle_t rc522)
         TAG,
         "Failed to write initialization map");
 
-    ESP_RETURN_ON_ERROR(rc522_antenna_on(rc522), TAG, "Unable to turn on antenna");
+    ESP_RETURN_ON_ERROR(rc522_antenna_on(rc522, RC522_RX_GAIN_43_DB), TAG, "Unable to turn on antenna");
 
     uint8_t fw_ver;
     ESP_RETURN_ON_ERROR(rc522_firmware(rc522, &fw_ver), TAG, "Failed to get firmware version");
