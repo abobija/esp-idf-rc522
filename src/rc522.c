@@ -6,7 +6,6 @@
 #include <esp_check.h>
 
 #include "rc522.h"
-#include "rc522/guards.h"
 #include "rc522/registers.h"
 
 static const char *TAG = "RC522";
@@ -30,6 +29,12 @@ struct rc522
     rc522_state_t state;                  /*<! Current state */
     bool tag_was_present_last_time;
 };
+
+#define FREE(ptr)        \
+    if ((ptr) != NULL) { \
+        free(ptr);       \
+        (ptr) = NULL;    \
+    }
 
 static void rc522_task(void *arg);
 
