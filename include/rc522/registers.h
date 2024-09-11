@@ -93,9 +93,9 @@ typedef enum
  */
 typedef enum
 {
-    RX_GAIN_2 = BIT6,
-    RX_GAIN_1 = BIT5,
-    RX_GAIN_0 = BIT4,
+    RC522_RX_GAIN_2 = BIT6,
+    RC522_RX_GAIN_1 = BIT5,
+    RC522_RX_GAIN_0 = BIT4,
 } rc522_rf_cfg_reg_bit_t;
 
 /**
@@ -103,12 +103,12 @@ typedef enum
  */
 typedef enum
 {
-    RC522_RX_GAIN_18_DB = (RX_GAIN_1),                         /* 18 dB */
-    RC522_RX_GAIN_23_DB = (RX_GAIN_1 | RX_GAIN_0),             /* 23 dB */
-    RC522_RX_GAIN_33_DB = (RX_GAIN_2),                         /* 33 dB */
-    RC522_RX_GAIN_38_DB = (RX_GAIN_2 | RX_GAIN_0),             /* 38 dB */
-    RC522_RX_GAIN_43_DB = (RX_GAIN_2 | RX_GAIN_1),             /* 43 dB */
-    RC522_RX_GAIN_48_DB = (RX_GAIN_2 | RX_GAIN_1 | RX_GAIN_0), /* 48 dB */
+    RC522_RX_GAIN_18_DB = (RC522_RX_GAIN_1),                                     /* 18 dB */
+    RC522_RX_GAIN_23_DB = (RC522_RX_GAIN_1 | RC522_RX_GAIN_0),                   /* 23 dB */
+    RC522_RX_GAIN_33_DB = (RC522_RX_GAIN_2),                                     /* 33 dB */
+    RC522_RX_GAIN_38_DB = (RC522_RX_GAIN_2 | RC522_RX_GAIN_0),                   /* 38 dB */
+    RC522_RX_GAIN_43_DB = (RC522_RX_GAIN_2 | RC522_RX_GAIN_1),                   /* 43 dB */
+    RC522_RX_GAIN_48_DB = (RC522_RX_GAIN_2 | RC522_RX_GAIN_1 | RC522_RX_GAIN_0), /* 48 dB */
 } rc522_rx_gain_t;
 
 typedef enum
@@ -180,3 +180,36 @@ typedef enum
      */
     RC522_T_AUTO = BIT7,
 } rc522_timer_mode_reg_bit_t;
+
+typedef enum
+{
+    /**
+     * Forces a 100 % ASK modulation independent of the ModGsPReg register setting
+     */
+    RC522_FORCE_100_ASK = BIT6,
+} rc522_tx_ask_reg_bit_t;
+
+typedef enum
+{
+    // Transmitter can only be started if an RF field is generated
+    RC522_TX_WAIT_RF = BIT5,
+
+    /**
+     * Defines the polarity of pin MFIN
+     *
+     * 1 - Polarity of pin MFIN is active HIGH
+     * 0 - Polarity of pin MFIN is active LOW
+     */
+    RC522_POL_MFIN = BIT3,
+
+    RC522_CRC_PRESET_1 = BIT1,
+    RC522_CRC_PRESET_0 = BIT0,
+} rc522_mode_reg_bit_t;
+
+typedef enum
+{
+    RC522_CRC_PRESET_0000H = (0x00),                                    /* 0000h */
+    RC522_CRC_PRESET_6363H = (RC522_CRC_PRESET_0),                      /* 6363h */
+    RC522_CRC_PRESET_A671H = (RC522_CRC_PRESET_1),                      /* A671h */
+    RC522_CRC_PRESET_FFFFH = (RC522_CRC_PRESET_1 | RC522_CRC_PRESET_0), /* FFFFh */
+} rc522_crc_preset_value_t;

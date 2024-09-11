@@ -494,23 +494,19 @@ esp_err_t rc522_start(rc522_handle_t rc522)
     ESP_RETURN_ON_ERROR(rc522_soft_reset(rc522), TAG, ""); // TODO: Short delay to wait for reset?
     ESP_RETURN_ON_ERROR(rc522_configure_timer(rc522, RC522_T_AUTO, 3390), TAG, "");
     ESP_RETURN_ON_ERROR(rc522_set_timer_reload_value(rc522, 30), TAG, "");
-
-    const uint8_t map[][2] = {
-        { RC522_TX_ASK_REG, 0x40 },
-        { RC522_MODE_REG, 0x3D },
-    };
-
-    ESP_RETURN_ON_ERROR(rc522_write_map(rc522, map, sizeof(map) / sizeof(uint8_t) / 2),
+    ESP_RETURN_ON_ERROR(rc522_write(rc522, RC522_TX_ASK_REG, RC522_FORCE_100_ASK), TAG, "");
+    ESP_RETURN_ON_ERROR(
+        rc522_write(rc522, RC522_MODE_REG, (RC522_TX_WAIT_RF | RC522_POL_MFIN | RC522_CRC_PRESET_6363H)),
         TAG,
-        "Failed to write initialization map");
-
+        "");
     ESP_RETURN_ON_ERROR(rc522_antenna_on(rc522, RC522_RX_GAIN_43_DB), TAG, "Unable to turn on antenna");
 
     uint8_t fw_ver;
     ESP_RETURN_ON_ERROR(rc522_firmware(rc522, &fw_ver), TAG, "Failed to get firmware version");
-    ESP_LOGI(TAG, "Scanning started (firmware=%d.0)", fw_ver);
 
     rc522->state = RC522_STATE_SCANNING;
+
+    ESP_LOGI(TAG, "Scanning started (firmware=%d.0)", fw_ver);
 
     return ESP_OK;
 }
