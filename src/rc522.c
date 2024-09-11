@@ -15,8 +15,6 @@ static const char *TAG = "RC522";
 
 ESP_EVENT_DEFINE_BASE(RC522_EVENTS);
 
-static void rc522_task(void *arg);
-
 static esp_err_t rc522_clone_config(rc522_config_t *config, rc522_config_t **result)
 {
     rc522_config_t *_clone_config = calloc(1, sizeof(rc522_config_t));
@@ -437,7 +435,7 @@ static esp_err_t rc522_dispatch_event(rc522_handle_t rc522, rc522_event_t event,
     return esp_event_loop_run(rc522->event_handle, 0);
 }
 
-static void rc522_task(void *arg)
+void rc522_task(void *arg)
 {
     rc522_handle_t rc522 = (rc522_handle_t)arg;
 

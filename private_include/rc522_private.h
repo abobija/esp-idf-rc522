@@ -32,6 +32,8 @@ struct rc522
 
 uint32_t rc522_millis();
 
+void rc522_task(void *arg);
+
 #ifdef __cplusplus
 }
 #endif
