@@ -13,14 +13,21 @@ static const char *TAG = "RC522";
 
 ESP_EVENT_DEFINE_BASE(RC522_EVENTS);
 
+typedef enum
+{
+    RC522_STATE_UNDEFINED = 0,
+    RC522_STATE_CREATED,
+    RC522_STATE_SCANNING,
+    RC522_STATE_PAUSED,
+} rc522_state_t;
+
 struct rc522
 {
-    bool running;                         /*<! Indicates whether rc522 task is running or not */
     rc522_config_t *config;               /*<! Configuration */
+    bool task_running;                    /*<! Indicates whether rc522 task is running or not */
     TaskHandle_t task_handle;             /*<! Handle of task */
     esp_event_loop_handle_t event_handle; /*<! Handle of event loop */
-    // TODO: Use new 'status' field, instead of initialized, scanning, etc...
-    bool scanning; /*<! Whether the rc522 is in scanning or idle mode */
+    rc522_state_t state;                  /*<! Current state */
     bool tag_was_present_last_time;
 };
 
@@ -167,7 +174,7 @@ esp_err_t rc522_create(rc522_config_t *config, rc522_handle_t *out_rc522)
 
     ESP_ERR_LOG_AND_JMP_GUARD(esp_event_loop_create(&event_args, &rc522->event_handle), "Fail to create event loop");
 
-    rc522->running = true;
+    rc522->task_running = true;
 
     CONDITION_LOG_AND_JMP_GUARD(pdTRUE != xTaskCreate(rc522_task,
                                               "rc522_task",
@@ -182,7 +189,10 @@ esp_err_t rc522_create(rc522_config_t *config, rc522_handle_t *out_rc522)
             rc522_destroy(rc522);
             rc522 = NULL;
         },
-        { *out_rc522 = rc522; });
+        {
+            rc522->state = RC522_STATE_CREATED;
+            *out_rc522 = rc522;
+        });
 
     return err;
 }
@@ -465,10 +475,25 @@ static esp_err_t rc522_rw_test(rc522_handle_t rc522, uint8_t test_register, uint
     return ESP_OK;
 }
 
+static inline bool rc522_is_able_to_start(rc522_handle_t rc522)
+{
+    return rc522->state >= RC522_STATE_CREATED && rc522->state != RC522_STATE_SCANNING;
+}
+
 esp_err_t rc522_start(rc522_handle_t rc522)
 {
-    ESP_RETURN_ON_FALSE(rc522 != NULL, ESP_ERR_INVALID_ARG, TAG, "Handle cannot be null");
-    ESP_RETURN_ON_FALSE(!rc522->scanning, ESP_ERR_INVALID_STATE, TAG, "Already in scan mode");
+    ESP_RETURN_ON_FALSE(rc522 != NULL, ESP_ERR_INVALID_ARG, TAG, "Handle is NULL");
+    ESP_RETURN_ON_FALSE(rc522_is_able_to_start(rc522),
+        ESP_ERR_INVALID_STATE,
+        TAG,
+        "Unable to start (state=%d)",
+        rc522->state);
+
+    if (rc522->state == RC522_STATE_PAUSED) {
+        // Scanning has been paused. No need for reinitialization. Just resume
+        rc522->state = RC522_STATE_SCANNING;
+        return ESP_OK;
+    }
 
     ESP_RETURN_ON_ERROR(rc522_rw_test(rc522, RC522_MOD_WIDTH_REG, 5), TAG, "RW test failed");
 
@@ -490,49 +515,47 @@ esp_err_t rc522_start(rc522_handle_t rc522)
 
     uint8_t fw_ver;
     ESP_RETURN_ON_ERROR(rc522_firmware(rc522, &fw_ver), TAG, "Failed to get firmware version");
-    ESP_LOGI(TAG, "Started (firmware=%d.0)", fw_ver);
+    ESP_LOGI(TAG, "Scanning started (firmware=%d.0)", fw_ver);
 
-    rc522->scanning = true;
+    rc522->state = RC522_STATE_SCANNING;
 
     return ESP_OK;
 }
 
 esp_err_t rc522_pause(rc522_handle_t rc522)
 {
-    if (!rc522) {
-        return ESP_ERR_INVALID_ARG;
-    }
+    ESP_RETURN_ON_FALSE(rc522 != NULL, ESP_ERR_INVALID_ARG, TAG, "Handle is NULL");
 
-    if (!rc522->scanning) {
-        return ESP_OK;
-    }
+    ESP_RETURN_ON_FALSE(rc522->state == RC522_STATE_SCANNING,
+        ESP_ERR_INVALID_STATE,
+        TAG,
+        "Invalid state (state=%d)",
+        rc522->state);
 
-    rc522->scanning = false;
+    rc522->state = RC522_STATE_PAUSED;
 
     return ESP_OK;
 }
 
 esp_err_t rc522_destroy(rc522_handle_t rc522)
 {
+    ESP_RETURN_ON_FALSE(rc522 != NULL, ESP_ERR_INVALID_ARG, TAG, "Handle is NULL");
+    ESP_RETURN_ON_FALSE(xTaskGetCurrentTaskHandle() != rc522->task_handle,
+        ESP_ERR_INVALID_STATE,
+        TAG,
+        "Cannot destroy from event handler");
+
+    rc522->task_running = false; //  task will delete itself
+
+    // TODO: Wait for task to exit
+
     esp_err_t err = ESP_OK;
 
-    if (!rc522) {
-        return ESP_ERR_INVALID_ARG;
-    }
-
-    if (xTaskGetCurrentTaskHandle() == rc522->task_handle) {
-        ESP_LOGE(TAG, "Cannot destroy rc522 from event handler");
-
-        return ESP_ERR_INVALID_STATE;
-    }
-
-    err = rc522_pause(rc522); // stop task
-    rc522->running = false;   // stop rc522 -> task will delete itself
-
-    // TODO: Wait here for task to exit
-
     if (rc522->event_handle) {
-        err = esp_event_loop_delete(rc522->event_handle);
+        if (esp_event_loop_delete(rc522->event_handle) != ESP_OK) {
+            ESP_LOGW(TAG, "Failed to delete event loop");
+        }
+
         rc522->event_handle = NULL;
     }
 
@@ -569,8 +592,8 @@ static void rc522_task(void *arg)
 {
     rc522_handle_t rc522 = (rc522_handle_t)arg;
 
-    while (rc522->running) {
-        if (!rc522->scanning) {
+    while (rc522->task_running) {
+        if (rc522->state != RC522_STATE_SCANNING) {
             // Idling...
             vTaskDelay(100 / portTICK_PERIOD_MS);
             continue;
