@@ -35,22 +35,22 @@ static void rc522_task(void *arg);
 
 static esp_err_t rc522_write_n(rc522_handle_t rc522, uint8_t addr, uint8_t n, uint8_t *data)
 {
-    esp_err_t err = ESP_OK;
     uint8_t *buffer = NULL;
 
     // TODO: Find a way to send address + data without memory allocation
-    ALLOC_JMP_GUARD(buffer = (uint8_t *)malloc(n + 1));
+    buffer = (uint8_t *)malloc(n + 1);
+    ESP_RETURN_ON_FALSE(buffer != NULL, ESP_ERR_NO_MEM, TAG, "No memory");
 
     buffer[0] = addr;
     memcpy(buffer + 1, data, n);
 
-    ESP_ERR_JMP_GUARD(rc522->config->send_handler(buffer, n + 1));
+    esp_err_t ret = ESP_OK;
+    ESP_GOTO_ON_ERROR(rc522->config->send_handler(buffer, n + 1), _exit, TAG, "Failed to write");
 
-    JMP_GUARD_GATES({ ESP_LOGE(TAG, "Failed to write data (err: %s)", esp_err_to_name(err)); }, {});
-
+_exit:
     FREE(buffer);
 
-    return err;
+    return ret;
 }
 
 static inline esp_err_t rc522_write(rc522_handle_t rc522, uint8_t addr, uint8_t val)
@@ -76,13 +76,9 @@ static esp_err_t rc522_write_map(rc522_handle_t rc522, const uint8_t map[][2], u
 
 static esp_err_t rc522_read_n(rc522_handle_t rc522, uint8_t addr, uint8_t n, uint8_t *buffer)
 {
-    esp_err_t err;
+    ESP_RETURN_ON_ERROR(rc522->config->receive_handler(buffer, n, addr), TAG, "Failed to read");
 
-    ESP_ERR_JMP_GUARD(rc522->config->receive_handler(buffer, n, addr));
-
-    JMP_GUARD_GATES({ ESP_LOGE(TAG, "Failed to read data (err: %s)", esp_err_to_name(err)); }, {});
-
-    return err;
+    return ESP_OK;
 }
 
 static inline esp_err_t rc522_read(rc522_handle_t rc522, uint8_t addr, uint8_t *value_ref)
