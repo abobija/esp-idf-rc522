@@ -2,6 +2,10 @@
 
 #include "rc522.h"
 
+#ifdef __cplusplus
+extern "C" {
+#endif
+
 typedef enum
 {
     RC522_STATE_UNDEFINED = 0,
@@ -27,3 +31,7 @@ struct rc522
     }
 
 uint32_t rc522_millis();
+
+#ifdef __cplusplus
+}
+#endif
