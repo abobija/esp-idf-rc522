@@ -9,7 +9,7 @@
 #include "rc522_private.h"
 #include "rc522_io.h"
 #include "rc522_aliases.h"
-#include "rc522/registers.h"
+#include "rc522_registers.h"
 
 static const char *TAG = "rc522";
 
