@@ -1,5 +1,4 @@
 #include <esp_log.h>
-#include <inttypes.h>
 #include <driver/spi_master.h>
 #include "rc522.h"
 
@@ -67,8 +66,10 @@ static void rc522_event_handler(void *arg, esp_event_base_t base, int32_t event_
 
     switch (event_id) {
         case RC522_EVENT_TAG_SCANNED: {
+            ESP_LOGI(TAG, "Tag scanned!");
+
             rc522_tag_t *tag = (rc522_tag_t *)data->ptr;
-            ESP_LOGI(TAG, "Tag scanned (UID: 0x%" PRIX64 ")", tag->uid);
+            ESP_LOG_BUFFER_HEX(TAG, tag->uid.bytes, tag->uid.length);
         } break;
     }
 }

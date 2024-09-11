@@ -209,21 +209,6 @@ esp_err_t rc522_unregister_events(rc522_handle_t rc522, rc522_event_t event, esp
     return esp_event_handler_unregister_with(rc522->event_handle, RC522_EVENTS, event, event_handler);
 }
 
-static uint64_t rc522_uid_to_u64(uint8_t *sn)
-{
-    uint64_t result = 0;
-
-    if (!sn) {
-        return 0;
-    }
-
-    for (int i = 4; i >= 0; i--) {
-        result |= ((uint64_t)sn[i] << (i * 8));
-    }
-
-    return result;
-}
-
 // Buffer should be length of 2, or more
 // Only first 2 elements will be used where the result will be stored
 // TODO: Use 2+ bytes data type instead of buffer array
@@ -594,11 +579,13 @@ static void rc522_task(void *arg)
             rc522->tag_was_present_last_time = false;
         }
         else if (!rc522->tag_was_present_last_time) {
-            rc522_tag_t tag = {
-                .uid = rc522_uid_to_u64(uid_bytes),
+            rc522_tag_uid_t uid = {
+                .bytes = uid_bytes,
+                .length = 5, // TODO: Change once when we dynamicaly find the length of UID
             };
-            FREE(uid_bytes);
+            rc522_tag_t tag = { .uid = uid };
             rc522_dispatch_event(rc522, RC522_EVENT_TAG_SCANNED, &tag);
+            FREE(uid_bytes);
             rc522->tag_was_present_last_time = true;
         }
         else {

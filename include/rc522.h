@@ -41,7 +41,13 @@ typedef struct
 
 typedef struct
 {
-    uint64_t uid;
+    uint8_t *bytes;
+    uint8_t length;
+} rc522_tag_uid_t;
+
+typedef struct
+{
+    rc522_tag_uid_t uid;
 } rc522_tag_t;
 
 /**
