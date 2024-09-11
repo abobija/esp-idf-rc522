@@ -20,8 +20,7 @@ struct rc522
     TaskHandle_t task_handle;             /*<! Handle of task */
     esp_event_loop_handle_t event_handle; /*<! Handle of event loop */
     // TODO: Use new 'status' field, instead of initialized, scanning, etc...
-    bool initialized; /*<! Set on the first start() when configuration is sent to rc522 */
-    bool scanning;    /*<! Whether the rc522 is in scanning or idle mode */
+    bool scanning; /*<! Whether the rc522 is in scanning or idle mode */
     bool tag_was_present_last_time;
 };
 
@@ -50,6 +49,22 @@ static esp_err_t rc522_write_n(rc522_handle_t rc522, uint8_t addr, uint8_t n, ui
 static inline esp_err_t rc522_write(rc522_handle_t rc522, uint8_t addr, uint8_t val)
 {
     return rc522_write_n(rc522, addr, 1, &val);
+}
+
+static esp_err_t rc522_write_map(rc522_handle_t rc522, const uint8_t map[][2], uint8_t map_length)
+{
+    for (uint8_t i = 0; i < map_length; i++) {
+        const uint8_t address = map[i][0];
+        const uint8_t value = map[i][1];
+
+        ESP_RETURN_ON_ERROR(rc522_write(rc522, address, value),
+            TAG,
+            "Failed to write %d into 0x%20X register",
+            value,
+            address);
+    }
+
+    return ESP_OK;
 }
 
 static esp_err_t rc522_read_n(rc522_handle_t rc522, uint8_t addr, uint8_t n, uint8_t *buffer)
@@ -90,7 +105,11 @@ static esp_err_t rc522_clear_bitmask(rc522_handle_t rc522, uint8_t addr, uint8_t
 
 static inline esp_err_t rc522_firmware(rc522_handle_t rc522, uint8_t *result)
 {
-    return rc522_read(rc522, RC522_VERSION_REG, result);
+    uint8_t value;
+    ESP_RETURN_ON_ERROR(rc522_read(rc522, RC522_VERSION_REG, &value), TAG, "");
+
+    *result = value & 0x03;
+    return ESP_OK;
 }
 
 static esp_err_t rc522_antenna_on(rc522_handle_t rc522)
@@ -448,36 +467,30 @@ static esp_err_t rc522_rw_test(rc522_handle_t rc522, uint8_t test_register, uint
 
 esp_err_t rc522_start(rc522_handle_t rc522)
 {
-    esp_err_t err = ESP_OK;
+    ESP_RETURN_ON_FALSE(rc522 != NULL, ESP_ERR_INVALID_ARG, TAG, "Handle cannot be null");
+    ESP_RETURN_ON_FALSE(!rc522->scanning, ESP_ERR_INVALID_STATE, TAG, "Already in scan mode");
 
-    if (!rc522) {
-        return ESP_ERR_INVALID_ARG;
-    }
+    ESP_RETURN_ON_ERROR(rc522_rw_test(rc522, RC522_MOD_WIDTH_REG, 5), TAG, "RW test failed");
 
-    if (rc522->scanning) { // Already in scan mode
-        return ESP_OK;
-    }
+    const uint8_t map[][2] = {
+        { RC522_COMMAND_REG, 0x0F },
+        { RC522_TIMER_MODE_REG, 0x8D },
+        { RC522_TIMER_PRESCALER_REG, 0x3E },
+        { RC522_TIMER_RELOAD_LSB_REG, 0x1E },
+        { RC522_TIMER_RELOAD_MSB_REG, 0x00 },
+        { RC522_TX_ASK_REG, 0x40 },
+        { RC522_MODE_REG, 0x3D },
+    };
 
-    uint8_t tmp = 0;
+    ESP_RETURN_ON_ERROR(rc522_write_map(rc522, map, sizeof(map) / sizeof(uint8_t) / 2),
+        TAG,
+        "Failed to write initialization map");
 
-    if (!rc522->initialized) {
-        ESP_ERR_RET_GUARD(rc522_rw_test(rc522, RC522_MOD_WIDTH_REG, 5));
+    ESP_RETURN_ON_ERROR(rc522_antenna_on(rc522), TAG, "Unable to turn on antenna");
 
-        ESP_ERR_RET_GUARD(rc522_write(rc522, RC522_COMMAND_REG, 0x0F));
-        ESP_ERR_RET_GUARD(rc522_write(rc522, RC522_TIMER_MODE_REG, 0x8D));
-        ESP_ERR_RET_GUARD(rc522_write(rc522, RC522_TIMER_PRESCALER_REG, 0x3E));
-        ESP_ERR_RET_GUARD(rc522_write(rc522, RC522_TIMER_RELOAD_LSB_REG, 0x1E));
-        ESP_ERR_RET_GUARD(rc522_write(rc522, RC522_TIMER_RELOAD_MSB_REG, 0x00));
-        ESP_ERR_RET_GUARD(rc522_write(rc522, RC522_TX_ASK_REG, 0x40));
-        ESP_ERR_RET_GUARD(rc522_write(rc522, RC522_MODE_REG, 0x3D));
-
-        ESP_ERR_RET_GUARD(rc522_antenna_on(rc522));
-        ESP_ERR_RET_GUARD(rc522_firmware(rc522, &tmp));
-
-        rc522->initialized = true;
-
-        ESP_LOGI(TAG, "Initialized (firmware v%d.0)", (tmp & 0x03));
-    }
+    uint8_t fw_ver;
+    ESP_RETURN_ON_ERROR(rc522_firmware(rc522, &fw_ver), TAG, "Failed to get firmware version");
+    ESP_LOGI(TAG, "Started (firmware=%d.0)", fw_ver);
 
     rc522->scanning = true;
 
