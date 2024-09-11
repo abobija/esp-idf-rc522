@@ -6,44 +6,12 @@
 #include <freertos/FreeRTOS.h>
 #include <freertos/task.h>
 
-#include "rc522.h"
+#include "rc522_private.h"
 #include "rc522/registers.h"
 
 static const char *TAG = "RC522";
 
 ESP_EVENT_DEFINE_BASE(RC522_EVENTS);
-
-typedef enum
-{
-    RC522_STATE_UNDEFINED = 0,
-    RC522_STATE_CREATED,
-    RC522_STATE_SCANNING,
-    RC522_STATE_PAUSED,
-} rc522_state_t;
-
-struct rc522
-{
-    rc522_config_t *config;               /*<! Configuration */
-    bool task_running;                    /*<! Indicates whether rc522 task is running or not */
-    TaskHandle_t task_handle;             /*<! Handle of task */
-    esp_event_loop_handle_t event_handle; /*<! Handle of event loop */
-    rc522_state_t state;                  /*<! Current state */
-    bool tag_was_present_last_time;
-};
-
-#define FREE(ptr)        \
-    if ((ptr) != NULL) { \
-        free(ptr);       \
-        (ptr) = NULL;    \
-    }
-
-static uint32_t rc522_millis()
-{
-    struct timeval now;
-    gettimeofday(&now, NULL);
-
-    return (uint32_t)((now.tv_sec * 1000000 + now.tv_usec) / 1000);
-}
 
 static void rc522_task(void *arg);
 
@@ -639,4 +607,12 @@ static void rc522_task(void *arg)
     }
 
     vTaskDelete(NULL);
+}
+
+uint32_t rc522_millis()
+{
+    struct timeval now;
+    gettimeofday(&now, NULL);
+
+    return (uint32_t)((now.tv_sec * 1000000 + now.tv_usec) / 1000);
 }

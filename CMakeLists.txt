@@ -1,8 +1,11 @@
 idf_component_register(
     INCLUDE_DIRS
         include
+    PRIV_INCLUDE_DIRS
+        private_include
     SRCS
         src/rc522.c
+        src/rc522_io.c
     REQUIRES
         esp_event
 )
