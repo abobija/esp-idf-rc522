@@ -5,52 +5,34 @@
 
 static const char *TAG = "rc522-basic-example";
 
-#define RC522_SPI_HOST              (VSPI_HOST)
-#define RC522_SPI_BUS_GPIO_MISO     (25)
-#define RC522_SPI_BUS_GPIO_MOSI     (23)
-#define RC522_SPI_BUS_GPIO_SCLK     (19)
-#define RC522_SPI_DEVICE_SPEED_HZ   (5000000)
-#define RC522_SPI_DEVICE_MODE       (0)
-#define RC522_SPI_DEVICE_GPIO_SDA   (22)
-#define RC522_SPI_DEVICE_QUEUE_SIZE (7)
-#define RC522_SPI_DEVICE_FLAGS      (0x00)
+#define RC522_SPI_HOST (VSPI_HOST)
+
+static spi_bus_config_t spi_bus_config = {
+    .miso_io_num = 25,
+    .mosi_io_num = 23,
+    .sclk_io_num = 19,
+    .quadwp_io_num = -1,
+    .quadhd_io_num = -1,
+};
+
+static spi_device_interface_config_t spi_rc522_config = {
+    .clock_speed_hz = 5000000,
+    .mode = 0,
+    .spics_io_num = 22,
+    .queue_size = 7,
+    .flags = SPI_DEVICE_HALFDUPLEX,
+};
 
 static rc522_handle_t rc522_handle;
 static spi_device_handle_t rc522_spi_handle;
 
-static esp_err_t rc522_spi_init()
-{
-    spi_bus_config_t buscfg = {
-        .miso_io_num = RC522_SPI_BUS_GPIO_MISO,
-        .mosi_io_num = RC522_SPI_BUS_GPIO_MOSI,
-        .sclk_io_num = RC522_SPI_BUS_GPIO_SCLK,
-        .quadwp_io_num = -1,
-        .quadhd_io_num = -1,
-    };
-
-    return spi_bus_initialize(RC522_SPI_HOST, &buscfg, 0);
-}
-
-static esp_err_t rc522_spi_attach(spi_device_handle_t *spi_device_handle)
-{
-    spi_device_interface_config_t devcfg = {
-        .clock_speed_hz = RC522_SPI_DEVICE_SPEED_HZ,
-        .mode = RC522_SPI_DEVICE_MODE,
-        .spics_io_num = RC522_SPI_DEVICE_GPIO_SDA,
-        .queue_size = RC522_SPI_DEVICE_QUEUE_SIZE,
-        .flags = RC522_SPI_DEVICE_FLAGS,
-    };
-
-    return spi_bus_add_device(RC522_SPI_HOST, &devcfg, spi_device_handle);
-}
-
-static esp_err_t rc522_spi_send(spi_device_handle_t spi_device_handle, uint8_t *buffer, uint8_t length)
+static esp_err_t rc522_send(uint8_t *buffer, uint8_t length)
 {
     uint8_t first_byte_origin = buffer[0];
 
     buffer[0] = (buffer[0] << 1) & 0x7E;
 
-    esp_err_t ret = spi_device_transmit(spi_device_handle,
+    esp_err_t ret = spi_device_transmit(rc522_spi_handle,
         &(spi_transaction_t) {
             .length = 8 * length,
             .tx_buffer = buffer,
@@ -61,54 +43,18 @@ static esp_err_t rc522_spi_send(spi_device_handle_t spi_device_handle, uint8_t *
     return ret;
 }
 
-static esp_err_t rc522_spi_receive(
-    spi_device_handle_t spi_device_handle, uint8_t *buffer, uint8_t length, uint8_t address)
+static esp_err_t rc522_receive(uint8_t *buffer, uint8_t length, uint8_t address)
 {
     address = ((address << 1) & 0x7E) | 0x80;
 
-    // Halfduplex
-
-    if (SPI_DEVICE_HALFDUPLEX & RC522_SPI_DEVICE_FLAGS) {
-        return spi_device_transmit(spi_device_handle,
-            &(spi_transaction_t) {
-                .flags = SPI_TRANS_USE_TXDATA,
-                .length = 8,
-                .tx_data[0] = address,
-                .rxlength = 8 * length,
-                .rx_buffer = buffer,
-            });
-    }
-
-    // Fullduplex
-
-    esp_err_t ret = spi_device_transmit(spi_device_handle,
+    return spi_device_transmit(rc522_spi_handle,
         &(spi_transaction_t) {
             .flags = SPI_TRANS_USE_TXDATA,
             .length = 8,
             .tx_data[0] = address,
-        });
-
-    if (ret != ESP_OK) {
-        return ret;
-    }
-
-    return spi_device_transmit(spi_device_handle,
-        &(spi_transaction_t) {
-            .flags = 0x00,
-            .length = 8,
             .rxlength = 8 * length,
             .rx_buffer = buffer,
         });
-}
-
-static esp_err_t rc522_send(uint8_t *buffer, uint8_t length)
-{
-    return rc522_spi_send(rc522_spi_handle, buffer, length);
-}
-
-static esp_err_t rc522_receive(uint8_t *buffer, uint8_t length, uint8_t address)
-{
-    return rc522_spi_receive(rc522_spi_handle, buffer, length, address);
 }
 
 static void rc522_event_handler(void *arg, esp_event_base_t base, int32_t event_id, void *event_data)
@@ -125,8 +71,8 @@ static void rc522_event_handler(void *arg, esp_event_base_t base, int32_t event_
 
 void app_main()
 {
-    rc522_spi_init();
-    rc522_spi_attach(&rc522_spi_handle);
+    spi_bus_initialize(RC522_SPI_HOST, &spi_bus_config, 0);
+    spi_bus_add_device(RC522_SPI_HOST, &spi_rc522_config, &rc522_spi_handle);
 
     rc522_config_t config = {
         .send_handler = &rc522_send,
