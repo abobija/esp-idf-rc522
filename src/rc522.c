@@ -3,6 +3,7 @@
 #include <esp_system.h>
 #include <esp_log.h>
 #include <string.h>
+#include <esp_check.h>
 
 #include "rc522.h"
 #include "rc522/guards.h"
@@ -405,6 +406,46 @@ static esp_err_t rc522_get_tag(rc522_handle_t rc522, uint8_t **result)
     return err;
 }
 
+static esp_err_t rc522_rw_test(rc522_handle_t rc522, uint8_t test_register, uint8_t times)
+{
+    uint8_t origin_value;
+
+    ESP_RETURN_ON_ERROR(rc522_read(rc522, test_register, &origin_value),
+        TAG,
+        "Unable to read origin value of 0x%20X register",
+        test_register);
+
+    for (uint8_t val = 0; val < times; val++) {
+        ESP_RETURN_ON_ERROR(rc522_write(rc522, test_register, val),
+            TAG,
+            "Unable to write value %d into 0x%20X register",
+            val,
+            test_register);
+
+        uint8_t real_value;
+
+        ESP_RETURN_ON_ERROR(rc522_read(rc522, test_register, &real_value),
+            TAG,
+            "Unable to read value of 0x%20X register",
+            test_register);
+
+        ESP_RETURN_ON_FALSE(val == real_value,
+            ESP_FAIL,
+            TAG,
+            "Value %d of register 0x%20X does not match previously written value %d",
+            real_value,
+            test_register,
+            val);
+    }
+
+    ESP_RETURN_ON_ERROR(rc522_write(rc522, test_register, origin_value),
+        TAG,
+        "Unable to restore origin value of 0x%20X register",
+        test_register);
+
+    return ESP_OK;
+}
+
 esp_err_t rc522_start(rc522_handle_t rc522)
 {
     esp_err_t err = ESP_OK;
@@ -420,34 +461,7 @@ esp_err_t rc522_start(rc522_handle_t rc522)
     uint8_t tmp = 0;
 
     if (!rc522->initialized) {
-        // Initialization will be done only once, on the first call of start function
-
-        // TODO: Extract test in dedicated function
-        // ---------- RW test ------------
-        // TODO: Use less sensitive register for the test, or return the value
-        //       of this register to the previous state at the end of the test
-        const uint8_t test_addr = RC522_MOD_WIDTH_REG, test_val = 0x25;
-        uint8_t pass = 0;
-
-        for (uint8_t i = test_val; i < test_val + 2; i++) {
-            err = rc522_write(rc522, test_addr, i);
-
-            if (err == ESP_OK) {
-                err = rc522_read(rc522, test_addr, &tmp);
-
-                if (err == ESP_OK && tmp == i) {
-                    pass = 1;
-                }
-            }
-
-            if (pass != 1) {
-                ESP_LOGE(TAG, "Read/write test failed");
-                rc522_destroy(rc522);
-
-                return err;
-            }
-        }
-        // ------- End of RW test --------
+        ESP_ERR_RET_GUARD(rc522_rw_test(rc522, RC522_MOD_WIDTH_REG, 5));
 
         ESP_ERR_RET_GUARD(rc522_write(rc522, RC522_COMMAND_REG, 0x0F));
         ESP_ERR_RET_GUARD(rc522_write(rc522, RC522_TIMER_MODE_REG, 0x8D));
