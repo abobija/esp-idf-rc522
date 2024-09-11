@@ -11,7 +11,7 @@
 #include "rc522_aliases.h"
 #include "rc522/registers.h"
 
-static const char *TAG = "RC522";
+static const char *TAG = "rc522";
 
 ESP_EVENT_DEFINE_BASE(RC522_EVENTS);
 

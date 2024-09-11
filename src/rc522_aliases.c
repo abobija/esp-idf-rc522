@@ -5,7 +5,7 @@
 #include "rc522_aliases.h"
 #include "rc522_io.h"
 
-static const char *TAG = "RC522_ALIASES";
+static const char *TAG = "rc522_aliases";
 
 inline bool rc522_is_able_to_start(rc522_handle_t rc522)
 {

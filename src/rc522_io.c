@@ -4,7 +4,7 @@
 
 #include "rc522_io.h"
 
-static const char *TAG = "RC522_IO";
+static const char *TAG = "rc522_io";
 
 esp_err_t rc522_write_n(rc522_handle_t rc522, uint8_t addr, uint8_t n, uint8_t *data)
 {
