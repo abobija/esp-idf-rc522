@@ -449,6 +449,31 @@ static inline bool rc522_is_able_to_start(rc522_handle_t rc522)
     return rc522->state >= RC522_STATE_CREATED && rc522->state != RC522_STATE_SCANNING;
 }
 
+static inline esp_err_t rc522_soft_reset(rc522_handle_t rc522)
+{
+    return rc522_write(rc522, RC522_COMMAND_REG, RC522_CMD_SOFT_RESET);
+}
+
+static inline esp_err_t rc522_configure_timer(rc522_handle_t rc522, uint8_t mode, uint16_t prescaler_value)
+{
+    return rc522_write_map(rc522,
+        (uint8_t[][2]) {
+            { RC522_TIMER_MODE_REG, (uint8_t)((mode & 0xF0) | ((prescaler_value >> 8) & 0x0F)) },
+            { RC522_TIMER_PRESCALER_REG, (uint8_t)prescaler_value },
+        },
+        2);
+}
+
+static inline esp_err_t rc522_set_timer_reload_value(rc522_handle_t rc522, uint16_t value)
+{
+    return rc522_write_map(rc522,
+        (uint8_t[][2]) {
+            { RC522_TIMER_RELOAD_MSB_REG, (uint8_t)(value >> 8) },
+            { RC522_TIMER_RELOAD_LSB_REG, (uint8_t)value },
+        },
+        2);
+}
+
 esp_err_t rc522_start(rc522_handle_t rc522)
 {
     ESP_RETURN_ON_FALSE(rc522 != NULL, ESP_ERR_INVALID_ARG, TAG, "Handle is NULL");
@@ -466,12 +491,11 @@ esp_err_t rc522_start(rc522_handle_t rc522)
 
     ESP_RETURN_ON_ERROR(rc522_rw_test(rc522, RC522_MOD_WIDTH_REG, 5), TAG, "RW test failed");
 
+    ESP_RETURN_ON_ERROR(rc522_soft_reset(rc522), TAG, ""); // TODO: Short delay to wait for reset?
+    ESP_RETURN_ON_ERROR(rc522_configure_timer(rc522, RC522_T_AUTO, 3390), TAG, "");
+    ESP_RETURN_ON_ERROR(rc522_set_timer_reload_value(rc522, 30), TAG, "");
+
     const uint8_t map[][2] = {
-        { RC522_COMMAND_REG, RC522_CMD_SOFT_RESET },
-        { RC522_TIMER_MODE_REG, 0x8D },
-        { RC522_TIMER_PRESCALER_REG, 0x3E },
-        { RC522_TIMER_RELOAD_LSB_REG, 0x1E },
-        { RC522_TIMER_RELOAD_MSB_REG, 0x00 },
         { RC522_TX_ASK_REG, 0x40 },
         { RC522_MODE_REG, 0x3D },
     };

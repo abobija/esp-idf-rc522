@@ -161,3 +161,22 @@ typedef enum
      */
     RC522_CMD_SOFT_RESET = 0b00001111,
 } rc522_command_t;
+
+typedef enum
+{
+    /**
+     * When 1:
+     * - Timer starts automatically at the end of the transmission in
+     * all communication modes at all speeds
+     * - If the RxModeReg register’s RxMultiple bit is not set, the
+     * timer stops immediately after receiving the 5th bit (1 start bit,
+     * 4 data bits)
+     * - If the RxMultiple bit is set to logic 1 the timer never stops, in
+     * which case the timer can be stopped by setting the
+     * ControlReg register’s TStopNow bit to logic 1
+     *
+     * When 0:
+     * - Indicates that the timer is not influenced by the protocol
+     */
+    RC522_T_AUTO = BIT7,
+} rc522_timer_mode_reg_bit_t;
