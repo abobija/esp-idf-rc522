@@ -213,3 +213,26 @@ typedef enum
     RC522_CRC_PRESET_A671H = (RC522_CRC_PRESET_1),                      /* A671h */
     RC522_CRC_PRESET_FFFFH = (RC522_CRC_PRESET_1 | RC522_CRC_PRESET_0), /* FFFFh */
 } rc522_crc_preset_value_t;
+
+/**
+ * Bits of RC522_DIV_INT_REQ_REG register
+ */
+typedef enum
+{
+    // The CalcCRC command is active and all data is processed (CRC calculation is done)
+    RC522_CRC_IRQ = BIT2,
+} rc522_div_int_req_reg_bit_t;
+
+/**
+ * Bits of RC522_FIFO_LEVEL_REG register
+ */
+typedef enum
+{
+    /**
+     * Immediately clears the internal FIFO buffer’s read and write pointer
+     * and ErrorReg register’s BufferOvfl bit
+     *
+     * Reading this bit always returns 0
+     */
+    RC522_FLUSH_BUFFER = BIT7,
+} rc522_fifo_level_reg_bit_t;

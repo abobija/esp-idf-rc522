@@ -1,9 +1,10 @@
-#include <freertos/FreeRTOS.h>
-#include <freertos/task.h>
 #include <esp_system.h>
 #include <esp_log.h>
-#include <string.h>
 #include <esp_check.h>
+#include <string.h>
+#include <sys/time.h>
+#include <freertos/FreeRTOS.h>
+#include <freertos/task.h>
 
 #include "rc522.h"
 #include "rc522/registers.h"
@@ -35,6 +36,14 @@ struct rc522
         free(ptr);       \
         (ptr) = NULL;    \
     }
+
+static uint32_t rc522_millis()
+{
+    struct timeval now;
+    gettimeofday(&now, NULL);
+
+    return (uint32_t)((now.tv_sec * 1000000 + now.tv_usec) / 1000);
+}
 
 static void rc522_task(void *arg);
 
@@ -143,6 +152,16 @@ static esp_err_t rc522_clone_config(rc522_config_t *config, rc522_config_t **res
     return ESP_OK;
 }
 
+static inline esp_err_t rc522_stop_active_command(rc522_handle_t rc522)
+{
+    return rc522_write(rc522, RC522_COMMAND_REG, RC522_CMD_IDLE);
+}
+
+static inline esp_err_t rc522_flush_fifo_buffer(rc522_handle_t rc522)
+{
+    return rc522_set_bitmask(rc522, RC522_FIFO_LEVEL_REG, RC522_FLUSH_BUFFER);
+}
+
 esp_err_t rc522_create(rc522_config_t *config, rc522_handle_t *out_rc522)
 {
     ESP_RETURN_ON_FALSE(config != NULL, ESP_ERR_INVALID_ARG, TAG, "Config ptr is NULL");
@@ -203,36 +222,40 @@ esp_err_t rc522_unregister_events(rc522_handle_t rc522, rc522_event_t event, esp
     return esp_event_handler_unregister_with(rc522->event_handle, RC522_EVENTS, event, event_handler);
 }
 
-// Buffer should be length of 2, or more
+// Buffer should be at least 2 bytes long
 // Only first 2 elements will be used where the result will be stored
-// TODO: Use 2+ bytes data type instead of buffer array
+// TODO: Use uint16_t type for the result instead of buffer array?
 static esp_err_t rc522_calculate_crc(rc522_handle_t rc522, uint8_t *data, uint8_t n, uint8_t *buffer)
 {
-    ESP_RETURN_ON_ERROR(rc522_clear_bitmask(rc522, RC522_DIV_INT_REQ_REG, 0x04), TAG, "");
-    ESP_RETURN_ON_ERROR(rc522_set_bitmask(rc522, RC522_FIFO_LEVEL_REG, 0x80), TAG, "");
+    ESP_RETURN_ON_ERROR(rc522_stop_active_command(rc522), TAG, "");
+    ESP_RETURN_ON_ERROR(rc522_clear_bitmask(rc522, RC522_DIV_INT_REQ_REG, RC522_CRC_IRQ), TAG, "");
+    ESP_RETURN_ON_ERROR(rc522_flush_fifo_buffer(rc522), TAG, "");
     ESP_RETURN_ON_ERROR(rc522_write_n(rc522, RC522_FIFO_DATA_REG, n, data), TAG, "");
     ESP_RETURN_ON_ERROR(rc522_write(rc522, RC522_COMMAND_REG, RC522_CMD_CALC_CRC), TAG, "");
 
-    uint8_t i = 255;
+    uint32_t deadline_ms = rc522_millis() + 90;
+    bool calculation_done = false;
 
-    for (;;) {
-        uint8_t nn = 0;
-        ESP_RETURN_ON_ERROR(rc522_read(rc522, RC522_DIV_INT_REQ_REG, &nn), TAG, "");
+    do {
+        uint8_t irq;
+        ESP_RETURN_ON_ERROR(rc522_read(rc522, RC522_DIV_INT_REQ_REG, &irq), TAG, "");
 
-        i--;
-
-        if (!(i != 0 && !(nn & 0x04))) {
+        if (RC522_CRC_IRQ & irq) {
+            calculation_done = true;
             break;
         }
+
+        taskYIELD();
+    }
+    while (rc522_millis() < deadline_ms);
+
+    if (!calculation_done) { // Deadline reached
+        return ESP_ERR_TIMEOUT;
     }
 
-    uint8_t tmp;
-
-    ESP_RETURN_ON_ERROR(rc522_read(rc522, RC522_CRC_RESULT_LSB_REG, &tmp), TAG, "");
-    buffer[0] = tmp;
-
-    ESP_RETURN_ON_ERROR(rc522_read(rc522, RC522_CRC_RESULT_MSB_REG, &tmp), TAG, "");
-    buffer[1] = tmp;
+    ESP_RETURN_ON_ERROR(rc522_stop_active_command(rc522), TAG, "");
+    ESP_RETURN_ON_ERROR(rc522_read(rc522, RC522_CRC_RESULT_LSB_REG, buffer), TAG, "");
+    ESP_RETURN_ON_ERROR(rc522_read(rc522, RC522_CRC_RESULT_MSB_REG, buffer + 1), TAG, "");
 
     return ESP_OK;
 }
@@ -258,8 +281,8 @@ static esp_err_t rc522_card_write(
 
     ESP_RETURN_ON_ERROR(rc522_write(rc522, RC522_COMM_INT_EN_REG, irq | 0x80), TAG, "");
     ESP_RETURN_ON_ERROR(rc522_clear_bitmask(rc522, RC522_COMM_INT_REQ_REG, 0x80), TAG, "");
-    ESP_RETURN_ON_ERROR(rc522_set_bitmask(rc522, RC522_FIFO_LEVEL_REG, 0x80), TAG, "");
-    ESP_RETURN_ON_ERROR(rc522_write(rc522, RC522_COMMAND_REG, RC522_CMD_IDLE), TAG, "");
+    ESP_RETURN_ON_ERROR(rc522_flush_fifo_buffer(rc522), TAG, "");
+    ESP_RETURN_ON_ERROR(rc522_stop_active_command(rc522), TAG, "");
     ESP_RETURN_ON_ERROR(rc522_write_n(rc522, RC522_FIFO_DATA_REG, n, data), TAG, "");
     ESP_RETURN_ON_ERROR(rc522_write(rc522, RC522_COMMAND_REG, cmd), TAG, "");
 
