@@ -287,7 +287,7 @@ esp_err_t rc522_start(rc522_handle_t rc522)
 
     ESP_RETURN_ON_ERROR(rc522_rw_test(rc522, RC522_MOD_WIDTH_REG, 5), TAG, "RW test failed");
 
-    rc522_init(rc522);
+    ESP_RETURN_ON_ERROR(rc522_init(rc522), TAG, "Unable to init");
 
     uint8_t fw_ver;
     ESP_RETURN_ON_ERROR(rc522_firmware(rc522, &fw_ver), TAG, "Failed to get firmware version");
