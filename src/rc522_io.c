@@ -17,10 +17,8 @@ esp_err_t rc522_write_n(rc522_handle_t rc522, uint8_t addr, uint8_t n, uint8_t *
     buffer[0] = addr;
     memcpy(buffer + 1, data, n);
 
-    esp_err_t ret = ESP_OK;
-    ESP_GOTO_ON_ERROR(rc522->config->send_handler(buffer, n + 1), _exit, TAG, "Failed to write");
+    esp_err_t ret = rc522->config->send_handler(buffer, n + 1);
 
-_exit:
     FREE(buffer);
 
     return ret;
@@ -33,9 +31,7 @@ inline esp_err_t rc522_write(rc522_handle_t rc522, uint8_t addr, uint8_t val)
 
 esp_err_t rc522_read_n(rc522_handle_t rc522, uint8_t addr, uint8_t n, uint8_t *buffer)
 {
-    ESP_RETURN_ON_ERROR(rc522->config->receive_handler(buffer, n, addr), TAG, "Failed to read");
-
-    return ESP_OK;
+    return rc522->config->receive_handler(addr, buffer, n);
 }
 
 inline esp_err_t rc522_read(rc522_handle_t rc522, uint8_t addr, uint8_t *value_ref)

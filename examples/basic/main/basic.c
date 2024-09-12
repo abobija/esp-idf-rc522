@@ -31,9 +31,11 @@ static spi_device_handle_t rc522_spi_handle;
 
 static esp_err_t rc522_send(uint8_t *buffer, uint8_t length)
 {
-    uint8_t first_byte_origin = buffer[0];
+    uint8_t *address = (buffer + 0);
+    uint8_t address_origin = *address;
 
-    buffer[0] = (buffer[0] << 1) & 0x7E;
+    *address <<= 1;
+    *address &= (~0x80);
 
     esp_err_t ret = spi_device_transmit(rc522_spi_handle,
         &(spi_transaction_t) {
@@ -41,14 +43,15 @@ static esp_err_t rc522_send(uint8_t *buffer, uint8_t length)
             .tx_buffer = buffer,
         });
 
-    buffer[0] = first_byte_origin;
+    *address = address_origin;
 
     return ret;
 }
 
-static esp_err_t rc522_receive(uint8_t *buffer, uint8_t length, uint8_t address)
+static esp_err_t rc522_receive(uint8_t address, uint8_t *buffer, uint8_t length)
 {
-    address = ((address << 1) & 0x7E) | 0x80;
+    address <<= 1;
+    address |= 0x80;
 
     return spi_device_transmit(rc522_spi_handle,
         &(spi_transaction_t) {

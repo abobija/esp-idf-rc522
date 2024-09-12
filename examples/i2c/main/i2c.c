@@ -30,7 +30,7 @@ static esp_err_t rc522_send(uint8_t *buffer, uint8_t length)
         RC522_I2C_RW_TIMEOUT_MS / portTICK_PERIOD_MS);
 }
 
-static esp_err_t rc522_receive(uint8_t *buffer, uint8_t length, uint8_t address)
+static esp_err_t rc522_receive(uint8_t address, uint8_t *buffer, uint8_t length)
 {
     return i2c_master_write_read_device(RC522_I2C_PORT,
         RC522_I2C_ADDRESS,

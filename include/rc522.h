@@ -15,7 +15,7 @@ ESP_EVENT_DECLARE_BASE(RC522_EVENTS);
 typedef struct rc522 *rc522_handle_t;
 
 typedef esp_err_t (*rc522_send_handler_t)(uint8_t *buffer, uint8_t length);
-typedef esp_err_t (*rc522_receive_handler_t)(uint8_t *buffer, uint8_t length, uint8_t address);
+typedef esp_err_t (*rc522_receive_handler_t)(uint8_t address, uint8_t *buffer, uint8_t length);
 
 typedef struct
 {
