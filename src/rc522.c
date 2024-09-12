@@ -9,8 +9,8 @@
 #include "rc522_private.h"
 #include "rc522_registers.h"
 #include "comm/rc522_comm.h"
+#include "comm/rc522_crc.h"
 #include "rc522_io.h"
-#include "rc522_crc.h"
 
 static const char *TAG = "rc522";
 

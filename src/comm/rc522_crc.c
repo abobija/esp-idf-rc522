@@ -2,9 +2,9 @@
 #include <esp_check.h>
 #include <string.h>
 
-#include "rc522_crc.h"
 #include "rc522_io.h"
 #include "comm/rc522_comm.h"
+#include "comm/rc522_crc.h"
 #include "rc522_registers.h"
 
 static const char *TAG = "rc522_crc";
