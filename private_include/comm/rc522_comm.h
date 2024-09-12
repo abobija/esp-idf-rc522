@@ -12,9 +12,20 @@ typedef struct
     bool is_present;
 } rc522_picc_presence_t;
 
+typedef enum
+{
+    RC522_FW_CLONE = 0x88,       // clone
+    RC522_FW_00 = 0x90,          // v0.0
+    RC522_FW_10 = 0x91,          // v1.0
+    RC522_FW_20 = 0x92,          // v2.0
+    RC522_FW_COUNTERFEIT = 0x12, // counterfeit chip
+} rc522_firmware_t;
+
 esp_err_t rc522_picc_presence(rc522_handle_t rc522, rc522_picc_presence_t *result);
 
-esp_err_t rc522_firmware(rc522_handle_t rc522, uint8_t *result);
+esp_err_t rc522_firmware(rc522_handle_t rc522, rc522_firmware_t *result);
+
+char *rc522_firmware_name(rc522_firmware_t firmware);
 
 esp_err_t rc522_antenna_on(rc522_handle_t rc522);
 

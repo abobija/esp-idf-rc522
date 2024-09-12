@@ -207,13 +207,31 @@ esp_err_t rc522_picc_presence(rc522_handle_t rc522, rc522_picc_presence_t *resul
     return ret;
 }
 
-esp_err_t rc522_firmware(rc522_handle_t rc522, uint8_t *result)
+esp_err_t rc522_firmware(rc522_handle_t rc522, rc522_firmware_t *result)
 {
     uint8_t value;
     RC522_RETURN_ON_ERROR(rc522_read(rc522, RC522_VERSION_REG, &value));
 
-    *result = value & 0x03;
+    *result = (rc522_firmware_t)value;
     return ESP_OK;
+}
+
+char *rc522_firmware_name(rc522_firmware_t firmware)
+{
+    switch (firmware) {
+        case RC522_FW_CLONE:
+            return "clone";
+        case RC522_FW_00:
+            return "v0.0";
+        case RC522_FW_10:
+            return "v1.0";
+        case RC522_FW_20:
+            return "v2.0";
+        case RC522_FW_COUNTERFEIT:
+            return "counterfeit_chip";
+    }
+
+    return "unknown";
 }
 
 esp_err_t rc522_antenna_on(rc522_handle_t rc522)
