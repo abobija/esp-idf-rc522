@@ -214,30 +214,32 @@ void rc522_task(void *arg)
             ESP_LOGI(TAG, "card is present (ret=0x%04x)", ret);
         }
 
-        uint8_t *uid_bytes = NULL;
+        // FIXME: Reimplement!
 
-        if (uid_bytes == NULL) {
-            rc522->tag_was_present_last_time = false;
-        }
-        else if (!rc522->tag_was_present_last_time) {
-            rc522_tag_uid_t uid = {
-                .bytes = uid_bytes,
-                .length = 5, // TODO: Change once when we dynamicaly find the length of UID
-            };
-            rc522_tag_t tag = { .uid = uid };
-            rc522_dispatch_event(rc522, RC522_EVENT_TAG_SCANNED, &tag);
-            FREE(uid_bytes);
-            rc522->tag_was_present_last_time = true;
-        }
-        else {
-            FREE(uid_bytes);
-        }
+        // uint8_t *uid_bytes = NULL;
+
+        // if (uid_bytes == NULL) {
+        //     rc522->tag_was_present_last_time = false;
+        // }
+        // else if (!rc522->tag_was_present_last_time) {
+        //     rc522_tag_uid_t uid = {
+        //         .bytes = uid_bytes,
+        //         .length = 5, // TODO: Change once when we dynamicaly find the length of UID
+        //     };
+        //     rc522_tag_t tag = { .uid = uid };
+        //     rc522_dispatch_event(rc522, RC522_EVENT_TAG_SCANNED, &tag);
+        //     FREE(uid_bytes);
+        //     rc522->tag_was_present_last_time = true;
+        // }
+        // else {
+        //     FREE(uid_bytes);
+        // }
 
         int delay_interval_ms = rc522->config->scan_interval_ms;
 
-        if (rc522->tag_was_present_last_time) {
-            delay_interval_ms *= 2; // extra scan-bursting prevention
-        }
+        // if (rc522->tag_was_present_last_time) {
+        //     delay_interval_ms *= 2; // extra scan-bursting prevention
+        // }
 
         rc522_delay_ms(delay_interval_ms);
     }

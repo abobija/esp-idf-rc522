@@ -207,6 +207,13 @@ esp_err_t rc522_picc_presence(rc522_handle_t rc522, rc522_picc_presence_t *resul
     return ret;
 }
 
+esp_err_t rc522_picc_uid(rc522_handle_t rc522, rc522_tag_uid_t *result)
+{
+    // TODO: Implement!
+
+    return ESP_OK;
+}
+
 esp_err_t rc522_firmware(rc522_handle_t rc522, rc522_firmware_t *result)
 {
     uint8_t value;
