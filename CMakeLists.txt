@@ -5,8 +5,9 @@ idf_component_register(
         private_include
     SRCS
         src/rc522.c
-        src/rc522_io.c
         src/rc522_aliases.c
+        src/rc522_io.c
+        src/rc522_crc.c
     REQUIRES
         esp_event
 )
