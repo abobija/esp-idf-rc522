@@ -2,10 +2,10 @@
 #include <esp_check.h>
 #include <string.h>
 
-#include "rc522_aliases.h"
+#include "comm/rc522_comm.h"
 #include "rc522_io.h"
 
-static const char *TAG = "rc522_aliases";
+static const char *TAG = "rc522_comm";
 
 inline esp_err_t rc522_firmware(rc522_handle_t rc522, uint8_t *result)
 {

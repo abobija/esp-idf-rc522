@@ -5,7 +5,7 @@ idf_component_register(
         private_include
     SRCS
         src/rc522.c
-        src/rc522_aliases.c
+        src/comm/rc522_comm.c
         src/rc522_io.c
         src/rc522_crc.c
     REQUIRES
