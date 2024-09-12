@@ -27,6 +27,12 @@ typedef enum
     // Contains status bits of the receiver, transmitter and data mode detector
     RC522_STATUS_2_REG = 0x08,
 
+    // Input and output of 64 byte FIFO buffer
+    RC522_FIFO_DATA_REG = 0x09,
+
+    // Number of bytes stored in the FIFO buffer
+    RC522_FIFO_LEVEL_REG = 0x0A,
+
     // Shows the MFRC522 software version
     RC522_VERSION_REG = 0x37,
 
@@ -35,12 +41,6 @@ typedef enum
 
     // Configures the receiver gain
     RC522_RF_CFG_REG = 0x26,
-
-    // Input and output of 64 byte FIFO buffer
-    RC522_FIFO_DATA_REG = 0x09,
-
-    // Number of bytes stored in the FIFO buffer
-    RC522_FIFO_LEVEL_REG = 0x0A,
 
     // Miscellaneous control register
     RC522_CONTROL_REG = 0x0C,
