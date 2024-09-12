@@ -31,6 +31,7 @@ struct rc522
     }
 
 uint32_t rc522_millis();
+void rc522_delay_ms(uint32_t ms);
 
 void rc522_task(void *arg);
 

@@ -83,6 +83,15 @@ typedef enum
 } rc522_register_t;
 
 /**
+ * Bits of RC522_COMMAND_REG register
+ */
+typedef enum
+{
+    // Soft power-down mode entered
+    RC522_POWER_DOWN = BIT4,
+} rc522_command_reg_bit_t;
+
+/**
  * Bits of RC522_TX_CONTROL_REG register
  */
 typedef enum

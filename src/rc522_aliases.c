@@ -38,11 +38,6 @@ inline esp_err_t rc522_flush_fifo_buffer(rc522_handle_t rc522)
     return rc522_set_bitmask(rc522, RC522_FIFO_LEVEL_REG, RC522_FLUSH_BUFFER);
 }
 
-inline esp_err_t rc522_soft_reset(rc522_handle_t rc522)
-{
-    return rc522_write(rc522, RC522_COMMAND_REG, RC522_CMD_SOFT_RESET);
-}
-
 inline esp_err_t rc522_configure_timer(rc522_handle_t rc522, uint8_t mode, uint16_t prescaler_value)
 {
     return rc522_write_map(rc522,
