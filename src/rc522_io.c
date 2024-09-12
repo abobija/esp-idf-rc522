@@ -4,10 +4,18 @@
 
 #include "rc522_io.h"
 
-static const char *TAG = "rc522_io";
+RC522_LOG_DEFINE_BASE();
 
 esp_err_t rc522_write_n(rc522_handle_t rc522, uint8_t addr, uint8_t n, uint8_t *data)
 {
+    if (n > 1) {
+        RC522_LOGD("Write %d byte(s) into 0x%02x", n, addr);
+        ESP_LOG_BUFFER_HEX_LEVEL(RC522_LOG_TAG, data, n, ESP_LOG_DEBUG);
+    }
+    else {
+        RC522_LOGD("Write 0x%02x into 0x%02x", *data, addr);
+    }
+
     uint8_t *buffer = NULL;
 
     // TODO: Find a way to send address + data without memory allocation
@@ -31,7 +39,13 @@ inline esp_err_t rc522_write(rc522_handle_t rc522, uint8_t addr, uint8_t val)
 
 esp_err_t rc522_read_n(rc522_handle_t rc522, uint8_t addr, uint8_t n, uint8_t *buffer)
 {
-    return rc522->config->receive_handler(addr, buffer, n);
+    RC522_LOGD("Read %d byte(s) from 0x%02x", n, addr);
+
+    esp_err_t ret = rc522->config->receive_handler(addr, buffer, n);
+
+    ESP_LOG_BUFFER_HEX_LEVEL(RC522_LOG_TAG, buffer, n, ESP_LOG_DEBUG);
+
+    return ret;
 }
 
 inline esp_err_t rc522_read(rc522_handle_t rc522, uint8_t addr, uint8_t *value_ref)

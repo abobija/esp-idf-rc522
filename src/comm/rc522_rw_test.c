@@ -7,10 +7,12 @@
 #include "comm/rc522_rw_test.h"
 #include "rc522_registers.h"
 
-static const char *TAG = "rc522_rw_test";
+RC522_LOG_DEFINE_BASE();
 
 esp_err_t rc522_rw_test(rc522_handle_t rc522, uint8_t test_register, uint8_t times)
 {
+    RC522_LOG_IM_HERE();
+
     uint8_t origin_value;
 
     ESP_RETURN_ON_ERROR(rc522_read(rc522, test_register, &origin_value),

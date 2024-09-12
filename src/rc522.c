@@ -14,7 +14,7 @@
 #include "comm/rc522_rw_test.h"
 #include "rc522_io.h"
 
-static const char *TAG = "rc522";
+RC522_LOG_DEFINE_BASE();
 
 ESP_EVENT_DEFINE_BASE(RC522_EVENTS);
 
@@ -101,173 +101,6 @@ esp_err_t rc522_unregister_events(rc522_handle_t rc522, rc522_event_t event, esp
     ESP_RETURN_ON_FALSE(rc522 != NULL, ESP_ERR_INVALID_ARG, TAG, "Handle is NULL");
 
     return esp_event_handler_unregister_with(rc522->event_handle, RC522_EVENTS, event, event_handler);
-}
-
-static esp_err_t rc522_card_write(
-    rc522_handle_t rc522, uint8_t cmd, uint8_t *data, uint8_t n, uint8_t *res_n, uint8_t **result)
-{
-    esp_err_t ret = ESP_OK;
-    uint8_t *_result = NULL;
-    uint8_t _res_n = 0;
-    uint8_t irq = 0x00;
-    uint8_t irq_wait = 0x00;
-    uint8_t nn = 0;
-
-    if (cmd == RC522_CMD_MF_AUTH) {
-        irq = 0x12;
-        irq_wait = 0x10;
-    }
-    else if (cmd == RC522_CMD_TRANSCEIVE) {
-        irq = 0x77;
-        irq_wait = 0x30;
-    }
-
-    ESP_RETURN_ON_ERROR(rc522_write(rc522, RC522_COMM_INT_EN_REG, irq | 0x80), TAG, "");
-    ESP_RETURN_ON_ERROR(rc522_clear_bitmask(rc522, RC522_COMM_INT_REQ_REG, 0x80), TAG, "");
-    ESP_RETURN_ON_ERROR(rc522_flush_fifo_buffer(rc522), TAG, "");
-    ESP_RETURN_ON_ERROR(rc522_stop_active_command(rc522), TAG, "");
-    ESP_RETURN_ON_ERROR(rc522_write_n(rc522, RC522_FIFO_DATA_REG, n, data), TAG, "");
-    ESP_RETURN_ON_ERROR(rc522_write(rc522, RC522_COMMAND_REG, cmd), TAG, "");
-
-    if (cmd == RC522_CMD_TRANSCEIVE) {
-        ESP_RETURN_ON_ERROR(rc522_start_data_transmission(rc522), TAG, "");
-    }
-
-    uint16_t i = 1000;
-
-    for (;;) {
-        ESP_RETURN_ON_ERROR(rc522_read(rc522, RC522_COMM_INT_REQ_REG, &nn), TAG, "");
-
-        i--;
-
-        if (!(i != 0 && (((nn & 0x01) == 0) && ((nn & irq_wait) == 0)))) {
-            break;
-        }
-    }
-
-    ESP_RETURN_ON_ERROR(rc522_stop_data_transmission(rc522), TAG, "");
-
-    if (i != 0) {
-        uint8_t tmp;
-        ESP_RETURN_ON_ERROR(rc522_read(rc522, RC522_ERROR_REG, &tmp), TAG, "");
-
-        if ((tmp & 0x1B) == 0x00) {
-            if (cmd == RC522_CMD_TRANSCEIVE) {
-                ESP_RETURN_ON_ERROR(rc522_read(rc522, RC522_FIFO_LEVEL_REG, &nn), TAG, "");
-                ESP_RETURN_ON_ERROR(rc522_read(rc522, RC522_CONTROL_REG, &tmp), TAG, "");
-
-                uint8_t last_bits = tmp & 0x07;
-
-                if (last_bits != 0) {
-                    _res_n = (nn - 1) + last_bits;
-                }
-                else {
-                    _res_n = nn;
-                }
-
-                if (_res_n > 0) {
-                    _result = (uint8_t *)malloc(_res_n);
-                    ESP_RETURN_ON_FALSE(_result != NULL, ESP_ERR_NO_MEM, TAG, "No memory");
-
-                    for (i = 0; i < _res_n; i++) {
-                        ESP_GOTO_ON_ERROR(rc522_read(rc522, RC522_FIFO_DATA_REG, &tmp), _error, TAG, "");
-                        _result[i] = tmp;
-                    }
-                }
-            }
-        }
-    }
-
-    goto _success;
-_error:
-    FREE(_result);
-    _res_n = 0;
-    goto _return;
-_success:
-    *res_n = _res_n;
-    *result = _result;
-_return:
-    return ret;
-}
-
-static esp_err_t rc522_request(rc522_handle_t rc522, uint8_t *res_n, uint8_t **result)
-{
-    uint8_t *_result = NULL;
-    uint8_t _res_n = 0;
-    uint8_t req_mode = 0x26;
-
-    ESP_RETURN_ON_ERROR(rc522_write(rc522, RC522_BIT_FRAMING_REG, 0x07), TAG, "");
-    ESP_RETURN_ON_ERROR(rc522_card_write(rc522, 0x0C, &req_mode, 1, &_res_n, &_result), TAG, "");
-
-    if (_res_n * 8 != 0x10) {
-        FREE(_result);
-        return ESP_FAIL;
-    }
-
-    *res_n = _res_n;
-    *result = _result;
-
-    return ESP_OK;
-}
-
-static esp_err_t rc522_anticoll(rc522_handle_t rc522, uint8_t **result)
-{
-    uint8_t *_result = NULL;
-    uint8_t _res_n;
-
-    ESP_RETURN_ON_ERROR(rc522_write(rc522, RC522_BIT_FRAMING_REG, 0x00), TAG, "");
-    ESP_RETURN_ON_ERROR(rc522_card_write(rc522, 0x0C, (uint8_t[]) { 0x93, 0x20 }, 2, &_res_n, &_result), TAG, "");
-
-    esp_err_t ret = ESP_OK;
-
-    // TODO: Some cards have length of 4, and some of them have length of 7 bytes
-    //       here we are using one extra byte which is not part of UID.
-    //       Implement logic to determine the length of the UID and use that info
-    //       to retrieve the real UID
-    //
-    // UID of all cards/tags is 5 bytes long (??)
-    ESP_GOTO_ON_FALSE(_res_n == 5, ESP_FAIL, _error, TAG, "Invalid UID length");
-
-    goto _success;
-_error:
-    FREE(_result);
-    _res_n = 0;
-    goto _return;
-_success:
-    *result = _result;
-_return:
-    return ret;
-}
-
-static esp_err_t rc522_get_tag(rc522_handle_t rc522, uint8_t **result)
-{
-    esp_err_t ret = ESP_OK;
-    uint8_t *_result = NULL;
-    uint8_t *res_data = NULL;
-    uint8_t res_data_n;
-
-    if ((ret = rc522_request(rc522, &res_data_n, &res_data)) != ESP_OK) {
-        // Failed (most probably) because card is not near the scanner
-        return ret;
-    }
-
-    FREE(res_data);
-    ESP_GOTO_ON_ERROR(rc522_anticoll(rc522, &_result), _error, TAG, "");
-    uint8_t buf[] = { 0x50, 0x00, 0x00, 0x00 };
-    ESP_GOTO_ON_ERROR(rc522_calculate_crc(rc522, buf, 2, buf + 2), _error, TAG, "");
-    ESP_GOTO_ON_ERROR(rc522_card_write(rc522, 0x0C, buf, 4, &res_data_n, &res_data), _error, TAG, "");
-    FREE(res_data);
-    ESP_GOTO_ON_ERROR(rc522_clear_bitmask(rc522, RC522_STATUS_2_REG, 0x08), _error, TAG, "");
-
-    goto _success;
-_error:
-    FREE(_result);
-    goto _return;
-_success:
-    *result = _result;
-_return:
-    FREE(res_data);
-    return ret;
 }
 
 esp_err_t rc522_start(rc522_handle_t rc522)
@@ -368,14 +201,14 @@ void rc522_task(void *arg)
             continue;
         }
 
-        uint8_t *uid_bytes = NULL;
+        rc522_picc_presence_t presence_result;
+        esp_err_t ret = rc522_picc_presence(rc522, &presence_result);
 
-        if (ESP_OK != rc522_get_tag(rc522, &uid_bytes)) {
-            // Tag is not present
-            //
-            // TODO: Implement logic to know when the error is due to
-            //       tag absence or some other protocol issue
+        if (presence_result.is_present) {
+            ESP_LOGI(TAG, "card is present (ret=0x%04x)", ret);
         }
+
+        uint8_t *uid_bytes = NULL;
 
         if (uid_bytes == NULL) {
             rc522->tag_was_present_last_time = false;

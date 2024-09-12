@@ -48,6 +48,9 @@ typedef enum
     // Adjustments for bit-oriented frames
     RC522_BIT_FRAMING_REG = 0x0D,
 
+    // Defines the first bit-collision detected on the RF interface
+    RC522_COLL_REG = 0x0E,
+
     // MSB (higher bits) values of the CRC calculation
     RC522_CRC_RESULT_MSB_REG = 0x21,
 
