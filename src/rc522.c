@@ -303,6 +303,32 @@ static esp_err_t rc522_rw_test(rc522_handle_t rc522, uint8_t test_register, uint
     return ESP_OK;
 }
 
+static esp_err_t rc522_init(rc522_handle_t rc522)
+{
+    ESP_RETURN_ON_ERROR(rc522_soft_reset(rc522), TAG, "");
+    // TODO: Short delay to wait for reset?
+
+    // Reset baud rates
+    ESP_RETURN_ON_ERROR(rc522_write(rc522, RC522_TX_MODE_REG, 0x00), TAG, "");
+    ESP_RETURN_ON_ERROR(rc522_write(rc522, RC522_RX_MODE_REG, 0x00), TAG, "");
+
+    // Reset modulation width
+    ESP_RETURN_ON_ERROR(rc522_write(rc522, RC522_MOD_WIDTH_REG, RC522_MOD_WIDTH_RESET_VALUE), TAG, "");
+
+    ESP_RETURN_ON_ERROR(rc522_configure_timer(rc522, RC522_T_AUTO, 3390), TAG, "");
+    ESP_RETURN_ON_ERROR(rc522_set_timer_reload_value(rc522, 30), TAG, "");
+
+    ESP_RETURN_ON_ERROR(rc522_write(rc522, RC522_TX_ASK_REG, RC522_FORCE_100_ASK), TAG, "");
+    ESP_RETURN_ON_ERROR(
+        rc522_write(rc522, RC522_MODE_REG, (RC522_TX_WAIT_RF | RC522_POL_MFIN | RC522_CRC_PRESET_6363H)),
+        TAG,
+        "");
+
+    ESP_RETURN_ON_ERROR(rc522_antenna_on(rc522, RC522_RX_GAIN_43_DB), TAG, "Unable to turn on antenna");
+
+    return ESP_OK;
+}
+
 esp_err_t rc522_start(rc522_handle_t rc522)
 {
     ESP_RETURN_ON_FALSE(rc522 != NULL, ESP_ERR_INVALID_ARG, TAG, "Handle is NULL");
@@ -320,15 +346,7 @@ esp_err_t rc522_start(rc522_handle_t rc522)
 
     ESP_RETURN_ON_ERROR(rc522_rw_test(rc522, RC522_MOD_WIDTH_REG, 5), TAG, "RW test failed");
 
-    ESP_RETURN_ON_ERROR(rc522_soft_reset(rc522), TAG, ""); // TODO: Short delay to wait for reset?
-    ESP_RETURN_ON_ERROR(rc522_configure_timer(rc522, RC522_T_AUTO, 3390), TAG, "");
-    ESP_RETURN_ON_ERROR(rc522_set_timer_reload_value(rc522, 30), TAG, "");
-    ESP_RETURN_ON_ERROR(rc522_write(rc522, RC522_TX_ASK_REG, RC522_FORCE_100_ASK), TAG, "");
-    ESP_RETURN_ON_ERROR(
-        rc522_write(rc522, RC522_MODE_REG, (RC522_TX_WAIT_RF | RC522_POL_MFIN | RC522_CRC_PRESET_6363H)),
-        TAG,
-        "");
-    ESP_RETURN_ON_ERROR(rc522_antenna_on(rc522, RC522_RX_GAIN_43_DB), TAG, "Unable to turn on antenna");
+    rc522_init(rc522);
 
     uint8_t fw_ver;
     ESP_RETURN_ON_ERROR(rc522_firmware(rc522, &fw_ver), TAG, "Failed to get firmware version");

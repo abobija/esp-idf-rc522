@@ -74,6 +74,12 @@ typedef enum
 
     // Controls the setting of the transmission modulation
     RC522_TX_ASK_REG = 0x15,
+
+    // Defines the data rate during transmission
+    RC522_TX_MODE_REG = 0x12,
+
+    // Defines the data rate during reception
+    RC522_RX_MODE_REG = 0x13,
 } rc522_register_t;
 
 /**
@@ -236,3 +242,8 @@ typedef enum
      */
     RC522_FLUSH_BUFFER = BIT7,
 } rc522_fifo_level_reg_bit_t;
+
+typedef enum
+{
+    RC522_MOD_WIDTH_RESET_VALUE = 0x26,
+} rc522_mod_width_t;
