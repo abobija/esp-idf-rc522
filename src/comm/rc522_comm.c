@@ -76,3 +76,13 @@ esp_err_t rc522_soft_reset(rc522_handle_t rc522, uint32_t timeout_ms)
 
     return power_down_bit ? ESP_ERR_TIMEOUT : ESP_OK;
 }
+
+inline esp_err_t rc522_start_data_transmission(rc522_handle_t rc522)
+{
+    return rc522_set_bitmask(rc522, RC522_BIT_FRAMING_REG, RC522_START_SEND);
+}
+
+inline esp_err_t rc522_stop_data_transmission(rc522_handle_t rc522)
+{
+    return rc522_clear_bitmask(rc522, RC522_BIT_FRAMING_REG, RC522_START_SEND);
+}

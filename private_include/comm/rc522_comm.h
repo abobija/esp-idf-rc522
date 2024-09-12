@@ -21,6 +21,10 @@ esp_err_t rc522_set_timer_reload_value(rc522_handle_t rc522, uint16_t value);
 
 esp_err_t rc522_soft_reset(rc522_handle_t rc522, uint32_t timeout_ms);
 
+esp_err_t rc522_start_data_transmission(rc522_handle_t rc522);
+
+esp_err_t rc522_stop_data_transmission(rc522_handle_t rc522);
+
 #ifdef __cplusplus
 }
 #endif

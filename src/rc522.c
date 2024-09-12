@@ -130,7 +130,7 @@ static esp_err_t rc522_card_write(
     ESP_RETURN_ON_ERROR(rc522_write(rc522, RC522_COMMAND_REG, cmd), TAG, "");
 
     if (cmd == RC522_CMD_TRANSCEIVE) {
-        ESP_RETURN_ON_ERROR(rc522_set_bitmask(rc522, RC522_BIT_FRAMING_REG, 0x80), TAG, "");
+        ESP_RETURN_ON_ERROR(rc522_start_data_transmission(rc522), TAG, "");
     }
 
     uint16_t i = 1000;
@@ -145,7 +145,7 @@ static esp_err_t rc522_card_write(
         }
     }
 
-    ESP_RETURN_ON_ERROR(rc522_clear_bitmask(rc522, RC522_BIT_FRAMING_REG, 0x80), TAG, "");
+    ESP_RETURN_ON_ERROR(rc522_stop_data_transmission(rc522), TAG, "");
 
     if (i != 0) {
         uint8_t tmp;

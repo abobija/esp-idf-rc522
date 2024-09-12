@@ -256,3 +256,15 @@ typedef enum
 {
     RC522_MOD_WIDTH_RESET_VALUE = 0x26,
 } rc522_mod_width_t;
+
+/**
+ * Bits of RC522_BIT_FRAMING_REG register
+ */
+typedef enum
+{
+    /**
+     * Starts the transmission of data
+     * Only valid in combination with the Transceive command
+     */
+    RC522_START_SEND = BIT7,
+} rc522_bit_framing_reg_bit_t;
