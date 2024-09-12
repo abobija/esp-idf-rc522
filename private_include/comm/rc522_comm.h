@@ -19,6 +19,8 @@ esp_err_t rc522_configure_timer(rc522_handle_t rc522, uint8_t mode, uint16_t pre
 
 esp_err_t rc522_set_timer_reload_value(rc522_handle_t rc522, uint16_t value);
 
+esp_err_t rc522_soft_reset(rc522_handle_t rc522, uint32_t timeout_ms);
+
 #ifdef __cplusplus
 }
 #endif

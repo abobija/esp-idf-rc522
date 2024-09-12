@@ -308,30 +308,6 @@ static esp_err_t rc522_rw_test(rc522_handle_t rc522, uint8_t test_register, uint
     return ESP_OK;
 }
 
-static inline esp_err_t rc522_soft_reset(rc522_handle_t rc522, uint32_t timeout_ms)
-{
-    ESP_RETURN_ON_ERROR(rc522_write(rc522, RC522_COMMAND_REG, RC522_CMD_SOFT_RESET), TAG, "");
-
-    bool power_down_bit = true;
-    uint32_t start_ms = rc522_millis();
-
-    // Wait for the PowerDown bit in CommandReg to be cleared
-    do {
-        rc522_delay_ms(25);
-        taskYIELD();
-
-        uint8_t cmd;
-        ESP_RETURN_ON_ERROR(rc522_read(rc522, RC522_COMMAND_REG, &cmd), TAG, "");
-
-        if (!(power_down_bit = cmd & RC522_POWER_DOWN)) {
-            break;
-        }
-    }
-    while ((rc522_millis() - start_ms) < timeout_ms);
-
-    return power_down_bit ? ESP_ERR_TIMEOUT : ESP_OK;
-}
-
 static esp_err_t rc522_init(rc522_handle_t rc522)
 {
     // TODO: Implement hard reset via RST pin

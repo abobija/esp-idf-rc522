@@ -7,7 +7,7 @@
 
 static const char *TAG = "rc522_comm";
 
-inline esp_err_t rc522_firmware(rc522_handle_t rc522, uint8_t *result)
+esp_err_t rc522_firmware(rc522_handle_t rc522, uint8_t *result)
 {
     uint8_t value;
     ESP_RETURN_ON_ERROR(rc522_read(rc522, RC522_VERSION_REG, &value), TAG, "");
@@ -16,7 +16,7 @@ inline esp_err_t rc522_firmware(rc522_handle_t rc522, uint8_t *result)
     return ESP_OK;
 }
 
-inline esp_err_t rc522_antenna_on(rc522_handle_t rc522, rc522_rx_gain_t gain)
+esp_err_t rc522_antenna_on(rc522_handle_t rc522, rc522_rx_gain_t gain)
 {
     ESP_RETURN_ON_ERROR(rc522_set_bitmask(rc522, RC522_TX_CONTROL_REG, RC522_TX1_RF_EN | RC522_TX2_RF_EN), TAG, "");
 
@@ -51,4 +51,28 @@ inline esp_err_t rc522_set_timer_reload_value(rc522_handle_t rc522, uint16_t val
             { RC522_TIMER_RELOAD_LSB_REG, (uint8_t)value },
         },
         2);
+}
+
+esp_err_t rc522_soft_reset(rc522_handle_t rc522, uint32_t timeout_ms)
+{
+    ESP_RETURN_ON_ERROR(rc522_write(rc522, RC522_COMMAND_REG, RC522_CMD_SOFT_RESET), TAG, "");
+
+    bool power_down_bit = true;
+    uint32_t start_ms = rc522_millis();
+
+    // Wait for the PowerDown bit in CommandReg to be cleared
+    do {
+        rc522_delay_ms(25);
+        taskYIELD();
+
+        uint8_t cmd;
+        ESP_RETURN_ON_ERROR(rc522_read(rc522, RC522_COMMAND_REG, &cmd), TAG, "");
+
+        if (!(power_down_bit = cmd & RC522_POWER_DOWN)) {
+            break;
+        }
+    }
+    while ((rc522_millis() - start_ms) < timeout_ms);
+
+    return power_down_bit ? ESP_ERR_TIMEOUT : ESP_OK;
 }
