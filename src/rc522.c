@@ -305,6 +305,9 @@ static esp_err_t rc522_rw_test(rc522_handle_t rc522, uint8_t test_register, uint
 
 static esp_err_t rc522_init(rc522_handle_t rc522)
 {
+    // TODO: Implement hard reset via RST pin
+    //       and ability to choose between hard and soft reset
+
     ESP_RETURN_ON_ERROR(rc522_soft_reset(rc522), TAG, "");
     // TODO: Short delay to wait for reset?
 
