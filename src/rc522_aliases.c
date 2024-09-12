@@ -7,11 +7,6 @@
 
 static const char *TAG = "rc522_aliases";
 
-inline bool rc522_is_able_to_start(rc522_handle_t rc522)
-{
-    return rc522->state >= RC522_STATE_CREATED && rc522->state != RC522_STATE_SCANNING;
-}
-
 inline esp_err_t rc522_firmware(rc522_handle_t rc522, uint8_t *result)
 {
     uint8_t value;

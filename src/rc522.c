@@ -16,6 +16,11 @@ static const char *TAG = "rc522";
 
 ESP_EVENT_DEFINE_BASE(RC522_EVENTS);
 
+inline bool rc522_is_able_to_start(rc522_handle_t rc522)
+{
+    return rc522->state >= RC522_STATE_CREATED && rc522->state != RC522_STATE_SCANNING;
+}
+
 static esp_err_t rc522_clone_config(rc522_config_t *config, rc522_config_t **result)
 {
     rc522_config_t *_clone_config = calloc(1, sizeof(rc522_config_t));
