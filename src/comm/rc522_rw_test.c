@@ -13,7 +13,7 @@ esp_err_t rc522_rw_test(rc522_handle_t rc522)
 {
     uint8_t tmp;
 
-    ESP_RETURN_ON_ERROR(rc522_read(rc522, RC522_FIFO_LEVEL_REG, &tmp), TAG, "Cannot read FIFO length");
+    ESP_RETURN_ON_ERROR(rc522_pcd_read(rc522, RC522_FIFO_LEVEL_REG, &tmp), TAG, "Cannot read FIFO length");
 
     ESP_RETURN_ON_ERROR(rc522_fifo_flush(rc522), TAG, "Cannot flush FIFO");
 
@@ -21,13 +21,15 @@ esp_err_t rc522_rw_test(rc522_handle_t rc522)
     const uint8_t buffer_size = sizeof(buffer1);
     uint8_t buffer2[buffer_size];
 
-    ESP_RETURN_ON_ERROR(rc522_write_n(rc522, RC522_FIFO_DATA_REG, buffer_size, buffer1), TAG, "Cannot write to FIFO");
+    ESP_RETURN_ON_ERROR(rc522_pcd_write_n(rc522, RC522_FIFO_DATA_REG, buffer_size, buffer1),
+        TAG,
+        "Cannot write to FIFO");
 
-    RC522_RETURN_ON_ERROR(rc522_read(rc522, RC522_FIFO_LEVEL_REG, &tmp));
+    RC522_RETURN_ON_ERROR(rc522_pcd_read(rc522, RC522_FIFO_LEVEL_REG, &tmp));
 
     ESP_RETURN_ON_FALSE(tmp == buffer_size, ESP_FAIL, TAG, "FIFO length missmatch after write");
 
-    RC522_RETURN_ON_ERROR(rc522_read_n(rc522, RC522_FIFO_DATA_REG, buffer_size, buffer2));
+    RC522_RETURN_ON_ERROR(rc522_pcd_read_n(rc522, RC522_FIFO_DATA_REG, buffer_size, buffer2));
 
     bool buffers_content_equal = true;
     for (uint8_t i = 0; i < buffer_size; i++) {
