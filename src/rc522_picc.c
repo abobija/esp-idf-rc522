@@ -8,7 +8,7 @@
 
 RC522_LOG_DEFINE_BASE();
 
-static esp_err_t rc522_comm(rc522_handle_t rc522, rc522_command_t command, uint8_t wait_irq, uint8_t *send_data,
+static esp_err_t rc522_picc_comm(rc522_handle_t rc522, rc522_command_t command, uint8_t wait_irq, uint8_t *send_data,
     uint8_t send_data_len, uint8_t *back_data, uint8_t *back_data_len, uint8_t *valid_bits, uint8_t rx_align,
     bool check_crc)
 {
@@ -134,7 +134,7 @@ static esp_err_t rc522_comm(rc522_handle_t rc522, rc522_command_t command, uint8
     return ESP_OK;
 }
 
-static esp_err_t rc522_transceive_data(rc522_handle_t rc522, uint8_t *send_data, uint8_t send_data_len,
+static esp_err_t rc522_picc_transceive(rc522_handle_t rc522, uint8_t *send_data, uint8_t send_data_len,
     uint8_t *back_data, uint8_t *back_data_len, uint8_t *valid_bits, uint8_t rx_align, bool check_crc)
 {
     uint8_t wait_irq = 0x30; // RxIRq and IdleIRq
@@ -143,7 +143,7 @@ static esp_err_t rc522_transceive_data(rc522_handle_t rc522, uint8_t *send_data,
     RC522_LOGD("picc <<");
     ESP_LOG_BUFFER_HEX_LEVEL(TAG, send_data, send_data_len, ESP_LOG_DEBUG);
 
-    esp_err_t ret = rc522_comm(rc522,
+    esp_err_t ret = rc522_picc_comm(rc522,
         RC522_CMD_TRANSCEIVE,
         wait_irq,
         send_data,
@@ -160,7 +160,7 @@ static esp_err_t rc522_transceive_data(rc522_handle_t rc522, uint8_t *send_data,
     return ret;
 }
 
-static esp_err_t rc522_reqa_or_wupa(
+static esp_err_t rc522_picc_reqa_or_wupa(
     rc522_handle_t rc522, uint8_t picc_cmd, uint8_t *atqa_buffer, uint8_t *atqa_buffer_size)
 {
     uint8_t valid_bits;
@@ -177,7 +177,7 @@ static esp_err_t rc522_reqa_or_wupa(
     valid_bits = 7;
 
     RC522_RETURN_ON_ERROR_SILENTLY(
-        rc522_transceive_data(rc522, &picc_cmd, 1, atqa_buffer, atqa_buffer_size, &valid_bits, 0, false));
+        rc522_picc_transceive(rc522, &picc_cmd, 1, atqa_buffer, atqa_buffer_size, &valid_bits, 0, false));
 
     if (*atqa_buffer_size != 2 || valid_bits != 0) { // ATQA must be exactly 16 bits.
         return ESP_FAIL;
@@ -186,9 +186,9 @@ static esp_err_t rc522_reqa_or_wupa(
     return ESP_OK;
 }
 
-static esp_err_t rc522_request_a(rc522_handle_t rc522, uint8_t *atqa_buffer, uint8_t *atqa_buffer_size)
+static esp_err_t rc522_picc_reqa(rc522_handle_t rc522, uint8_t *atqa_buffer, uint8_t *atqa_buffer_size)
 {
-    return rc522_reqa_or_wupa(rc522, RC522_PICC_CMD_REQA, atqa_buffer, atqa_buffer_size);
+    return rc522_picc_reqa_or_wupa(rc522, RC522_PICC_CMD_REQA, atqa_buffer, atqa_buffer_size);
 }
 
 /**
@@ -207,7 +207,7 @@ esp_err_t rc522_picc_find(rc522_handle_t rc522, rc522_picc_t *picc)
     // Reset ModWidthReg
     RC522_RETURN_ON_ERROR(rc522_pcd_write(rc522, RC522_MOD_WIDTH_REG, RC522_MOD_WIDTH_RESET_VALUE));
 
-    esp_err_t ret = rc522_request_a(rc522, atqa_buffer, &atqa_buffer_size);
+    esp_err_t ret = rc522_picc_reqa(rc522, atqa_buffer, &atqa_buffer_size);
 
     picc->is_present = (ret == ESP_OK || ret == ESP_ERR_RC522_COLLISION);
 
@@ -375,7 +375,7 @@ static esp_err_t rc522_picc_select(rc522_handle_t rc522, rc522_picc_t *picc, uin
             RC522_RETURN_ON_ERROR(rc522_pcd_write(rc522, RC522_BIT_FRAMING_REG, (rx_align << 4) + tx_last_bits));
 
             // Transmit the buffer and receive the response.
-            ret = rc522_transceive_data(rc522,
+            ret = rc522_picc_transceive(rc522,
                 buffer,
                 buffer_used,
                 response_buffer,
