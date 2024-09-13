@@ -6,7 +6,7 @@
 extern "C" {
 #endif
 
-esp_err_t rc522_rw_test(rc522_handle_t rc522, uint8_t test_register, uint8_t times);
+esp_err_t rc522_rw_test(rc522_handle_t rc522);
 
 #ifdef __cplusplus
 }

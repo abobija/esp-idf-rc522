@@ -117,7 +117,7 @@ esp_err_t rc522_start(rc522_handle_t rc522)
         return ESP_OK;
     }
 
-    ESP_RETURN_ON_ERROR(rc522_rw_test(rc522, RC522_MOD_WIDTH_REG, 5), TAG, "RW test failed");
+    ESP_RETURN_ON_ERROR(rc522_rw_test(rc522), TAG, "RW test failed");
 
     ESP_RETURN_ON_ERROR(rc522_init(rc522), TAG, "Unable to init");
 
@@ -212,6 +212,20 @@ void rc522_task(void *arg)
 
         if (presence_result.is_present) {
             ESP_LOGI(TAG, "card is present (ret=0x%04x)", ret);
+
+            // FIXME: This is temporary. Remove this code since, calls
+            //        of this foo should be done by te user in the app
+
+            rc522_tag_uid_t uid;
+            ret = rc522_picc_uid(rc522, &uid);
+
+            if (ret != ESP_OK) {
+                ESP_LOGE(TAG, "failed to read uid (ret=0x%04x)", ret);
+            }
+            else {
+                ESP_LOGI(TAG, "got UID (sak=0x%02x)", uid.sak);
+                ESP_LOG_BUFFER_HEX(TAG, uid.bytes, uid.bytes_length);
+            }
         }
 
         // FIXME: Reimplement!
@@ -235,13 +249,14 @@ void rc522_task(void *arg)
         //     FREE(uid_bytes);
         // }
 
-        int delay_interval_ms = rc522->config->scan_interval_ms;
+        // int delay_interval_ms = rc522->config->scan_interval_ms;
 
         // if (rc522->tag_was_present_last_time) {
         //     delay_interval_ms *= 2; // extra scan-bursting prevention
         // }
 
-        rc522_delay_ms(delay_interval_ms);
+        // FIXME: Use delay_interval_ms
+        rc522_delay_ms(1000);
     }
 
     vTaskDelete(NULL);

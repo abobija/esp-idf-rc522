@@ -9,44 +9,44 @@
 
 RC522_LOG_DEFINE_BASE();
 
-esp_err_t rc522_rw_test(rc522_handle_t rc522, uint8_t test_register, uint8_t times)
+esp_err_t rc522_rw_test(rc522_handle_t rc522)
 {
-    RC522_LOG_IM_HERE();
+    uint8_t tmp;
 
-    uint8_t origin_value;
+    ESP_RETURN_ON_ERROR(rc522_read(rc522, RC522_FIFO_LEVEL_REG, &tmp), TAG, "Cannot read FIFO length");
 
-    ESP_RETURN_ON_ERROR(rc522_read(rc522, test_register, &origin_value),
-        TAG,
-        "Unable to read origin value of 0x%20X register",
-        test_register);
+    ESP_RETURN_ON_ERROR(rc522_fifo_flush(rc522), TAG, "Cannot flush FIFO");
 
-    for (uint8_t val = 0; val < times; val++) {
-        ESP_RETURN_ON_ERROR(rc522_write(rc522, test_register, val),
-            TAG,
-            "Unable to write value %d into 0x%20X register",
-            val,
-            test_register);
+    uint8_t buffer1[] = { 0x13, 0x33, 0x37 };
+    const uint8_t buffer_size = sizeof(buffer1);
+    uint8_t buffer2[buffer_size];
 
-        uint8_t real_value;
+    ESP_RETURN_ON_ERROR(rc522_write_n(rc522, RC522_FIFO_DATA_REG, buffer_size, buffer1), TAG, "Cannot write to FIFO");
 
-        ESP_RETURN_ON_ERROR(rc522_read(rc522, test_register, &real_value),
-            TAG,
-            "Unable to read value of 0x%20X register",
-            test_register);
+    RC522_RETURN_ON_ERROR(rc522_read(rc522, RC522_FIFO_LEVEL_REG, &tmp));
 
-        ESP_RETURN_ON_FALSE(val == real_value,
-            ESP_FAIL,
-            TAG,
-            "Value %d of register 0x%20X does not match previously written value %d",
-            real_value,
-            test_register,
-            val);
+    ESP_RETURN_ON_FALSE(tmp == buffer_size, ESP_FAIL, TAG, "FIFO length missmatch after write");
+
+    RC522_RETURN_ON_ERROR(rc522_read_n(rc522, RC522_FIFO_DATA_REG, buffer_size, buffer2));
+
+    bool buffers_content_equal = true;
+    for (uint8_t i = 0; i < buffer_size; i++) {
+        if (buffer1[i] != buffer2[i]) {
+            buffers_content_equal = false;
+            break;
+        }
     }
 
-    ESP_RETURN_ON_ERROR(rc522_write(rc522, test_register, origin_value),
-        TAG,
-        "Unable to restore origin value of 0x%20X register",
-        test_register);
+    if (!buffers_content_equal) {
+        RC522_LOGE("Buffers content missmatch");
+
+        RC522_LOGE("Buffer1: ");
+        ESP_LOG_BUFFER_HEX_LEVEL(TAG, buffer1, buffer_size, ESP_LOG_ERROR);
+        RC522_LOGE("Buffer2: ");
+        ESP_LOG_BUFFER_HEX_LEVEL(TAG, buffer2, buffer_size, ESP_LOG_ERROR);
+
+        return ESP_FAIL;
+    }
 
     return ESP_OK;
 }

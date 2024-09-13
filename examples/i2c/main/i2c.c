@@ -50,7 +50,7 @@ static void rc522_event_handler(void *arg, esp_event_base_t base, int32_t event_
             ESP_LOGI(TAG, "Tag scanned!");
 
             rc522_tag_t *tag = (rc522_tag_t *)data->ptr;
-            ESP_LOG_BUFFER_HEX(TAG, tag->uid.bytes, tag->uid.length);
+            ESP_LOG_BUFFER_HEX(TAG, tag->uid.bytes, tag->uid.bytes_length);
         } break;
     }
 }

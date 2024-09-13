@@ -9,13 +9,13 @@ extern "C" {
 #define RC522_LOG_TAG "rc522"
 
 #define RC522_LOG_DEFINE_BASE()             static const char *TAG = RC522_LOG_TAG
-#define RC522_LOG(esp_log_foo, format, ...) esp_log_foo(TAG, "%s: " format, __func__, ##__VA_ARGS__)
+#define RC522_LOG(esp_log_foo, format, ...) esp_log_foo(TAG, "%s(%d): " format, __FUNCTION__, __LINE__, ##__VA_ARGS__)
 #define RC522_LOGE(format, ...)             RC522_LOG(ESP_LOGE, format, ##__VA_ARGS__)
 #define RC522_LOGW(format, ...)             RC522_LOG(ESP_LOGW, format, ##__VA_ARGS__)
 #define RC522_LOGI(format, ...)             RC522_LOG(ESP_LOGI, format, ##__VA_ARGS__)
 #define RC522_LOGD(format, ...)             RC522_LOG(ESP_LOGD, format, ##__VA_ARGS__)
 #define RC522_LOGV(format, ...)             RC522_LOG(ESP_LOGV, format, ##__VA_ARGS__)
-#define RC522_LOG_IM_HERE()                 RC522_LOGD("👋")
+#define RC522_LOG_HI()                      RC522_LOGD("👋")
 
 #define RC522_RETURN_ON_ERROR(x)           ESP_RETURN_ON_ERROR(x, TAG, "")
 #define RC522_RETURN_ON_FALSE(a, err_code) ESP_RETURN_ON_FALSE(a, err_code, TAG, "")

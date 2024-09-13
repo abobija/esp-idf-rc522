@@ -11,8 +11,6 @@ RC522_LOG_DEFINE_BASE();
 
 esp_err_t rc522_init(rc522_handle_t rc522)
 {
-    RC522_LOG_IM_HERE();
-
     // TODO: Implement hard reset via RST pin
     //       and ability to choose between hard and soft reset
 

@@ -23,6 +23,8 @@ typedef enum
 
 esp_err_t rc522_picc_presence(rc522_handle_t rc522, rc522_picc_presence_t *result);
 
+esp_err_t rc522_picc_uid(rc522_handle_t rc522, rc522_tag_uid_t *uid);
+
 esp_err_t rc522_firmware(rc522_handle_t rc522, rc522_firmware_t *result);
 
 char *rc522_firmware_name(rc522_firmware_t firmware);

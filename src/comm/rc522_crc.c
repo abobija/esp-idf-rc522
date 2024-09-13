@@ -11,8 +11,6 @@ RC522_LOG_DEFINE_BASE();
 
 esp_err_t rc522_calculate_crc(rc522_handle_t rc522, uint8_t *data, uint8_t n, uint8_t *buffer)
 {
-    RC522_LOG_IM_HERE();
-
     ESP_RETURN_ON_ERROR(rc522_stop_active_command(rc522), TAG, "");
     ESP_RETURN_ON_ERROR(rc522_clear_bitmask(rc522, RC522_DIV_INT_REQ_REG, RC522_CRC_IRQ), TAG, "");
     ESP_RETURN_ON_ERROR(rc522_fifo_flush(rc522), TAG, "");

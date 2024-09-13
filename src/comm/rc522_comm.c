@@ -12,8 +12,6 @@ static esp_err_t rc522_comm(rc522_handle_t rc522, rc522_command_t command, uint8
     uint8_t send_data_len, uint8_t *back_data, uint8_t *back_data_len, uint8_t *valid_bits, uint8_t rx_align,
     bool check_crc)
 {
-    RC522_LOG_IM_HERE();
-
     // Prepare values for bit framing
     uint8_t tx_last_bits = valid_bits ? *valid_bits : 0;
     uint8_t bit_framing = (rx_align << 4) + tx_last_bits;
@@ -51,7 +49,7 @@ static esp_err_t rc522_comm(rc522_handle_t rc522, rc522_command_t command, uint8
 
         // Timer interrupt - nothing received in 25ms
         if (irq & 0x01) {
-            RC522_LOGD("Timer interrupt (irq=0x%02x)", irq);
+            RC522_LOGD("timer interrupt (irq=0x%02x)", irq);
 
             return ESP_ERR_TIMEOUT;
         }
@@ -84,11 +82,17 @@ static esp_err_t rc522_comm(rc522_handle_t rc522, rc522_command_t command, uint8
 
         *back_data_len = length; // Number of bytes returned
 
+        uint8_t b0_orig = back_data[0];
         RC522_RETURN_ON_ERROR(rc522_read_n(rc522, RC522_FIFO_DATA_REG, length, back_data));
 
-        // FIXME: Implement and do rx_align here or somehow on read_n like in arduino lib
-        //
-        // PCD_ReadRegister(FIFODataReg, n, backData, rxAlign); // Get received data from FIFO
+        if (rx_align) { // Only update bit positions rxAlign..7 in values[0]
+            RC522_LOGD("rx_align=0x%02x, applying mask", rx_align);
+
+            // Create bit mask for bit positions rxAlign..7
+            uint8_t mask = (0xFF << rx_align) & 0xFF;
+            // Apply mask to both current value of values[0] and the new data in value.
+            back_data[0] = (b0_orig & ~mask) | (back_data[0] & mask);
+        }
 
         // RxLastBits[2:0] indicates the number of valid bits in the last
         // received byte. If this value is 000b, the whole byte is valid.
@@ -132,11 +136,13 @@ static esp_err_t rc522_comm(rc522_handle_t rc522, rc522_command_t command, uint8
 static esp_err_t rc522_transceive_data(rc522_handle_t rc522, uint8_t *send_data, uint8_t send_data_len,
     uint8_t *back_data, uint8_t *back_data_len, uint8_t *valid_bits, uint8_t rx_align, bool check_crc)
 {
-    RC522_LOG_IM_HERE();
-
     uint8_t wait_irq = 0x30; // RxIRq and IdleIRq
 
-    return rc522_comm(rc522,
+    RC522_LOGD("transceive (valid_bits=0x%02x, rx_align=0x%02x, check_crc=%d)", *valid_bits, rx_align, check_crc);
+    RC522_LOGD("picc <<");
+    ESP_LOG_BUFFER_HEX_LEVEL(TAG, send_data, send_data_len, ESP_LOG_DEBUG);
+
+    esp_err_t ret = rc522_comm(rc522,
         RC522_CMD_TRANSCEIVE,
         wait_irq,
         send_data,
@@ -146,13 +152,16 @@ static esp_err_t rc522_transceive_data(rc522_handle_t rc522, uint8_t *send_data,
         valid_bits,
         rx_align,
         check_crc);
+
+    RC522_LOGD("picc >> ");
+    ESP_LOG_BUFFER_HEX_LEVEL(TAG, back_data, *back_data_len, ESP_LOG_DEBUG);
+
+    return ret;
 }
 
 static esp_err_t rc522_reqa_or_wupa(
     rc522_handle_t rc522, uint8_t picc_cmd, uint8_t *atqa_buffer, uint8_t *atqa_buffer_size)
 {
-    RC522_LOG_IM_HERE();
-
     uint8_t valid_bits;
 
     if (atqa_buffer == NULL || *atqa_buffer_size < 2) { // The ATQA response is 2 bytes long.
@@ -178,17 +187,11 @@ static esp_err_t rc522_reqa_or_wupa(
 
 static esp_err_t rc522_request_a(rc522_handle_t rc522, uint8_t *atqa_buffer, uint8_t *atqa_buffer_size)
 {
-    RC522_LOG_IM_HERE();
-
-    const uint8_t picc_cmd_reqa = 0x26; // FIXME: Move to #define
-
-    return rc522_reqa_or_wupa(rc522, picc_cmd_reqa, atqa_buffer, atqa_buffer_size);
+    return rc522_reqa_or_wupa(rc522, RC522_PICC_CMD_REQA, atqa_buffer, atqa_buffer_size);
 }
 
 esp_err_t rc522_picc_presence(rc522_handle_t rc522, rc522_picc_presence_t *result)
 {
-    RC522_LOG_IM_HERE();
-
     ESP_RETURN_ON_FALSE(result != NULL, ESP_ERR_INVALID_ARG, TAG, "result is null");
 
     uint8_t atqa_buffer[2];
@@ -207,19 +210,278 @@ esp_err_t rc522_picc_presence(rc522_handle_t rc522, rc522_picc_presence_t *resul
     return ret;
 }
 
-esp_err_t rc522_picc_uid(rc522_handle_t rc522, rc522_tag_uid_t *result)
+static esp_err_t rc522_picc_select(rc522_handle_t rc522, rc522_tag_uid_t *uid, uint8_t valid_bits)
 {
-    // TODO: Implement!
+    bool uid_complete;
+    bool select_done;
+    bool use_cascade_tag;
+    uint8_t cascade_level = 1;
+    esp_err_t ret;
+    uint8_t count;
+    uint8_t check_bit;
+    uint8_t index;
+    uint8_t uid_index;               // The first index in uid->uidByte[] that is used in the current Cascade Level.
+    int8_t current_level_known_bits; // The number of known UID bits in the current Cascade Level.
+    uint8_t buffer[9];               // The SELECT/ANTICOLLISION commands uses a 7 byte standard frame + 2 bytes CRC_A
+    uint8_t buffer_used;  // The number of bytes used in the buffer, ie the number of bytes to transfer to the FIFO.
+    uint8_t rx_align;     // Used in BitFramingReg. Defines the bit position for the first bit received.
+    uint8_t tx_last_bits; // Used in BitFramingReg. The number of valid bits in the last transmitted byte.
+    uint8_t *response_buffer;
+    uint8_t response_length;
+
+    // Description of buffer structure:
+    //	 Byte 0: SEL              Indicates the Cascade Level: PICC_CMD_SEL_CL1, PICC_CMD_SEL_CL2 or PICC_CMD_SEL_CL3
+    //   Byte 1: NVB              Number of Valid Bits (in complete command, not just the UID):
+    //                            High nibble: complete bytes, Low nibble: Extra bits.
+    //   Byte 2: UID-data or CT	  See explanation below. CT means Cascade Tag.
+    //   Byte 3: UID-data
+    //   Byte 4: UID-data
+    //   Byte 5: UID-data
+    //   Byte 6: BCC              Block Check Character - XOR of bytes 2-5
+    //   Byte 7: CRC_A
+    //   Byte 8: CRC_A
+    //
+    //   The BCC and CRC_A are only transmitted if we know all the UID bits of the current Cascade Level.
+    //
+    // Description of bytes 2-5: (Section 6.5.4 of the ISO/IEC 14443-3 draft: UID contents and cascade levels)
+    //		UID size	Cascade level	Byte2	Byte3	Byte4	Byte5
+    //		========	=============	=====	=====	=====	=====
+    //		 4 bytes		1			uid0	uid1	uid2	uid3
+    //		 7 bytes		1			CT		uid0	uid1	uid2
+    //						2			uid3	uid4	uid5	uid6
+    //		10 bytes		1			CT		uid0	uid1	uid2
+    //						2			CT		uid3	uid4	uid5
+    //						3			uid6	uid7	uid8	uid9
+
+    // Sanity checks
+    const uint8_t valid_bits_max = 80;
+    ESP_RETURN_ON_FALSE(valid_bits <= valid_bits_max, ESP_ERR_INVALID_ARG, TAG, "valid_bits > %d", valid_bits_max);
+
+    // Prepare MFRC522
+    // ValuesAfterColl=1 => Bits received after collision are cleared.
+    RC522_RETURN_ON_ERROR(rc522_clear_bitmask(rc522, RC522_COLL_REG, 0x80));
+
+    // Repeat Cascade Level loop until we have a complete UID.
+    uid_complete = false;
+    while (!uid_complete) {
+        RC522_LOGD("cascade_level=%d, valid_bits=%d, uid->bytes_length=%d",
+            cascade_level,
+            valid_bits,
+            uid->bytes_length);
+
+        // Set the Cascade Level in the SEL byte, find out if we need to use the Cascade Tag in byte 2.
+        switch (cascade_level) {
+            case 1:
+                buffer[0] = RC522_PICC_CMD_SEL_CL1;
+                uid_index = 0;
+
+                // When we know that the UID has more than 4 bytes
+                use_cascade_tag = valid_bits && uid->bytes_length > 4;
+                break;
+
+            case 2:
+                buffer[0] = RC522_PICC_CMD_SEL_CL2;
+                uid_index = 3;
+
+                // When we know that the UID has more than 7 bytes
+                use_cascade_tag = valid_bits && uid->bytes_length > 7;
+                break;
+
+            case 3:
+                buffer[0] = RC522_PICC_CMD_SEL_CL3;
+                uid_index = 6;
+                use_cascade_tag = false; // Never used in CL3.
+                break;
+
+            default:
+                return ESP_FAIL;
+                break;
+        }
+
+        RC522_LOGD("uid_index=%d, use_cascade_tag=%d", uid_index, use_cascade_tag);
+
+        // How many UID bits are known in this Cascade Level?
+        current_level_known_bits = valid_bits - (8 * uid_index);
+        if (current_level_known_bits < 0) {
+            current_level_known_bits = 0;
+        }
+        // Copy the known bits from uid->uidByte[] to buffer[]
+        index = 2; // destination index in buffer[]
+        if (use_cascade_tag) {
+            buffer[index++] = RC522_PICC_CMD_CT;
+        }
+
+        // The number of bytes needed to represent the known bits for this level.
+        uint8_t bytes_to_copy = current_level_known_bits / 8 + (current_level_known_bits % 8 ? 1 : 0);
+
+        if (bytes_to_copy) {
+            // Max 4 bytes in each Cascade Level. Only 3 left if we use the Cascade Tag
+            uint8_t max_bytes = use_cascade_tag ? 3 : 4;
+            if (bytes_to_copy > max_bytes) {
+                bytes_to_copy = max_bytes;
+            }
+            for (count = 0; count < bytes_to_copy; count++) {
+                buffer[index++] = uid->bytes[uid_index + count];
+            }
+        }
+        // Now that the data has been copied we need to include the 8 bits in CT in current_level_known_bits
+        if (use_cascade_tag) {
+            current_level_known_bits += 8;
+        }
+
+        // Repeat anti collision loop until we can transmit all UID bits + BCC and receive a SAK - max 32 iterations.
+        select_done = false;
+        while (!select_done) {
+            // Find out how many bits and bytes to send and receive.
+            if (current_level_known_bits >= 32) { // All UID bits in this Cascade Level are known. This is a SELECT.
+                RC522_LOGD("SELECT");
+
+                // NVB - Number of Valid Bits: Seven whole bytes
+                buffer[1] = 0x70;
+                // Calculate BCC - Block Check Character
+                buffer[6] = buffer[2] ^ buffer[3] ^ buffer[4] ^ buffer[5];
+                // Calculate CRC_A
+
+                RC522_RETURN_ON_ERROR(rc522_calculate_crc(rc522, buffer, 7, &buffer[7]));
+
+                tx_last_bits = 0; // 0 => All 8 bits are valid.
+                buffer_used = 9;
+                // Store response in the last 3 bytes of buffer (BCC and CRC_A - not needed after tx)
+                response_buffer = &buffer[6];
+                response_length = 3;
+            }
+            else { // This is an ANTICOLLISION.
+                RC522_LOGD("ANTICOLLISION");
+
+                tx_last_bits = current_level_known_bits % 8;
+                count = current_level_known_bits / 8;    // Number of whole bytes in the UID part.
+                index = 2 + count;                       // Number of whole bytes: SEL + NVB + UIDs
+                buffer[1] = (index << 4) + tx_last_bits; // NVB - Number of Valid Bits
+                buffer_used = index + (tx_last_bits ? 1 : 0);
+                // Store response in the unused part of buffer
+                response_buffer = &buffer[index];
+                response_length = sizeof(buffer) - index;
+            }
+
+            // Set bit adjustments
+            // Having a separate variable is overkill. But it makes the next line easier to read.
+            rx_align = tx_last_bits;
+
+            // RxAlign = BitFramingReg[6..4]. TxLastBits = BitFramingReg[2..0]
+            RC522_RETURN_ON_ERROR(rc522_write(rc522, RC522_BIT_FRAMING_REG, (rx_align << 4) + tx_last_bits));
+
+            // Transmit the buffer and receive the response.
+            ret = rc522_transceive_data(rc522,
+                buffer,
+                buffer_used,
+                response_buffer,
+                &response_length,
+                &tx_last_bits,
+                rx_align,
+                false);
+
+            if (ret == ESP_ERR_RC522_COLLISION) { // More than one PICC in the field => collision.
+                RC522_LOGD("collision detected");
+
+                // CollReg[7..0] bits are: ValuesAfterColl reserved CollPosNotValid CollPos[4:0]
+                uint8_t value_of_coll_reg;
+                rc522_read(rc522, RC522_COLL_REG, &value_of_coll_reg);
+
+                if (value_of_coll_reg & 0x20) { // CollPosNotValid
+                    // Without a valid collision position we cannot continue
+                    return ESP_ERR_RC522_COLLISION;
+                }
+
+                uint8_t collision_pos = value_of_coll_reg & 0x1F; // Values 0-31, 0 means bit 32.
+                if (collision_pos == 0) {
+                    collision_pos = 32;
+                }
+                if (collision_pos <= current_level_known_bits) { // No progress - should not happen
+                    return ESP_FAIL;
+                }
+                // Choose the PICC with the bit set.
+                current_level_known_bits = collision_pos;
+                count = current_level_known_bits % 8; // The bit to modify
+                check_bit = (current_level_known_bits - 1) % 8;
+                index = 1 + (current_level_known_bits / 8) + (count ? 1 : 0); // First byte is index 0.
+                buffer[index] |= (1 << check_bit);
+            }
+            else if (ret != ESP_OK) {
+                RC522_LOGD("transceive failed");
+
+                return ret;
+            }
+            else {                                    // ESP_OK
+                if (current_level_known_bits >= 32) { // This was a SELECT.
+                    // No more anticollision
+                    // We continue below outside the while.
+                    select_done = true;
+                }
+                else { // This was an ANTICOLLISION.
+                    // We now have all 32 bits of the UID in this Cascade Level
+                    current_level_known_bits = 32;
+                    // Run loop again to do the SELECT.
+                }
+            }
+        } // End of while (!selectDone)
+
+        RC522_LOGD("SELECT done");
+
+        // We do not check the CBB - it was constructed by us above.
+
+        // Copy the found UID bytes from buffer[] to uid->uidByte[]
+        index = (buffer[2] == RC522_PICC_CMD_CT) ? 3 : 2; // source index in buffer[]
+        bytes_to_copy = (buffer[2] == RC522_PICC_CMD_CT) ? 3 : 4;
+        for (count = 0; count < bytes_to_copy; count++) {
+            uid->bytes[uid_index + count] = buffer[index++];
+        }
+
+        // Check response SAK (Select Acknowledge)
+        if (response_length != 3 || tx_last_bits != 0) { // SAK must be exactly 24 bits (1 byte + CRC_A).
+            return ESP_FAIL;
+        }
+        // Verify CRC_A - do our own calculation and store the control in buffer[2..3] - those bytes are not needed
+        // anymore.
+
+// compiler complains about uninitialized response_buffer even is
+// no chance that response_buffer is NULL here, so ignore warning here
+#pragma GCC diagnostic ignored "-Wmaybe-uninitialized"
+        RC522_RETURN_ON_ERROR(rc522_calculate_crc(rc522, response_buffer, 1, buffer + 2));
+
+        if ((buffer[2] != response_buffer[1]) || (buffer[3] != response_buffer[2])) {
+            return ESP_ERR_RC522_CRC_WRONG;
+        }
+        if (response_buffer[0] & 0x04) { // Cascade bit set - UID not complete yes
+            cascade_level++;
+        }
+        else {
+            uid_complete = true;
+            uid->sak = response_buffer[0];
+        }
+#pragma GCC diagnostic pop
+    } // End of while (!uidComplete)
+
+    // Set correct uid->size
+    uid->bytes_length = 3 * cascade_level + 1;
 
     return ESP_OK;
 }
 
-esp_err_t rc522_firmware(rc522_handle_t rc522, rc522_firmware_t *result)
+esp_err_t rc522_picc_uid(rc522_handle_t rc522, rc522_tag_uid_t *uid)
 {
+    ESP_RETURN_ON_FALSE(uid != NULL, ESP_ERR_INVALID_ARG, TAG, "uid is null");
+
+    return rc522_picc_select(rc522, uid, 0);
+}
+
+esp_err_t rc522_firmware(rc522_handle_t rc522, rc522_firmware_t *fw)
+{
+    ESP_RETURN_ON_FALSE(fw != NULL, ESP_ERR_INVALID_ARG, TAG, "fw is null");
+
     uint8_t value;
     RC522_RETURN_ON_ERROR(rc522_read(rc522, RC522_VERSION_REG, &value));
 
-    *result = (rc522_firmware_t)value;
+    *fw = (rc522_firmware_t)value;
     return ESP_OK;
 }
 
@@ -243,8 +505,6 @@ char *rc522_firmware_name(rc522_firmware_t firmware)
 
 esp_err_t rc522_antenna_on(rc522_handle_t rc522)
 {
-    RC522_LOG_IM_HERE();
-
     uint8_t value;
     RC522_RETURN_ON_ERROR(rc522_read(rc522, RC522_TX_CONTROL_REG, &value));
 
@@ -272,8 +532,6 @@ inline esp_err_t rc522_fifo_flush(rc522_handle_t rc522)
 
 esp_err_t rc522_soft_reset(rc522_handle_t rc522, uint32_t timeout_ms)
 {
-    RC522_LOG_IM_HERE();
-
     RC522_RETURN_ON_ERROR(rc522_write(rc522, RC522_COMMAND_REG, RC522_CMD_SOFT_RESET));
 
     bool power_down_bit = true;
@@ -287,7 +545,7 @@ esp_err_t rc522_soft_reset(rc522_handle_t rc522, uint32_t timeout_ms)
         uint8_t cmd;
         RC522_RETURN_ON_ERROR(rc522_read(rc522, RC522_COMMAND_REG, &cmd));
 
-        if (!(power_down_bit = cmd & RC522_POWER_DOWN)) {
+        if (!(power_down_bit = (cmd & RC522_POWER_DOWN))) {
             break;
         }
     }

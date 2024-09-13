@@ -9,11 +9,11 @@ RC522_LOG_DEFINE_BASE();
 esp_err_t rc522_write_n(rc522_handle_t rc522, uint8_t addr, uint8_t n, uint8_t *data)
 {
     if (n > 1) {
-        RC522_LOGD("Write %d byte(s) into 0x%02x", n, addr);
-        ESP_LOG_BUFFER_HEX_LEVEL(RC522_LOG_TAG, data, n, ESP_LOG_DEBUG);
+        RC522_LOGV("\t[0x%02x] <=", addr);
+        ESP_LOG_BUFFER_HEX_LEVEL(RC522_LOG_TAG, data, n, ESP_LOG_VERBOSE);
     }
     else {
-        RC522_LOGD("Write 0x%02x into 0x%02x", *data, addr);
+        RC522_LOGV("\t[0x%02x] <= 0x%02x", addr, *data);
     }
 
     uint8_t *buffer = NULL;
@@ -39,11 +39,15 @@ inline esp_err_t rc522_write(rc522_handle_t rc522, uint8_t addr, uint8_t val)
 
 esp_err_t rc522_read_n(rc522_handle_t rc522, uint8_t addr, uint8_t n, uint8_t *buffer)
 {
-    RC522_LOGD("Read %d byte(s) from 0x%02x", n, addr);
-
     esp_err_t ret = rc522->config->receive_handler(addr, buffer, n);
 
-    ESP_LOG_BUFFER_HEX_LEVEL(RC522_LOG_TAG, buffer, n, ESP_LOG_DEBUG);
+    if (n > 1) {
+        RC522_LOGV("\t[0x%02x] =>", addr);
+        ESP_LOG_BUFFER_HEX_LEVEL(RC522_LOG_TAG, buffer, n, ESP_LOG_VERBOSE);
+    }
+    else {
+        RC522_LOGV("\t[0x%02x] => 0x%02x", addr, *buffer);
+    }
 
     return ret;
 }

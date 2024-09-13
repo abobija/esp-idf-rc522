@@ -37,7 +37,7 @@ static esp_err_t rc522_send(uint8_t *buffer, uint8_t length)
     *address <<= 1;
     *address &= (~0x80);
 
-    esp_err_t ret = spi_device_transmit(rc522_spi_handle,
+    esp_err_t ret = spi_device_polling_transmit(rc522_spi_handle,
         &(spi_transaction_t) {
             .length = 8 * length,
             .tx_buffer = buffer,
@@ -53,14 +53,21 @@ static esp_err_t rc522_receive(uint8_t address, uint8_t *buffer, uint8_t length)
     address <<= 1;
     address |= 0x80;
 
-    return spi_device_transmit(rc522_spi_handle,
-        &(spi_transaction_t) {
-            .flags = SPI_TRANS_USE_TXDATA,
-            .length = 8,
-            .tx_data[0] = address,
-            .rxlength = 8 * length,
-            .rx_buffer = buffer,
-        });
+    spi_device_acquire_bus(rc522_spi_handle, portMAX_DELAY);
+
+    for (uint8_t i = 0; i < length; i++) {
+        spi_device_polling_transmit(rc522_spi_handle,
+            &(spi_transaction_t) {
+                .length = 8,
+                .tx_buffer = &address,
+                .rxlength = 8,
+                .rx_buffer = (buffer + i),
+            });
+    }
+
+    spi_device_release_bus(rc522_spi_handle);
+
+    return ESP_OK;
 }
 
 static void rc522_event_handler(void *arg, esp_event_base_t base, int32_t event_id, void *event_data)
@@ -72,13 +79,16 @@ static void rc522_event_handler(void *arg, esp_event_base_t base, int32_t event_
             ESP_LOGI(TAG, "Tag scanned!");
 
             rc522_tag_t *tag = (rc522_tag_t *)data->ptr;
-            ESP_LOG_BUFFER_HEX(TAG, tag->uid.bytes, tag->uid.length);
+            ESP_LOG_BUFFER_HEX(TAG, tag->uid.bytes, tag->uid.bytes_length);
         } break;
     }
 }
 
 void app_main()
 {
+    esp_log_level_set("*", ESP_LOG_INFO);
+    esp_log_level_set("rc522", ESP_LOG_DEBUG);
+
     spi_bus_initialize(RC522_SPI_HOST, &spi_bus_config, 0);
     spi_bus_add_device(RC522_SPI_HOST, &spi_rc522_config, &rc522_spi_handle);
 

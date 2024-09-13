@@ -46,8 +46,17 @@ typedef struct
 
 typedef struct
 {
-    uint8_t *bytes;
-    uint8_t length;
+    uint8_t bytes[10];
+
+    /**
+     * Number of bytes in the UID. 4, 7 or 10.
+     */
+    uint8_t bytes_length;
+
+    /**
+     * The SAK (Select acknowledge) byte returned from the PICC after successful selection.
+     */
+    uint8_t sak;
 } rc522_tag_uid_t;
 
 typedef struct
