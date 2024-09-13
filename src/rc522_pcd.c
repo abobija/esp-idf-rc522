@@ -8,18 +8,18 @@ RC522_LOG_DEFINE_BASE();
 
 esp_err_t rc522_pcd_calculate_crc(rc522_handle_t rc522, uint8_t *data, uint8_t n, uint8_t *buffer)
 {
-    ESP_RETURN_ON_ERROR(rc522_pcd_stop_active_command(rc522), TAG, "");
-    ESP_RETURN_ON_ERROR(rc522_pcd_clear_bits(rc522, RC522_PCD_DIV_INT_REQ_REG, RC522_PCD_CRC_IRQ_BIT), TAG, "");
-    ESP_RETURN_ON_ERROR(rc522_pcd_fifo_flush(rc522), TAG, "");
-    ESP_RETURN_ON_ERROR(rc522_pcd_write_n(rc522, RC522_PCD_FIFO_DATA_REG, n, data), TAG, "");
-    ESP_RETURN_ON_ERROR(rc522_pcd_write(rc522, RC522_PCD_COMMAND_REG, RC522_PCD_CALC_CRC_CMD), TAG, "");
+    RC522_RETURN_ON_ERROR(rc522_pcd_stop_active_command(rc522));
+    RC522_RETURN_ON_ERROR(rc522_pcd_clear_bits(rc522, RC522_PCD_DIV_INT_REQ_REG, RC522_PCD_CRC_IRQ_BIT));
+    RC522_RETURN_ON_ERROR(rc522_pcd_fifo_flush(rc522));
+    RC522_RETURN_ON_ERROR(rc522_pcd_fifo_write(rc522, data, n));
+    RC522_RETURN_ON_ERROR(rc522_pcd_write(rc522, RC522_PCD_COMMAND_REG, RC522_PCD_CALC_CRC_CMD));
 
     uint32_t deadline_ms = rc522_millis() + 90;
     bool calculation_done = false;
 
     do {
         uint8_t irq;
-        ESP_RETURN_ON_ERROR(rc522_pcd_read(rc522, RC522_PCD_DIV_INT_REQ_REG, &irq), TAG, "");
+        RC522_RETURN_ON_ERROR(rc522_pcd_read(rc522, RC522_PCD_DIV_INT_REQ_REG, &irq));
 
         if (RC522_PCD_CRC_IRQ_BIT & irq) {
             calculation_done = true;
@@ -34,9 +34,9 @@ esp_err_t rc522_pcd_calculate_crc(rc522_handle_t rc522, uint8_t *data, uint8_t n
         return ESP_ERR_TIMEOUT;
     }
 
-    ESP_RETURN_ON_ERROR(rc522_pcd_stop_active_command(rc522), TAG, "");
-    ESP_RETURN_ON_ERROR(rc522_pcd_read(rc522, RC522_PCD_CRC_RESULT_LSB_REG, buffer), TAG, "");
-    ESP_RETURN_ON_ERROR(rc522_pcd_read(rc522, RC522_PCD_CRC_RESULT_MSB_REG, buffer + 1), TAG, "");
+    RC522_RETURN_ON_ERROR(rc522_pcd_stop_active_command(rc522));
+    RC522_RETURN_ON_ERROR(rc522_pcd_read(rc522, RC522_PCD_CRC_RESULT_LSB_REG, buffer));
+    RC522_RETURN_ON_ERROR(rc522_pcd_read(rc522, RC522_PCD_CRC_RESULT_MSB_REG, buffer + 1));
 
     return ESP_OK;
 }
@@ -290,7 +290,7 @@ inline esp_err_t rc522_pcd_read(rc522_handle_t rc522, rc522_pcd_register_t addr,
 esp_err_t rc522_pcd_set_bits(rc522_handle_t rc522, rc522_pcd_register_t addr, uint8_t bits)
 {
     uint8_t value;
-    ESP_RETURN_ON_ERROR(rc522_pcd_read(rc522, addr, &value), TAG, "");
+    RC522_RETURN_ON_ERROR(rc522_pcd_read(rc522, addr, &value));
 
     return rc522_pcd_write(rc522, addr, value | bits);
 }

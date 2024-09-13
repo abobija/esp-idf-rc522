@@ -41,8 +41,8 @@ static esp_err_t rc522_clone_config(rc522_config_t *config, rc522_config_t **res
 
 esp_err_t rc522_create(rc522_config_t *config, rc522_handle_t *out_rc522)
 {
-    ESP_RETURN_ON_FALSE(config != NULL, ESP_ERR_INVALID_ARG, TAG, "Config ptr is NULL");
-    ESP_RETURN_ON_FALSE(out_rc522 != NULL, ESP_ERR_INVALID_ARG, TAG, "Handle ptr is NULL");
+    ESP_RETURN_ON_FALSE(config != NULL, ESP_ERR_INVALID_ARG, TAG, "config is null");
+    ESP_RETURN_ON_FALSE(out_rc522 != NULL, ESP_ERR_INVALID_ARG, TAG, "out_rc522 is null");
 
     rc522_handle_t rc522 = calloc(1, sizeof(struct rc522));
     ESP_RETURN_ON_FALSE(rc522 != NULL, ESP_ERR_NO_MEM, TAG, "No memory");
@@ -87,21 +87,21 @@ _return:
 esp_err_t rc522_register_events(
     rc522_handle_t rc522, rc522_event_t event, esp_event_handler_t event_handler, void *event_handler_arg)
 {
-    ESP_RETURN_ON_FALSE(rc522 != NULL, ESP_ERR_INVALID_ARG, TAG, "Handle is NULL");
+    ESP_RETURN_ON_FALSE(rc522 != NULL, ESP_ERR_INVALID_ARG, TAG, "rc522 is null");
 
     return esp_event_handler_register_with(rc522->event_handle, RC522_EVENTS, event, event_handler, event_handler_arg);
 }
 
 esp_err_t rc522_unregister_events(rc522_handle_t rc522, rc522_event_t event, esp_event_handler_t event_handler)
 {
-    ESP_RETURN_ON_FALSE(rc522 != NULL, ESP_ERR_INVALID_ARG, TAG, "Handle is NULL");
+    ESP_RETURN_ON_FALSE(rc522 != NULL, ESP_ERR_INVALID_ARG, TAG, "rc522 is null");
 
     return esp_event_handler_unregister_with(rc522->event_handle, RC522_EVENTS, event, event_handler);
 }
 
 esp_err_t rc522_start(rc522_handle_t rc522)
 {
-    ESP_RETURN_ON_FALSE(rc522 != NULL, ESP_ERR_INVALID_ARG, TAG, "Handle is NULL");
+    ESP_RETURN_ON_FALSE(rc522 != NULL, ESP_ERR_INVALID_ARG, TAG, "rc522 is null");
     ESP_RETURN_ON_FALSE(rc522_is_able_to_start(rc522),
         ESP_ERR_INVALID_STATE,
         TAG,
@@ -116,7 +116,7 @@ esp_err_t rc522_start(rc522_handle_t rc522)
 
     ESP_RETURN_ON_ERROR(rc522_pcd_rw_test(rc522), TAG, "RW test failed");
 
-    ESP_RETURN_ON_ERROR(rc522_pcd_init(rc522), TAG, "Unable to init");
+    ESP_RETURN_ON_ERROR(rc522_pcd_init(rc522), TAG, "Unable to init PCD");
 
     rc522_pcd_firmware_t fw;
     ESP_RETURN_ON_ERROR(rc522_pcd_firmware(rc522, &fw), TAG, "Failed to get firmware version");
@@ -137,7 +137,7 @@ esp_err_t rc522_start(rc522_handle_t rc522)
 
 esp_err_t rc522_pause(rc522_handle_t rc522)
 {
-    ESP_RETURN_ON_FALSE(rc522 != NULL, ESP_ERR_INVALID_ARG, TAG, "Handle is NULL");
+    ESP_RETURN_ON_FALSE(rc522 != NULL, ESP_ERR_INVALID_ARG, TAG, "rc522 is null");
 
     ESP_RETURN_ON_FALSE(rc522->state == RC522_STATE_SCANNING,
         ESP_ERR_INVALID_STATE,
@@ -152,7 +152,7 @@ esp_err_t rc522_pause(rc522_handle_t rc522)
 
 esp_err_t rc522_destroy(rc522_handle_t rc522)
 {
-    ESP_RETURN_ON_FALSE(rc522 != NULL, ESP_ERR_INVALID_ARG, TAG, "Handle is NULL");
+    ESP_RETURN_ON_FALSE(rc522 != NULL, ESP_ERR_INVALID_ARG, TAG, "rc522 is null");
     ESP_RETURN_ON_FALSE(xTaskGetCurrentTaskHandle() != rc522->task_handle,
         ESP_ERR_INVALID_STATE,
         TAG,
@@ -185,10 +185,12 @@ static esp_err_t rc522_dispatch_event(rc522_handle_t rc522, rc522_event_t event,
         .ptr = data,
     };
 
-    ESP_RETURN_ON_ERROR(
-        esp_event_post_to(rc522->event_handle, RC522_EVENTS, event, &e_data, sizeof(rc522_event_data_t), portMAX_DELAY),
-        TAG,
-        "");
+    RC522_RETURN_ON_ERROR(esp_event_post_to(rc522->event_handle,
+        RC522_EVENTS,
+        event,
+        &e_data,
+        sizeof(rc522_event_data_t),
+        portMAX_DELAY));
 
     return esp_event_loop_run(rc522->event_handle, 0);
 }
