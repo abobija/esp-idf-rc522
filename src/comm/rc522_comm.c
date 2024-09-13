@@ -213,7 +213,7 @@ esp_err_t rc522_picc_find(rc522_handle_t rc522, rc522_picc_t *picc)
     return ret;
 }
 
-static esp_err_t rc522_picc_select(rc522_handle_t rc522, rc522_picc_uid_t *uid, uint8_t valid_bits)
+static esp_err_t rc522_picc_select(rc522_handle_t rc522, rc522_picc_t *picc, uint8_t valid_bits)
 {
     bool uid_complete;
     bool select_done;
@@ -270,7 +270,7 @@ static esp_err_t rc522_picc_select(rc522_handle_t rc522, rc522_picc_uid_t *uid, 
         RC522_LOGD("cascade_level=%d, valid_bits=%d, uid->bytes_length=%d",
             cascade_level,
             valid_bits,
-            uid->bytes_length);
+            picc->uid.bytes_length);
 
         // Set the Cascade Level in the SEL byte, find out if we need to use the Cascade Tag in byte 2.
         switch (cascade_level) {
@@ -279,7 +279,7 @@ static esp_err_t rc522_picc_select(rc522_handle_t rc522, rc522_picc_uid_t *uid, 
                 uid_index = 0;
 
                 // When we know that the UID has more than 4 bytes
-                use_cascade_tag = valid_bits && uid->bytes_length > 4;
+                use_cascade_tag = valid_bits && picc->uid.bytes_length > 4;
                 break;
 
             case 2:
@@ -287,7 +287,7 @@ static esp_err_t rc522_picc_select(rc522_handle_t rc522, rc522_picc_uid_t *uid, 
                 uid_index = 3;
 
                 // When we know that the UID has more than 7 bytes
-                use_cascade_tag = valid_bits && uid->bytes_length > 7;
+                use_cascade_tag = valid_bits && picc->uid.bytes_length > 7;
                 break;
 
             case 3:
@@ -324,7 +324,7 @@ static esp_err_t rc522_picc_select(rc522_handle_t rc522, rc522_picc_uid_t *uid, 
                 bytes_to_copy = max_bytes;
             }
             for (count = 0; count < bytes_to_copy; count++) {
-                buffer[index++] = uid->bytes[uid_index + count];
+                buffer[index++] = picc->uid.bytes[uid_index + count];
             }
         }
         // Now that the data has been copied we need to include the 8 bits in CT in current_level_known_bits
@@ -436,7 +436,7 @@ static esp_err_t rc522_picc_select(rc522_handle_t rc522, rc522_picc_uid_t *uid, 
         index = (buffer[2] == RC522_PICC_CMD_CT) ? 3 : 2; // source index in buffer[]
         bytes_to_copy = (buffer[2] == RC522_PICC_CMD_CT) ? 3 : 4;
         for (count = 0; count < bytes_to_copy; count++) {
-            uid->bytes[uid_index + count] = buffer[index++];
+            picc->uid.bytes[uid_index + count] = buffer[index++];
         }
 
         // Check response SAK (Select Acknowledge)
@@ -459,13 +459,13 @@ static esp_err_t rc522_picc_select(rc522_handle_t rc522, rc522_picc_uid_t *uid, 
         }
         else {
             uid_complete = true;
-            uid->sak = response_buffer[0];
+            picc->sak = response_buffer[0];
         }
 #pragma GCC diagnostic pop
     } // End of while (!uidComplete)
 
     // Set correct uid->size
-    uid->bytes_length = 3 * cascade_level + 1;
+    picc->uid.bytes_length = 3 * cascade_level + 1;
 
     return ESP_OK;
 }
@@ -508,9 +508,9 @@ esp_err_t rc522_picc_fetch(rc522_handle_t rc522, rc522_picc_t *picc)
 {
     ESP_RETURN_ON_FALSE(picc != NULL, ESP_ERR_INVALID_ARG, TAG, "picc is null");
 
-    RC522_RETURN_ON_ERROR(rc522_picc_select(rc522, &picc->uid, 0));
+    RC522_RETURN_ON_ERROR(rc522_picc_select(rc522, picc, 0));
 
-    picc->type = rc522_picc_type(picc->uid.sak);
+    picc->type = rc522_picc_type(picc->sak);
 
     return ESP_OK;
 }

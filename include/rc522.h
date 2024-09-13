@@ -49,16 +49,7 @@ typedef struct
 typedef struct
 {
     uint8_t bytes[RC522_PICC_UID_MAX_SIZE];
-
-    /**
-     * Number of bytes in the UID. 4, 7 or 10.
-     */
     uint8_t bytes_length;
-
-    /**
-     * The SAK (Select acknowledge) byte returned from the PICC after successful selection.
-     */
-    uint8_t sak;
 } rc522_picc_uid_t;
 
 typedef enum
@@ -80,6 +71,7 @@ typedef struct
 {
     bool is_present;
     rc522_picc_uid_t uid;
+    uint8_t sak; // Select acknowledge (SAK) byte returned from the PICC after successful selection
     rc522_picc_type_t type;
 } rc522_picc_t;
 
