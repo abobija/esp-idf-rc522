@@ -15,6 +15,11 @@ typedef enum
     RC522_PCD_FIRMWARE_COUNTERFEIT = 0x12, // counterfeit chip
 } rc522_pcd_firmware_t;
 
+// Buffer should be at least 2 bytes long
+// Only first 2 elements will be used where the result will be stored
+// TODO: Use uint16_t type for the result instead of buffer array?
+esp_err_t rc522_pcd_calculate_crc(rc522_handle_t rc522, uint8_t *data, uint8_t n, uint8_t *buffer);
+
 esp_err_t rc522_pcd_init(rc522_handle_t rc522);
 
 esp_err_t rc522_pcd_soft_reset(rc522_handle_t rc522, uint32_t timeout_ms);
@@ -35,7 +40,7 @@ esp_err_t rc522_pcd_start_data_transmission(rc522_handle_t rc522);
 
 esp_err_t rc522_pcd_stop_data_transmission(rc522_handle_t rc522);
 
-esp_err_t rc522_rw_test(rc522_handle_t rc522);
+esp_err_t rc522_pcd_rw_test(rc522_handle_t rc522);
 
 esp_err_t rc522_pcd_write_n(rc522_handle_t rc522, uint8_t addr, uint8_t n, uint8_t *data);
 

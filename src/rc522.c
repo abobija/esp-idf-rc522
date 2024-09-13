@@ -10,7 +10,6 @@
 #include "rc522_registers.h"
 #include "comm/rc522_comm.h"
 #include "rc522_pcd.h"
-#include "comm/rc522_crc.h"
 
 RC522_LOG_DEFINE_BASE();
 
@@ -116,7 +115,7 @@ esp_err_t rc522_start(rc522_handle_t rc522)
         return ESP_OK;
     }
 
-    ESP_RETURN_ON_ERROR(rc522_rw_test(rc522), TAG, "RW test failed");
+    ESP_RETURN_ON_ERROR(rc522_pcd_rw_test(rc522), TAG, "RW test failed");
 
     ESP_RETURN_ON_ERROR(rc522_pcd_init(rc522), TAG, "Unable to init");
 

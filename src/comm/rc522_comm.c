@@ -3,7 +3,6 @@
 #include <string.h>
 
 #include "comm/rc522_comm.h"
-#include "comm/rc522_crc.h"
 #include "rc522_pcd.h"
 
 RC522_LOG_DEFINE_BASE();
@@ -123,7 +122,7 @@ static esp_err_t rc522_comm(rc522_handle_t rc522, rc522_command_t command, uint8
         // Verify CRC_A - do our own calculation and store the control in controlBuffer.
         uint8_t control_buffer[2];
 
-        RC522_RETURN_ON_ERROR(rc522_calculate_crc(rc522, back_data, *back_data_len, control_buffer));
+        RC522_RETURN_ON_ERROR(rc522_pcd_calculate_crc(rc522, back_data, *back_data_len, control_buffer));
 
         if ((back_data[*back_data_len - 2] != control_buffer[0]) ||
             (back_data[*back_data_len - 1] != control_buffer[1])) {
@@ -346,7 +345,7 @@ static esp_err_t rc522_picc_select(rc522_handle_t rc522, rc522_picc_t *picc, uin
                 buffer[6] = buffer[2] ^ buffer[3] ^ buffer[4] ^ buffer[5];
                 // Calculate CRC_A
 
-                RC522_RETURN_ON_ERROR(rc522_calculate_crc(rc522, buffer, 7, &buffer[7]));
+                RC522_RETURN_ON_ERROR(rc522_pcd_calculate_crc(rc522, buffer, 7, &buffer[7]));
 
                 tx_last_bits = 0; // 0 => All 8 bits are valid.
                 buffer_used = 9;
@@ -450,7 +449,7 @@ static esp_err_t rc522_picc_select(rc522_handle_t rc522, rc522_picc_t *picc, uin
 // compiler complains about uninitialized response_buffer even is
 // no chance that response_buffer is NULL here, so ignore warning here
 #pragma GCC diagnostic ignored "-Wmaybe-uninitialized"
-        RC522_RETURN_ON_ERROR(rc522_calculate_crc(rc522, response_buffer, 1, buffer + 2));
+        RC522_RETURN_ON_ERROR(rc522_pcd_calculate_crc(rc522, response_buffer, 1, buffer + 2));
 
         if ((buffer[2] != response_buffer[1]) || (buffer[3] != response_buffer[2])) {
             return ESP_ERR_RC522_CRC_WRONG;
