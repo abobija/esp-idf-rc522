@@ -9,7 +9,7 @@
 #include "rc522_private.h"
 #include "rc522_registers.h"
 #include "comm/rc522_comm.h"
-#include "comm/rc522_init.h"
+#include "rc522_pcd.h"
 #include "comm/rc522_crc.h"
 #include "comm/rc522_rw_test.h"
 
@@ -119,7 +119,7 @@ esp_err_t rc522_start(rc522_handle_t rc522)
 
     ESP_RETURN_ON_ERROR(rc522_rw_test(rc522), TAG, "RW test failed");
 
-    ESP_RETURN_ON_ERROR(rc522_init(rc522), TAG, "Unable to init");
+    ESP_RETURN_ON_ERROR(rc522_pcd_init(rc522), TAG, "Unable to init");
 
     rc522_firmware_t fw;
     ESP_RETURN_ON_ERROR(rc522_firmware(rc522, &fw), TAG, "Failed to get firmware version");

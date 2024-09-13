@@ -7,7 +7,6 @@ idf_component_register(
         src/rc522.c
         src/rc522_pcd.c
         src/comm/rc522_comm.c
-        src/comm/rc522_init.c
         src/comm/rc522_crc.c
         src/comm/rc522_rw_test.c
     REQUIRES

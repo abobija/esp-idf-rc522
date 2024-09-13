@@ -17,7 +17,8 @@ static esp_err_t rc522_comm(rc522_handle_t rc522, rc522_command_t command, uint8
     uint8_t bit_framing = (rx_align << 4) + tx_last_bits;
 
     RC522_RETURN_ON_ERROR(rc522_stop_active_command(rc522));
-    RC522_RETURN_ON_ERROR(rc522_pcd_write(rc522, RC522_COMM_INT_REQ_REG, 0x7F)); // Clear all seven interrupt request bits
+    RC522_RETURN_ON_ERROR(
+        rc522_pcd_write(rc522, RC522_COMM_INT_REQ_REG, 0x7F)); // Clear all seven interrupt request bits
     RC522_RETURN_ON_ERROR(rc522_fifo_flush(rc522));
     RC522_RETURN_ON_ERROR(rc522_fifo_write(rc522, send_data, send_data_len));
     RC522_RETURN_ON_ERROR(rc522_pcd_write(rc522, RC522_BIT_FRAMING_REG, bit_framing)); // Bit adjustments
@@ -544,18 +545,6 @@ char *rc522_firmware_name(rc522_firmware_t firmware)
     return "unknown";
 }
 
-esp_err_t rc522_antenna_on(rc522_handle_t rc522)
-{
-    uint8_t value;
-    RC522_RETURN_ON_ERROR(rc522_pcd_read(rc522, RC522_TX_CONTROL_REG, &value));
-
-    if ((value & 0x03) != 0x03) {
-        RC522_RETURN_ON_ERROR(rc522_pcd_write(rc522, RC522_TX_CONTROL_REG, value | 0x03));
-    }
-
-    return ESP_OK;
-}
-
 inline esp_err_t rc522_stop_active_command(rc522_handle_t rc522)
 {
     return rc522_pcd_write(rc522, RC522_COMMAND_REG, RC522_CMD_IDLE);
@@ -569,30 +558,6 @@ inline esp_err_t rc522_fifo_write(rc522_handle_t rc522, uint8_t *data, uint8_t d
 inline esp_err_t rc522_fifo_flush(rc522_handle_t rc522)
 {
     return rc522_pcd_write(rc522, RC522_FIFO_LEVEL_REG, RC522_FLUSH_BUFFER);
-}
-
-esp_err_t rc522_soft_reset(rc522_handle_t rc522, uint32_t timeout_ms)
-{
-    RC522_RETURN_ON_ERROR(rc522_pcd_write(rc522, RC522_COMMAND_REG, RC522_CMD_SOFT_RESET));
-
-    bool power_down_bit = true;
-    uint32_t start_ms = rc522_millis();
-
-    // Wait for the PowerDown bit in CommandReg to be cleared
-    do {
-        rc522_delay_ms(25);
-        taskYIELD();
-
-        uint8_t cmd;
-        RC522_RETURN_ON_ERROR(rc522_pcd_read(rc522, RC522_COMMAND_REG, &cmd));
-
-        if (!(power_down_bit = (cmd & RC522_POWER_DOWN))) {
-            break;
-        }
-    }
-    while ((rc522_millis() - start_ms) < timeout_ms);
-
-    return power_down_bit ? ESP_ERR_TIMEOUT : ESP_OK;
 }
 
 inline esp_err_t rc522_start_data_transmission(rc522_handle_t rc522)

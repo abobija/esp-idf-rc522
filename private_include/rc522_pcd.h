@@ -6,6 +6,12 @@
 extern "C" {
 #endif
 
+esp_err_t rc522_pcd_init(rc522_handle_t rc522);
+
+esp_err_t rc522_pcd_soft_reset(rc522_handle_t rc522, uint32_t timeout_ms);
+
+esp_err_t rc522_pcd_antenna_on(rc522_handle_t rc522);
+
 esp_err_t rc522_pcd_write_n(rc522_handle_t rc522, uint8_t addr, uint8_t n, uint8_t *data);
 
 esp_err_t rc522_pcd_write(rc522_handle_t rc522, uint8_t addr, uint8_t val);
