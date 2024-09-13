@@ -319,9 +319,9 @@ esp_err_t rc522_pcd_read_n(rc522_handle_t rc522, uint8_t addr, uint8_t n, uint8_
 
 esp_err_t rc522_pcd_read(rc522_handle_t rc522, uint8_t addr, uint8_t *value_ref);
 
-esp_err_t rc522_pcd_set_bitmask(rc522_handle_t rc522, uint8_t addr, uint8_t mask);
+esp_err_t rc522_pcd_set_bits(rc522_handle_t rc522, uint8_t addr, uint8_t bits);
 
-esp_err_t rc522_pcd_clear_bitmask(rc522_handle_t rc522, uint8_t addr, uint8_t mask);
+esp_err_t rc522_pcd_clear_bits(rc522_handle_t rc522, uint8_t addr, uint8_t bits);
 
 esp_err_t rc522_pcd_write_map(rc522_handle_t rc522, const uint8_t map[][2], uint8_t map_length);
 

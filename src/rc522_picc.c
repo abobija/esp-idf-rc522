@@ -169,7 +169,7 @@ static esp_err_t rc522_picc_reqa_or_wupa(
     }
 
     // ValuesAfterColl=1 => Bits received after collision are cleared.
-    RC522_RETURN_ON_ERROR(rc522_pcd_clear_bitmask(rc522, RC522_PCD_COLL_REG, 0x80));
+    RC522_RETURN_ON_ERROR(rc522_pcd_clear_bits(rc522, RC522_PCD_COLL_REG, 0x80));
 
     // For REQA and WUPA we need the short frame format - transmit only 7 bits of the last (and only)
     // byte. TxLastBits = BitFramingReg[2..0]
@@ -262,7 +262,7 @@ static esp_err_t rc522_picc_select(rc522_handle_t rc522, rc522_picc_t *picc, uin
 
     // Prepare MFRC522
     // ValuesAfterColl=1 => Bits received after collision are cleared.
-    RC522_RETURN_ON_ERROR(rc522_pcd_clear_bitmask(rc522, RC522_PCD_COLL_REG, 0x80));
+    RC522_RETURN_ON_ERROR(rc522_pcd_clear_bits(rc522, RC522_PCD_COLL_REG, 0x80));
 
     // Repeat Cascade Level loop until we have a complete UID.
     uid_complete = false;

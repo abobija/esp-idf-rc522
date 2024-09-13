@@ -9,7 +9,7 @@ RC522_LOG_DEFINE_BASE();
 esp_err_t rc522_pcd_calculate_crc(rc522_handle_t rc522, uint8_t *data, uint8_t n, uint8_t *buffer)
 {
     ESP_RETURN_ON_ERROR(rc522_pcd_stop_active_command(rc522), TAG, "");
-    ESP_RETURN_ON_ERROR(rc522_pcd_clear_bitmask(rc522, RC522_PCD_DIV_INT_REQ_REG, RC522_PCD_CRC_IRQ_BIT), TAG, "");
+    ESP_RETURN_ON_ERROR(rc522_pcd_clear_bits(rc522, RC522_PCD_DIV_INT_REQ_REG, RC522_PCD_CRC_IRQ_BIT), TAG, "");
     ESP_RETURN_ON_ERROR(rc522_pcd_fifo_flush(rc522), TAG, "");
     ESP_RETURN_ON_ERROR(rc522_pcd_write_n(rc522, RC522_PCD_FIFO_DATA_REG, n, data), TAG, "");
     ESP_RETURN_ON_ERROR(rc522_pcd_write(rc522, RC522_PCD_COMMAND_REG, RC522_PCD_CALC_CRC_CMD), TAG, "");
@@ -67,7 +67,7 @@ static esp_err_t rc522_pcd_soft_reset(rc522_handle_t rc522, uint32_t timeout_ms)
 
 static esp_err_t rc522_pcd_antenna_on(rc522_handle_t rc522)
 {
-    return rc522_pcd_set_bitmask(rc522, RC522_PCD_TX_CONTROL_REG, (RC522_PCD_TX2_RF_EN_BIT | RC522_PCD_TX1_RF_EN_BIT));
+    return rc522_pcd_set_bits(rc522, RC522_PCD_TX_CONTROL_REG, (RC522_PCD_TX2_RF_EN_BIT | RC522_PCD_TX1_RF_EN_BIT));
 }
 
 esp_err_t rc522_pcd_init(rc522_handle_t rc522)
@@ -158,12 +158,12 @@ inline esp_err_t rc522_pcd_fifo_flush(rc522_handle_t rc522)
 
 inline esp_err_t rc522_pcd_start_data_transmission(rc522_handle_t rc522)
 {
-    return rc522_pcd_set_bitmask(rc522, RC522_PCD_BIT_FRAMING_REG, RC522_PCD_START_SEND_BIT);
+    return rc522_pcd_set_bits(rc522, RC522_PCD_BIT_FRAMING_REG, RC522_PCD_START_SEND_BIT);
 }
 
 inline esp_err_t rc522_pcd_stop_data_transmission(rc522_handle_t rc522)
 {
-    return rc522_pcd_clear_bitmask(rc522, RC522_PCD_BIT_FRAMING_REG, RC522_PCD_START_SEND_BIT);
+    return rc522_pcd_clear_bits(rc522, RC522_PCD_BIT_FRAMING_REG, RC522_PCD_START_SEND_BIT);
 }
 
 esp_err_t rc522_pcd_rw_test(rc522_handle_t rc522)
@@ -261,20 +261,20 @@ inline esp_err_t rc522_pcd_read(rc522_handle_t rc522, uint8_t addr, uint8_t *val
     return rc522_pcd_read_n(rc522, addr, 1, value_ref);
 }
 
-esp_err_t rc522_pcd_set_bitmask(rc522_handle_t rc522, uint8_t addr, uint8_t mask)
+esp_err_t rc522_pcd_set_bits(rc522_handle_t rc522, uint8_t addr, uint8_t bits)
 {
     uint8_t value;
     ESP_RETURN_ON_ERROR(rc522_pcd_read(rc522, addr, &value), TAG, "");
 
-    return rc522_pcd_write(rc522, addr, value | mask);
+    return rc522_pcd_write(rc522, addr, value | bits);
 }
 
-esp_err_t rc522_pcd_clear_bitmask(rc522_handle_t rc522, uint8_t addr, uint8_t mask)
+esp_err_t rc522_pcd_clear_bits(rc522_handle_t rc522, uint8_t addr, uint8_t bits)
 {
     uint8_t value;
     ESP_RETURN_ON_ERROR(rc522_pcd_read(rc522, addr, &value), TAG, "");
 
-    return rc522_pcd_write(rc522, addr, value & ~mask);
+    return rc522_pcd_write(rc522, addr, value & (~bits));
 }
 
 esp_err_t rc522_pcd_write_map(rc522_handle_t rc522, const uint8_t map[][2], uint8_t map_length)
