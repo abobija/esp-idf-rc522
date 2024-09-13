@@ -11,7 +11,6 @@
 #include "comm/rc522_comm.h"
 #include "rc522_pcd.h"
 #include "comm/rc522_crc.h"
-#include "comm/rc522_rw_test.h"
 
 RC522_LOG_DEFINE_BASE();
 

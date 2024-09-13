@@ -35,6 +35,8 @@ esp_err_t rc522_pcd_start_data_transmission(rc522_handle_t rc522);
 
 esp_err_t rc522_pcd_stop_data_transmission(rc522_handle_t rc522);
 
+esp_err_t rc522_rw_test(rc522_handle_t rc522);
+
 esp_err_t rc522_pcd_write_n(rc522_handle_t rc522, uint8_t addr, uint8_t n, uint8_t *data);
 
 esp_err_t rc522_pcd_write(rc522_handle_t rc522, uint8_t addr, uint8_t val);

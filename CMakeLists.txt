@@ -8,7 +8,6 @@ idf_component_register(
         src/rc522_pcd.c
         src/comm/rc522_comm.c
         src/comm/rc522_crc.c
-        src/comm/rc522_rw_test.c
     REQUIRES
         esp_event
 )

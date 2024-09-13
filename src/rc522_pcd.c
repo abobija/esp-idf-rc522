@@ -138,6 +138,50 @@ inline esp_err_t rc522_pcd_stop_data_transmission(rc522_handle_t rc522)
     return rc522_pcd_clear_bitmask(rc522, RC522_BIT_FRAMING_REG, RC522_START_SEND);
 }
 
+esp_err_t rc522_rw_test(rc522_handle_t rc522)
+{
+    uint8_t tmp;
+
+    ESP_RETURN_ON_ERROR(rc522_pcd_read(rc522, RC522_FIFO_LEVEL_REG, &tmp), TAG, "Cannot read FIFO length");
+
+    ESP_RETURN_ON_ERROR(rc522_pcd_fifo_flush(rc522), TAG, "Cannot flush FIFO");
+
+    uint8_t buffer1[] = { 0x13, 0x33, 0x37 };
+    const uint8_t buffer_size = sizeof(buffer1);
+    uint8_t buffer2[buffer_size];
+
+    ESP_RETURN_ON_ERROR(rc522_pcd_write_n(rc522, RC522_FIFO_DATA_REG, buffer_size, buffer1),
+        TAG,
+        "Cannot write to FIFO");
+
+    RC522_RETURN_ON_ERROR(rc522_pcd_read(rc522, RC522_FIFO_LEVEL_REG, &tmp));
+
+    ESP_RETURN_ON_FALSE(tmp == buffer_size, ESP_FAIL, TAG, "FIFO length missmatch after write");
+
+    RC522_RETURN_ON_ERROR(rc522_pcd_read_n(rc522, RC522_FIFO_DATA_REG, buffer_size, buffer2));
+
+    bool buffers_content_equal = true;
+    for (uint8_t i = 0; i < buffer_size; i++) {
+        if (buffer1[i] != buffer2[i]) {
+            buffers_content_equal = false;
+            break;
+        }
+    }
+
+    if (!buffers_content_equal) {
+        RC522_LOGE("Buffers content missmatch");
+
+        RC522_LOGE("Buffer1: ");
+        ESP_LOG_BUFFER_HEX_LEVEL(TAG, buffer1, buffer_size, ESP_LOG_ERROR);
+        RC522_LOGE("Buffer2: ");
+        ESP_LOG_BUFFER_HEX_LEVEL(TAG, buffer2, buffer_size, ESP_LOG_ERROR);
+
+        return ESP_FAIL;
+    }
+
+    return ESP_OK;
+}
+
 esp_err_t rc522_pcd_write_n(rc522_handle_t rc522, uint8_t addr, uint8_t n, uint8_t *data)
 {
     if (n > 1) {
