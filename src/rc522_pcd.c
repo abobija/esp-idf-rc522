@@ -65,9 +65,38 @@ static esp_err_t rc522_pcd_soft_reset(rc522_handle_t rc522, uint32_t timeout_ms)
     return power_down_bit ? ESP_ERR_TIMEOUT : ESP_OK;
 }
 
-static esp_err_t rc522_pcd_antenna_on(rc522_handle_t rc522)
+inline static esp_err_t rc522_pcd_antenna_on(rc522_handle_t rc522)
 {
     return rc522_pcd_set_bits(rc522, RC522_PCD_TX_CONTROL_REG, (RC522_PCD_TX2_RF_EN_BIT | RC522_PCD_TX1_RF_EN_BIT));
+}
+
+static esp_err_t rc522_pcd_configure_timer(rc522_handle_t rc522, uint8_t mode, uint16_t prescaler)
+{
+    uint8_t timer_mode = (mode & 0xF0);             // Clear lower 4 bits of mode byte
+    uint8_t prescaler_hi = (prescaler >> 8) & 0xFF; // Get higher byte of prescaler
+    prescaler_hi &= 0x0F;                           // then clear its higher 4 bits
+    timer_mode |= prescaler_hi;                     // and merge it into timer_mode byte
+    uint8_t prescaler_lo = (prescaler & 0xFF);      // Get lower byte of prescaler
+
+    return rc522_pcd_write_map(rc522,
+        (uint8_t[][2]) {
+            { RC522_PCD_TIMER_MODE_REG, timer_mode },
+            { RC522_PCD_TIMER_PRESCALER_REG, prescaler_lo },
+        },
+        2);
+}
+
+static esp_err_t rc522_pcd_set_timer_reload_value(rc522_handle_t rc522, uint16_t value)
+{
+    const uint8_t hi = (value >> 8) & 0xFF;
+    const uint8_t lo = (value & 0xFF);
+
+    return rc522_pcd_write_map(rc522,
+        (uint8_t[][2]) {
+            { RC522_PCD_TIMER_RELOAD_MSB_REG, hi },
+            { RC522_PCD_TIMER_RELOAD_LSB_REG, lo },
+        },
+        2);
 }
 
 esp_err_t rc522_pcd_init(rc522_handle_t rc522)
@@ -89,14 +118,11 @@ esp_err_t rc522_pcd_init(rc522_handle_t rc522)
     // TPrescaler_Hi are the four low bits in TModeReg. TPrescaler_Lo is TPrescalerReg.
 
     // TAuto=1; timer starts automatically at the end of the transmission in all communication modes at all speeds
-    RC522_RETURN_ON_ERROR(rc522_pcd_write(rc522, RC522_PCD_TIMER_MODE_REG, RC522_PCD_T_AUTO_BIT));
-
     // TPreScaler = TModeReg[3..0]:TPrescalerReg, ie 0x0A9 = 169 => f_timer=40kHz, ie a timer period of 25μs.
-    RC522_RETURN_ON_ERROR(rc522_pcd_write(rc522, RC522_PCD_TIMER_PRESCALER_REG, 0xA9));
+    RC522_RETURN_ON_ERROR(rc522_pcd_configure_timer(rc522, RC522_PCD_T_AUTO_BIT, 169));
 
     // Reload timer with 0x3E8 = 1000, ie 25ms before timeout.
-    RC522_RETURN_ON_ERROR(rc522_pcd_write(rc522, RC522_PCD_TIMER_RELOAD_MSB_REG, 0x03));
-    RC522_RETURN_ON_ERROR(rc522_pcd_write(rc522, RC522_PCD_TIMER_RELOAD_LSB_REG, 0xE8));
+    RC522_RETURN_ON_ERROR(rc522_pcd_set_timer_reload_value(rc522, 1000));
 
     RC522_RETURN_ON_ERROR(rc522_pcd_write(rc522, RC522_PCD_TX_ASK_REG, RC522_PCD_FORCE_100_ASK_BIT));
 
@@ -280,12 +306,12 @@ esp_err_t rc522_pcd_clear_bits(rc522_handle_t rc522, rc522_pcd_register_t addr, 
 esp_err_t rc522_pcd_write_map(rc522_handle_t rc522, const uint8_t map[][2], uint8_t map_length)
 {
     for (uint8_t i = 0; i < map_length; i++) {
-        const uint8_t address = map[i][0];
+        const rc522_pcd_register_t address = (rc522_pcd_register_t)map[i][0];
         const uint8_t value = map[i][1];
 
         ESP_RETURN_ON_ERROR(rc522_pcd_write(rc522, address, value),
             TAG,
-            "Failed to write %d into 0x%20X register",
+            "Failed to write %d into register 0x%20X",
             value,
             address);
     }
