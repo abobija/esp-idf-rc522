@@ -16,16 +16,16 @@ static esp_err_t rc522_comm(rc522_handle_t rc522, rc522_command_t command, uint8
     uint8_t tx_last_bits = valid_bits ? *valid_bits : 0;
     uint8_t bit_framing = (rx_align << 4) + tx_last_bits;
 
-    RC522_RETURN_ON_ERROR(rc522_stop_active_command(rc522));
+    RC522_RETURN_ON_ERROR(rc522_pcd_stop_active_command(rc522));
     RC522_RETURN_ON_ERROR(
         rc522_pcd_write(rc522, RC522_COMM_INT_REQ_REG, 0x7F)); // Clear all seven interrupt request bits
-    RC522_RETURN_ON_ERROR(rc522_fifo_flush(rc522));
-    RC522_RETURN_ON_ERROR(rc522_fifo_write(rc522, send_data, send_data_len));
+    RC522_RETURN_ON_ERROR(rc522_pcd_fifo_flush(rc522));
+    RC522_RETURN_ON_ERROR(rc522_pcd_fifo_write(rc522, send_data, send_data_len));
     RC522_RETURN_ON_ERROR(rc522_pcd_write(rc522, RC522_BIT_FRAMING_REG, bit_framing)); // Bit adjustments
     RC522_RETURN_ON_ERROR(rc522_pcd_write(rc522, RC522_COMMAND_REG, command));         // Execute the command
 
     if (command == RC522_CMD_TRANSCEIVE) {
-        RC522_RETURN_ON_ERROR(rc522_start_data_transmission(rc522));
+        RC522_RETURN_ON_ERROR(rc522_pcd_start_data_transmission(rc522));
     }
 
     // In PCD_Init() we set the TAuto flag in TModeReg. This means the timer
@@ -514,58 +514,4 @@ esp_err_t rc522_picc_fetch(rc522_handle_t rc522, rc522_picc_t *picc)
     picc->type = rc522_picc_type(picc->sak);
 
     return ESP_OK;
-}
-
-esp_err_t rc522_firmware(rc522_handle_t rc522, rc522_firmware_t *fw)
-{
-    ESP_RETURN_ON_FALSE(fw != NULL, ESP_ERR_INVALID_ARG, TAG, "fw is null");
-
-    uint8_t value;
-    RC522_RETURN_ON_ERROR(rc522_pcd_read(rc522, RC522_VERSION_REG, &value));
-
-    *fw = (rc522_firmware_t)value;
-    return ESP_OK;
-}
-
-char *rc522_firmware_name(rc522_firmware_t firmware)
-{
-    switch (firmware) {
-        case RC522_FW_CLONE:
-            return "clone";
-        case RC522_FW_00:
-            return "v0.0";
-        case RC522_FW_10:
-            return "v1.0";
-        case RC522_FW_20:
-            return "v2.0";
-        case RC522_FW_COUNTERFEIT:
-            return "counterfeit_chip";
-    }
-
-    return "unknown";
-}
-
-inline esp_err_t rc522_stop_active_command(rc522_handle_t rc522)
-{
-    return rc522_pcd_write(rc522, RC522_COMMAND_REG, RC522_CMD_IDLE);
-}
-
-inline esp_err_t rc522_fifo_write(rc522_handle_t rc522, uint8_t *data, uint8_t data_length)
-{
-    return rc522_pcd_write_n(rc522, RC522_FIFO_DATA_REG, data_length, data);
-}
-
-inline esp_err_t rc522_fifo_flush(rc522_handle_t rc522)
-{
-    return rc522_pcd_write(rc522, RC522_FIFO_LEVEL_REG, RC522_FLUSH_BUFFER);
-}
-
-inline esp_err_t rc522_start_data_transmission(rc522_handle_t rc522)
-{
-    return rc522_pcd_set_bitmask(rc522, RC522_BIT_FRAMING_REG, RC522_START_SEND);
-}
-
-inline esp_err_t rc522_stop_data_transmission(rc522_handle_t rc522)
-{
-    return rc522_pcd_clear_bitmask(rc522, RC522_BIT_FRAMING_REG, RC522_START_SEND);
 }

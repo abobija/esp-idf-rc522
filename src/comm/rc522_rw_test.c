@@ -15,7 +15,7 @@ esp_err_t rc522_rw_test(rc522_handle_t rc522)
 
     ESP_RETURN_ON_ERROR(rc522_pcd_read(rc522, RC522_FIFO_LEVEL_REG, &tmp), TAG, "Cannot read FIFO length");
 
-    ESP_RETURN_ON_ERROR(rc522_fifo_flush(rc522), TAG, "Cannot flush FIFO");
+    ESP_RETURN_ON_ERROR(rc522_pcd_fifo_flush(rc522), TAG, "Cannot flush FIFO");
 
     uint8_t buffer1[] = { 0x13, 0x33, 0x37 };
     const uint8_t buffer_size = sizeof(buffer1);

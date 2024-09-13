@@ -121,8 +121,8 @@ esp_err_t rc522_start(rc522_handle_t rc522)
 
     ESP_RETURN_ON_ERROR(rc522_pcd_init(rc522), TAG, "Unable to init");
 
-    rc522_firmware_t fw;
-    ESP_RETURN_ON_ERROR(rc522_firmware(rc522, &fw), TAG, "Failed to get firmware version");
+    rc522_pcd_firmware_t fw;
+    ESP_RETURN_ON_ERROR(rc522_pcd_firmware(rc522, &fw), TAG, "Failed to get firmware version");
 
     // When 0x00 or 0xFF is returned, communication probably failed
     if (fw == 0x00 || fw == 0xFF) {
@@ -133,7 +133,7 @@ esp_err_t rc522_start(rc522_handle_t rc522)
 
     rc522->state = RC522_STATE_SCANNING;
 
-    ESP_LOGI(TAG, "Scanning started (firmware=%s)", rc522_firmware_name(fw));
+    ESP_LOGI(TAG, "Scanning started (firmware=%s)", rc522_pcd_firmware_name(fw));
 
     return ESP_OK;
 }
