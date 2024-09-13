@@ -59,7 +59,7 @@ typedef struct
      * The SAK (Select acknowledge) byte returned from the PICC after successful selection.
      */
     uint8_t sak;
-} rc522_tag_uid_t;
+} rc522_picc_uid_t;
 
 typedef enum
 {
@@ -77,9 +77,9 @@ typedef enum
 
 typedef struct
 {
-    rc522_tag_uid_t uid;
+    rc522_picc_uid_t uid;
     rc522_picc_type_t type;
-} rc522_tag_t;
+} rc522_picc_t;
 
 /**
  * @brief Create RC522 scanner handle.

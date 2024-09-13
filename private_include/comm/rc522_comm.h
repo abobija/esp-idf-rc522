@@ -23,9 +23,9 @@ typedef enum
 
 esp_err_t rc522_picc_presence(rc522_handle_t rc522, rc522_picc_presence_t *result);
 
-esp_err_t rc522_picc_fetch(rc522_handle_t rc522, rc522_tag_t *picc);
+esp_err_t rc522_picc_fetch(rc522_handle_t rc522, rc522_picc_t *picc);
 
-esp_err_t rc522_picc_log_dump(rc522_handle_t rc522, rc522_tag_t *picc);
+esp_err_t rc522_picc_log_dump(rc522_handle_t rc522, rc522_picc_t *picc);
 
 esp_err_t rc522_firmware(rc522_handle_t rc522, rc522_firmware_t *result);
 

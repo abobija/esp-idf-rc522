@@ -210,7 +210,7 @@ esp_err_t rc522_picc_presence(rc522_handle_t rc522, rc522_picc_presence_t *resul
     return ret;
 }
 
-static esp_err_t rc522_picc_select(rc522_handle_t rc522, rc522_tag_uid_t *uid, uint8_t valid_bits)
+static esp_err_t rc522_picc_select(rc522_handle_t rc522, rc522_picc_uid_t *uid, uint8_t valid_bits)
 {
     bool uid_complete;
     bool select_done;
@@ -498,7 +498,7 @@ static rc522_picc_type_t rc522_picc_type(uint8_t sak)
     }
 }
 
-esp_err_t rc522_picc_fetch(rc522_handle_t rc522, rc522_tag_t *picc)
+esp_err_t rc522_picc_fetch(rc522_handle_t rc522, rc522_picc_t *picc)
 {
     ESP_RETURN_ON_FALSE(picc != NULL, ESP_ERR_INVALID_ARG, TAG, "picc is null");
 
@@ -536,17 +536,17 @@ static char *rc522_picc_type_name(rc522_picc_type_t type)
     }
 }
 
-static esp_err_t rc522_picc_log_dump_signature(rc522_tag_t *picc)
+static esp_err_t rc522_picc_log_dump_signature(rc522_picc_t *picc)
 {
     char uid_str[RC522_PICC_UID_MAX_SIZE * 3];
     rc522_buffer_to_hex_str(picc->uid.bytes, picc->uid.bytes_length, uid_str, sizeof(uid_str));
 
-    ESP_LOGI(TAG, "PICC \"%s\" (uid=%s, sak=%02x)", rc522_picc_type_name(picc->type), uid_str, picc->uid.sak);
+    ESP_LOGI(TAG, "\"%s\" (uid=%s, sak=%02x)", rc522_picc_type_name(picc->type), uid_str, picc->uid.sak);
 
     return ESP_OK;
 }
 
-esp_err_t rc522_picc_log_dump(rc522_handle_t rc522, rc522_tag_t *picc)
+esp_err_t rc522_picc_log_dump(rc522_handle_t rc522, rc522_picc_t *picc)
 {
     ESP_RETURN_ON_FALSE(picc != NULL, ESP_ERR_INVALID_ARG, TAG, "picc is null");
 

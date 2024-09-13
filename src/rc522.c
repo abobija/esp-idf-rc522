@@ -216,13 +216,14 @@ void rc522_task(void *arg)
             // FIXME: This is temporary. Remove this code since, calls
             //        of this foo should be done by te user in the app
 
-            rc522_tag_t picc;
+            rc522_picc_t picc;
             ret = rc522_picc_fetch(rc522, &picc);
 
             if (ret != ESP_OK) {
                 ESP_LOGE(TAG, "failed to find picc (ret=0x%04x)", ret);
             }
             else {
+                ESP_LOGI(TAG, "PICC selected");
                 ret = rc522_picc_log_dump(rc522, &picc);
 
                 if (ret != ESP_OK) {
@@ -239,11 +240,11 @@ void rc522_task(void *arg)
         //     rc522->tag_was_present_last_time = false;
         // }
         // else if (!rc522->tag_was_present_last_time) {
-        //     rc522_tag_uid_t uid = {
+        //     rc522_picc_uid_t uid = {
         //         .bytes = uid_bytes,
         //         .length = 5, // TODO: Change once when we dynamicaly find the length of UID
         //     };
-        //     rc522_tag_t tag = { .uid = uid };
+        //     rc522_picc_t tag = { .uid = uid };
         //     rc522_dispatch_event(rc522, RC522_EVENT_TAG_SCANNED, &tag);
         //     FREE(uid_bytes);
         //     rc522->tag_was_present_last_time = true;
