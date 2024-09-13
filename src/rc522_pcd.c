@@ -210,7 +210,7 @@ esp_err_t rc522_pcd_rw_test(rc522_handle_t rc522)
     return ESP_OK;
 }
 
-esp_err_t rc522_pcd_write_n(rc522_handle_t rc522, uint8_t addr, uint8_t n, uint8_t *data)
+esp_err_t rc522_pcd_write_n(rc522_handle_t rc522, rc522_pcd_register_t addr, uint8_t n, uint8_t *data)
 {
     if (n > 1) {
         RC522_LOGV("\t[0x%02x] <=", addr);
@@ -236,12 +236,12 @@ esp_err_t rc522_pcd_write_n(rc522_handle_t rc522, uint8_t addr, uint8_t n, uint8
     return ret;
 }
 
-inline esp_err_t rc522_pcd_write(rc522_handle_t rc522, uint8_t addr, uint8_t val)
+inline esp_err_t rc522_pcd_write(rc522_handle_t rc522, rc522_pcd_register_t addr, uint8_t val)
 {
     return rc522_pcd_write_n(rc522, addr, 1, &val);
 }
 
-esp_err_t rc522_pcd_read_n(rc522_handle_t rc522, uint8_t addr, uint8_t n, uint8_t *buffer)
+esp_err_t rc522_pcd_read_n(rc522_handle_t rc522, rc522_pcd_register_t addr, uint8_t n, uint8_t *buffer)
 {
     esp_err_t ret = rc522->config->receive_handler(addr, buffer, n);
 
@@ -256,12 +256,12 @@ esp_err_t rc522_pcd_read_n(rc522_handle_t rc522, uint8_t addr, uint8_t n, uint8_
     return ret;
 }
 
-inline esp_err_t rc522_pcd_read(rc522_handle_t rc522, uint8_t addr, uint8_t *value_ref)
+inline esp_err_t rc522_pcd_read(rc522_handle_t rc522, rc522_pcd_register_t addr, uint8_t *value_ref)
 {
     return rc522_pcd_read_n(rc522, addr, 1, value_ref);
 }
 
-esp_err_t rc522_pcd_set_bits(rc522_handle_t rc522, uint8_t addr, uint8_t bits)
+esp_err_t rc522_pcd_set_bits(rc522_handle_t rc522, rc522_pcd_register_t addr, uint8_t bits)
 {
     uint8_t value;
     ESP_RETURN_ON_ERROR(rc522_pcd_read(rc522, addr, &value), TAG, "");
@@ -269,7 +269,7 @@ esp_err_t rc522_pcd_set_bits(rc522_handle_t rc522, uint8_t addr, uint8_t bits)
     return rc522_pcd_write(rc522, addr, value | bits);
 }
 
-esp_err_t rc522_pcd_clear_bits(rc522_handle_t rc522, uint8_t addr, uint8_t bits)
+esp_err_t rc522_pcd_clear_bits(rc522_handle_t rc522, rc522_pcd_register_t addr, uint8_t bits)
 {
     uint8_t value;
     ESP_RETURN_ON_ERROR(rc522_pcd_read(rc522, addr, &value), TAG, "");
