@@ -208,6 +208,9 @@ typedef enum
     RC522_PCD_T_AUTO_BIT = BIT7,
 } rc522_pcd_timer_mode_reg_bit_t;
 
+/**
+ * Bits of RC522_PCD_TX_ASK_REG register
+ */
 typedef enum
 {
     /**
@@ -291,10 +294,6 @@ typedef enum
 esp_err_t rc522_pcd_calculate_crc(rc522_handle_t rc522, uint8_t *data, uint8_t n, uint8_t *buffer);
 
 esp_err_t rc522_pcd_init(rc522_handle_t rc522);
-
-esp_err_t rc522_pcd_soft_reset(rc522_handle_t rc522, uint32_t timeout_ms);
-
-esp_err_t rc522_pcd_antenna_on(rc522_handle_t rc522);
 
 esp_err_t rc522_pcd_firmware(rc522_handle_t rc522, rc522_pcd_firmware_t *result);
 

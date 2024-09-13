@@ -41,6 +41,42 @@ esp_err_t rc522_pcd_calculate_crc(rc522_handle_t rc522, uint8_t *data, uint8_t n
     return ESP_OK;
 }
 
+static esp_err_t rc522_pcd_soft_reset(rc522_handle_t rc522, uint32_t timeout_ms)
+{
+    RC522_RETURN_ON_ERROR(rc522_pcd_write(rc522, RC522_PCD_COMMAND_REG, RC522_PCD_SOFT_RESET_CMD));
+
+    bool power_down_bit = true;
+    uint32_t start_ms = rc522_millis();
+
+    // Wait for the PowerDown bit in CommandReg to be cleared
+    do {
+        rc522_delay_ms(25);
+        taskYIELD();
+
+        uint8_t cmd;
+        RC522_RETURN_ON_ERROR(rc522_pcd_read(rc522, RC522_PCD_COMMAND_REG, &cmd));
+
+        if (!(power_down_bit = (cmd & RC522_PCD_POWER_DOWN_BIT))) {
+            break;
+        }
+    }
+    while ((rc522_millis() - start_ms) < timeout_ms);
+
+    return power_down_bit ? ESP_ERR_TIMEOUT : ESP_OK;
+}
+
+static esp_err_t rc522_pcd_antenna_on(rc522_handle_t rc522)
+{
+    uint8_t value;
+    RC522_RETURN_ON_ERROR(rc522_pcd_read(rc522, RC522_PCD_TX_CONTROL_REG, &value));
+
+    if ((value & 0x03) != 0x03) {
+        RC522_RETURN_ON_ERROR(rc522_pcd_write(rc522, RC522_PCD_TX_CONTROL_REG, value | 0x03));
+    }
+
+    return ESP_OK;
+}
+
 esp_err_t rc522_pcd_init(rc522_handle_t rc522)
 {
     // TODO: Implement hard reset via RST pin
@@ -69,51 +105,16 @@ esp_err_t rc522_pcd_init(rc522_handle_t rc522)
     RC522_RETURN_ON_ERROR(rc522_pcd_write(rc522, RC522_PCD_TIMER_RELOAD_MSB_REG, 0x03));
     RC522_RETURN_ON_ERROR(rc522_pcd_write(rc522, RC522_PCD_TIMER_RELOAD_LSB_REG, 0xE8));
 
-    // Default 0x00. Force a 100 % ASK modulation independent of the ModGsPReg register setting
-    RC522_RETURN_ON_ERROR(rc522_pcd_write(rc522, RC522_PCD_TX_ASK_REG, 0x40));
+    RC522_RETURN_ON_ERROR(rc522_pcd_write(rc522, RC522_PCD_TX_ASK_REG, RC522_PCD_FORCE_100_ASK_BIT));
 
     // Default 0x3F. Set the preset value for the CRC coprocessor for the CalcCRC command to 0x6363 (ISO 14443-3
     // part 6.2.4)
-    RC522_RETURN_ON_ERROR(rc522_pcd_write(rc522, RC522_PCD_MODE_REG, 0x3D));
+    RC522_RETURN_ON_ERROR(rc522_pcd_write(rc522,
+        RC522_PCD_MODE_REG,
+        (RC522_PCD_TX_WAIT_RF_BIT | RC522_PCD_POL_MFIN_BIT | RC522_PCD_CRC_PRESET_6363H)));
 
     // Enable the antenna driver pins TX1 and TX2 (they were disabled by the reset)
     RC522_RETURN_ON_ERROR(rc522_pcd_antenna_on(rc522));
-
-    return ESP_OK;
-}
-
-esp_err_t rc522_pcd_soft_reset(rc522_handle_t rc522, uint32_t timeout_ms)
-{
-    RC522_RETURN_ON_ERROR(rc522_pcd_write(rc522, RC522_PCD_COMMAND_REG, RC522_PCD_SOFT_RESET_CMD));
-
-    bool power_down_bit = true;
-    uint32_t start_ms = rc522_millis();
-
-    // Wait for the PowerDown bit in CommandReg to be cleared
-    do {
-        rc522_delay_ms(25);
-        taskYIELD();
-
-        uint8_t cmd;
-        RC522_RETURN_ON_ERROR(rc522_pcd_read(rc522, RC522_PCD_COMMAND_REG, &cmd));
-
-        if (!(power_down_bit = (cmd & RC522_PCD_POWER_DOWN_BIT))) {
-            break;
-        }
-    }
-    while ((rc522_millis() - start_ms) < timeout_ms);
-
-    return power_down_bit ? ESP_ERR_TIMEOUT : ESP_OK;
-}
-
-esp_err_t rc522_pcd_antenna_on(rc522_handle_t rc522)
-{
-    uint8_t value;
-    RC522_RETURN_ON_ERROR(rc522_pcd_read(rc522, RC522_PCD_TX_CONTROL_REG, &value));
-
-    if ((value & 0x03) != 0x03) {
-        RC522_RETURN_ON_ERROR(rc522_pcd_write(rc522, RC522_PCD_TX_CONTROL_REG, value | 0x03));
-    }
 
     return ESP_OK;
 }
