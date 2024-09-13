@@ -1,7 +1,6 @@
 #pragma once
 
 #include "rc522_private.h"
-#include "rc522_registers.h"
 
 #ifdef __cplusplus
 extern "C" {

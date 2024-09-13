@@ -2,8 +2,9 @@
 #include <esp_check.h>
 #include <string.h>
 
-#include "comm/rc522_comm.h"
-#include "rc522_pcd.h"
+#include "rc522_pcd_private.h"
+#include "rc522_picc_private.h"
+#include "rc522_registers.h"
 
 RC522_LOG_DEFINE_BASE();
 
@@ -498,6 +499,33 @@ static rc522_picc_type_t rc522_picc_type(uint8_t sak)
             return RC522_PICC_TYPE_ISO_18092;
         default:
             return RC522_PICC_TYPE_UNKNOWN;
+    }
+}
+
+char *rc522_picc_type_name(rc522_picc_type_t type)
+{
+    switch (type) {
+        case RC522_PICC_TYPE_ISO_14443_4:
+            return "PICC compliant with ISO/IEC 14443-4";
+        case RC522_PICC_TYPE_ISO_18092:
+            return "PICC compliant with ISO/IEC 18092 (NFC)";
+        case RC522_PICC_TYPE_MIFARE_MINI:
+            return "MIFARE Mini, 320 bytes";
+        case RC522_PICC_TYPE_MIFARE_1K:
+            return "MIFARE 1KB";
+        case RC522_PICC_TYPE_MIFARE_4K:
+            return "MIFARE 4KB";
+        case RC522_PICC_TYPE_MIFARE_UL:
+            return "MIFARE Ultralight or Ultralight C";
+        case RC522_PICC_TYPE_MIFARE_PLUS:
+            return "MIFARE Plus";
+        case RC522_PICC_TYPE_MIFARE_DESFIRE:
+            return "MIFARE DESFire";
+        case RC522_PICC_TYPE_TNP3XXX:
+            return "MIFARE TNP3XXX";
+        case RC522_PICC_TYPE_UNKNOWN:
+        default:
+            return "unknown";
     }
 }
 

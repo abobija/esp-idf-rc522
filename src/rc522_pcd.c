@@ -2,7 +2,7 @@
 #include <esp_check.h>
 #include <string.h>
 
-#include "rc522_pcd.h"
+#include "rc522_pcd_private.h"
 #include "rc522_registers.h"
 
 RC522_LOG_DEFINE_BASE();

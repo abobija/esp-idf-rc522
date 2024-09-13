@@ -6,7 +6,7 @@ idf_component_register(
     SRCS
         src/rc522.c
         src/rc522_pcd.c
-        src/comm/rc522_comm.c
+        src/rc522_picc.c
     REQUIRES
         esp_event
 )
