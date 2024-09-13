@@ -7,9 +7,9 @@
 
 RC522_LOG_DEFINE_BASE();
 
-static esp_err_t rc522_picc_comm(rc522_handle_t rc522, rc522_command_t command, uint8_t wait_irq, uint8_t *send_data,
-    uint8_t send_data_len, uint8_t *back_data, uint8_t *back_data_len, uint8_t *valid_bits, uint8_t rx_align,
-    bool check_crc)
+static esp_err_t rc522_picc_comm(rc522_handle_t rc522, rc522_pcd_command_t command, uint8_t wait_irq,
+    uint8_t *send_data, uint8_t send_data_len, uint8_t *back_data, uint8_t *back_data_len, uint8_t *valid_bits,
+    uint8_t rx_align, bool check_crc)
 {
     // Prepare values for bit framing
     uint8_t tx_last_bits = valid_bits ? *valid_bits : 0;
@@ -17,13 +17,13 @@ static esp_err_t rc522_picc_comm(rc522_handle_t rc522, rc522_command_t command, 
 
     RC522_RETURN_ON_ERROR(rc522_pcd_stop_active_command(rc522));
     RC522_RETURN_ON_ERROR(
-        rc522_pcd_write(rc522, RC522_COMM_INT_REQ_REG, 0x7F)); // Clear all seven interrupt request bits
+        rc522_pcd_write(rc522, RC522_PCD_COMM_INT_REQ_REG, 0x7F)); // Clear all seven interrupt request bits
     RC522_RETURN_ON_ERROR(rc522_pcd_fifo_flush(rc522));
     RC522_RETURN_ON_ERROR(rc522_pcd_fifo_write(rc522, send_data, send_data_len));
-    RC522_RETURN_ON_ERROR(rc522_pcd_write(rc522, RC522_BIT_FRAMING_REG, bit_framing)); // Bit adjustments
-    RC522_RETURN_ON_ERROR(rc522_pcd_write(rc522, RC522_COMMAND_REG, command));         // Execute the command
+    RC522_RETURN_ON_ERROR(rc522_pcd_write(rc522, RC522_PCD_BIT_FRAMING_REG, bit_framing)); // Bit adjustments
+    RC522_RETURN_ON_ERROR(rc522_pcd_write(rc522, RC522_PCD_COMMAND_REG, command));         // Execute the command
 
-    if (command == RC522_CMD_TRANSCEIVE) {
+    if (command == RC522_PCD_TRANSCEIVE_CMD) {
         RC522_RETURN_ON_ERROR(rc522_pcd_start_data_transmission(rc522));
     }
 
@@ -40,7 +40,7 @@ static esp_err_t rc522_picc_comm(rc522_handle_t rc522, rc522_command_t command, 
 
     do {
         uint8_t irq;
-        RC522_RETURN_ON_ERROR(rc522_pcd_read(rc522, RC522_COMM_INT_REQ_REG, &irq));
+        RC522_RETURN_ON_ERROR(rc522_pcd_read(rc522, RC522_PCD_COMM_INT_REQ_REG, &irq));
 
         if (irq & wait_irq) { // One of the interrupts that signal success has been set.
             completed = true;
@@ -63,7 +63,7 @@ static esp_err_t rc522_picc_comm(rc522_handle_t rc522, rc522_command_t command, 
 
     // Stop now if any errors except collisions were detected.
     uint8_t error_reg_value;
-    RC522_RETURN_ON_ERROR(rc522_pcd_read(rc522, RC522_ERROR_REG, &error_reg_value));
+    RC522_RETURN_ON_ERROR(rc522_pcd_read(rc522, RC522_PCD_ERROR_REG, &error_reg_value));
 
     if (error_reg_value & 0x13) { // BufferOvfl ParityErr ProtocolErr
         return ESP_FAIL;
@@ -74,7 +74,7 @@ static esp_err_t rc522_picc_comm(rc522_handle_t rc522, rc522_command_t command, 
     // If the caller wants data back, get it from the MFRC522.
     if (back_data && back_data_len) {
         uint8_t length;
-        RC522_RETURN_ON_ERROR(rc522_pcd_read(rc522, RC522_FIFO_LEVEL_REG, &length));
+        RC522_RETURN_ON_ERROR(rc522_pcd_read(rc522, RC522_PCD_FIFO_LEVEL_REG, &length));
 
         if (length > *back_data_len) {
             return ESP_ERR_NO_MEM;
@@ -83,7 +83,7 @@ static esp_err_t rc522_picc_comm(rc522_handle_t rc522, rc522_command_t command, 
         *back_data_len = length; // Number of bytes returned
 
         uint8_t b0_orig = back_data[0];
-        RC522_RETURN_ON_ERROR(rc522_pcd_read_n(rc522, RC522_FIFO_DATA_REG, length, back_data));
+        RC522_RETURN_ON_ERROR(rc522_pcd_read_n(rc522, RC522_PCD_FIFO_DATA_REG, length, back_data));
 
         if (rx_align) { // Only update bit positions rxAlign..7 in values[0]
             RC522_LOGD("rx_align=0x%02x, applying mask", rx_align);
@@ -96,7 +96,7 @@ static esp_err_t rc522_picc_comm(rc522_handle_t rc522, rc522_command_t command, 
 
         // RxLastBits[2:0] indicates the number of valid bits in the last
         // received byte. If this value is 000b, the whole byte is valid.
-        RC522_RETURN_ON_ERROR(rc522_pcd_read(rc522, RC522_CONTROL_REG, &_valid_bits));
+        RC522_RETURN_ON_ERROR(rc522_pcd_read(rc522, RC522_PCD_CONTROL_REG, &_valid_bits));
         _valid_bits &= 0x07;
 
         if (valid_bits) {
@@ -143,7 +143,7 @@ static esp_err_t rc522_picc_transceive(rc522_handle_t rc522, uint8_t *send_data,
     ESP_LOG_BUFFER_HEX_LEVEL(TAG, send_data, send_data_len, ESP_LOG_DEBUG);
 
     esp_err_t ret = rc522_picc_comm(rc522,
-        RC522_CMD_TRANSCEIVE,
+        RC522_PCD_TRANSCEIVE_CMD,
         wait_irq,
         send_data,
         send_data_len,
@@ -169,7 +169,7 @@ static esp_err_t rc522_picc_reqa_or_wupa(
     }
 
     // ValuesAfterColl=1 => Bits received after collision are cleared.
-    RC522_RETURN_ON_ERROR(rc522_pcd_clear_bitmask(rc522, RC522_COLL_REG, 0x80));
+    RC522_RETURN_ON_ERROR(rc522_pcd_clear_bitmask(rc522, RC522_PCD_COLL_REG, 0x80));
 
     // For REQA and WUPA we need the short frame format - transmit only 7 bits of the last (and only)
     // byte. TxLastBits = BitFramingReg[2..0]
@@ -201,10 +201,10 @@ esp_err_t rc522_picc_find(rc522_handle_t rc522, rc522_picc_t *picc)
     uint8_t atqa_buffer_size = sizeof(atqa_buffer);
 
     // Reset baud rates
-    RC522_RETURN_ON_ERROR(rc522_pcd_write(rc522, RC522_TX_MODE_REG, 0x00));
-    RC522_RETURN_ON_ERROR(rc522_pcd_write(rc522, RC522_RX_MODE_REG, 0x00));
+    RC522_RETURN_ON_ERROR(rc522_pcd_write(rc522, RC522_PCD_TX_MODE_REG, 0x00));
+    RC522_RETURN_ON_ERROR(rc522_pcd_write(rc522, RC522_PCD_RX_MODE_REG, 0x00));
     // Reset ModWidthReg
-    RC522_RETURN_ON_ERROR(rc522_pcd_write(rc522, RC522_MOD_WIDTH_REG, RC522_MOD_WIDTH_RESET_VALUE));
+    RC522_RETURN_ON_ERROR(rc522_pcd_write(rc522, RC522_PCD_MOD_WIDTH_REG, RC522_PCD_MOD_WIDTH_RESET_VALUE));
 
     esp_err_t ret = rc522_picc_reqa(rc522, atqa_buffer, &atqa_buffer_size);
 
@@ -262,7 +262,7 @@ static esp_err_t rc522_picc_select(rc522_handle_t rc522, rc522_picc_t *picc, uin
 
     // Prepare MFRC522
     // ValuesAfterColl=1 => Bits received after collision are cleared.
-    RC522_RETURN_ON_ERROR(rc522_pcd_clear_bitmask(rc522, RC522_COLL_REG, 0x80));
+    RC522_RETURN_ON_ERROR(rc522_pcd_clear_bitmask(rc522, RC522_PCD_COLL_REG, 0x80));
 
     // Repeat Cascade Level loop until we have a complete UID.
     uid_complete = false;
@@ -371,7 +371,7 @@ static esp_err_t rc522_picc_select(rc522_handle_t rc522, rc522_picc_t *picc, uin
             rx_align = tx_last_bits;
 
             // RxAlign = BitFramingReg[6..4]. TxLastBits = BitFramingReg[2..0]
-            RC522_RETURN_ON_ERROR(rc522_pcd_write(rc522, RC522_BIT_FRAMING_REG, (rx_align << 4) + tx_last_bits));
+            RC522_RETURN_ON_ERROR(rc522_pcd_write(rc522, RC522_PCD_BIT_FRAMING_REG, (rx_align << 4) + tx_last_bits));
 
             // Transmit the buffer and receive the response.
             ret = rc522_picc_transceive(rc522,
@@ -388,7 +388,7 @@ static esp_err_t rc522_picc_select(rc522_handle_t rc522, rc522_picc_t *picc, uin
 
                 // CollReg[7..0] bits are: ValuesAfterColl reserved CollPosNotValid CollPos[4:0]
                 uint8_t value_of_coll_reg;
-                rc522_pcd_read(rc522, RC522_COLL_REG, &value_of_coll_reg);
+                rc522_pcd_read(rc522, RC522_PCD_COLL_REG, &value_of_coll_reg);
 
                 if (value_of_coll_reg & 0x20) { // CollPosNotValid
                     // Without a valid collision position we cannot continue
