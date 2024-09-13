@@ -6,6 +6,9 @@
 
 RC522_LOG_DEFINE_BASE();
 
+// Buffer should be at least 2 bytes long
+// Only first 2 elements will be used where the result will be stored
+// TODO: Use uint16_t type for the result instead of buffer array?
 esp_err_t rc522_pcd_calculate_crc(rc522_handle_t rc522, uint8_t *data, uint8_t n, uint8_t *buffer)
 {
     RC522_RETURN_ON_ERROR(rc522_pcd_stop_active_command(rc522));
@@ -177,6 +180,11 @@ inline esp_err_t rc522_pcd_fifo_write(rc522_handle_t rc522, uint8_t *data, uint8
     return rc522_pcd_write_n(rc522, RC522_PCD_FIFO_DATA_REG, data_length, data);
 }
 
+inline esp_err_t rc522_pcd_fifo_read(rc522_handle_t rc522, uint8_t *buffer, uint8_t length)
+{
+    return rc522_pcd_read_n(rc522, RC522_PCD_FIFO_DATA_REG, length, buffer);
+}
+
 inline esp_err_t rc522_pcd_fifo_flush(rc522_handle_t rc522)
 {
     return rc522_pcd_write(rc522, RC522_PCD_FIFO_LEVEL_REG, RC522_PCD_FLUSH_BUFFER_BIT);
@@ -197,22 +205,16 @@ esp_err_t rc522_pcd_rw_test(rc522_handle_t rc522)
     uint8_t tmp;
 
     ESP_RETURN_ON_ERROR(rc522_pcd_read(rc522, RC522_PCD_FIFO_LEVEL_REG, &tmp), TAG, "Cannot read FIFO length");
-
     ESP_RETURN_ON_ERROR(rc522_pcd_fifo_flush(rc522), TAG, "Cannot flush FIFO");
 
     uint8_t buffer1[] = { 0x13, 0x33, 0x37 };
     const uint8_t buffer_size = sizeof(buffer1);
     uint8_t buffer2[buffer_size];
 
-    ESP_RETURN_ON_ERROR(rc522_pcd_write_n(rc522, RC522_PCD_FIFO_DATA_REG, buffer_size, buffer1),
-        TAG,
-        "Cannot write to FIFO");
-
+    ESP_RETURN_ON_ERROR(rc522_pcd_fifo_write(rc522, buffer1, buffer_size), TAG, "Cannot write to FIFO");
     RC522_RETURN_ON_ERROR(rc522_pcd_read(rc522, RC522_PCD_FIFO_LEVEL_REG, &tmp));
-
     ESP_RETURN_ON_FALSE(tmp == buffer_size, ESP_FAIL, TAG, "FIFO length missmatch after write");
-
-    RC522_RETURN_ON_ERROR(rc522_pcd_read_n(rc522, RC522_PCD_FIFO_DATA_REG, buffer_size, buffer2));
+    RC522_RETURN_ON_ERROR(rc522_pcd_fifo_read(rc522, buffer2, buffer_size));
 
     bool buffers_content_equal = true;
     for (uint8_t i = 0; i < buffer_size; i++) {
@@ -224,7 +226,6 @@ esp_err_t rc522_pcd_rw_test(rc522_handle_t rc522)
 
     if (!buffers_content_equal) {
         RC522_LOGE("Buffers content missmatch");
-
         RC522_LOGE("Buffer1: ");
         ESP_LOG_BUFFER_HEX_LEVEL(TAG, buffer1, buffer_size, ESP_LOG_ERROR);
         RC522_LOGE("Buffer2: ");

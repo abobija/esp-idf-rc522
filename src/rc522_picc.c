@@ -83,7 +83,7 @@ static esp_err_t rc522_picc_comm(rc522_handle_t rc522, rc522_pcd_command_t comma
         *back_data_len = length; // Number of bytes returned
 
         uint8_t b0_orig = back_data[0];
-        RC522_RETURN_ON_ERROR(rc522_pcd_read_n(rc522, RC522_PCD_FIFO_DATA_REG, length, back_data));
+        RC522_RETURN_ON_ERROR(rc522_pcd_fifo_read(rc522, back_data, length));
 
         if (rx_align) { // Only update bit positions rxAlign..7 in values[0]
             RC522_LOGD("rx_align=0x%02x, applying mask", rx_align);
