@@ -7,7 +7,6 @@
 #include <freertos/task.h>
 
 #include "rc522_private.h"
-#include "rc522_registers.h"
 #include "rc522_pcd_private.h"
 #include "rc522_picc_private.h"
 

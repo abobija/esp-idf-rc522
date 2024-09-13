@@ -4,7 +4,6 @@
 
 #include "rc522_pcd_private.h"
 #include "rc522_picc_private.h"
-#include "rc522_registers.h"
 
 RC522_LOG_DEFINE_BASE();
 
