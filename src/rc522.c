@@ -216,15 +216,18 @@ void rc522_task(void *arg)
             // FIXME: This is temporary. Remove this code since, calls
             //        of this foo should be done by te user in the app
 
-            rc522_tag_uid_t uid;
-            ret = rc522_picc_uid(rc522, &uid);
+            rc522_tag_t picc;
+            ret = rc522_picc_fetch(rc522, &picc);
 
             if (ret != ESP_OK) {
-                ESP_LOGE(TAG, "failed to read uid (ret=0x%04x)", ret);
+                ESP_LOGE(TAG, "failed to find picc (ret=0x%04x)", ret);
             }
             else {
-                ESP_LOGI(TAG, "got UID (sak=0x%02x)", uid.sak);
-                ESP_LOG_BUFFER_HEX(TAG, uid.bytes, uid.bytes_length);
+                ret = rc522_picc_log_dump(rc522, &picc);
+
+                if (ret != ESP_OK) {
+                    ESP_LOGE(TAG, "Failed to picc_dump");
+                }
             }
         }
 
@@ -273,4 +276,19 @@ uint32_t rc522_millis()
 void rc522_delay_ms(uint32_t ms)
 {
     vTaskDelay(ms / portTICK_PERIOD_MS);
+}
+
+void rc522_buffer_to_hex_str(uint8_t *buffer, uint8_t buffer_length, char *str_buffer, uint8_t str_buffer_length)
+{
+    const char *format = "%02x ";
+    const uint8_t formatted_length = 3;
+    uint8_t length = 0;
+
+    for (uint8_t i = 0; i < buffer_length; i++) {
+        // TODO: Check buffer overflow using str_buffer_length
+        sprintf(str_buffer + (i * formatted_length), format, buffer[i]);
+        length += formatted_length;
+    }
+
+    str_buffer[length - 1] = 0x00;
 }
