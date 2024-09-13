@@ -75,11 +75,12 @@ static void rc522_event_handler(void *arg, esp_event_base_t base, int32_t event_
     rc522_event_data_t *data = (rc522_event_data_t *)event_data;
 
     switch (event_id) {
-        case RC522_EVENT_TAG_SCANNED: {
-            ESP_LOGI(TAG, "Tag scanned!");
+        case RC522_EVENT_PICC_SELECTED: {
+            rc522_picc_t *picc = (rc522_picc_t *)data->ptr;
 
-            rc522_picc_t *tag = (rc522_picc_t *)data->ptr;
-            ESP_LOG_BUFFER_HEX(TAG, tag->uid.bytes, tag->uid.bytes_length);
+            ESP_LOGI(TAG, "PICC (%s) scanned!", rc522_picc_type_name(picc->type));
+            ESP_LOGI(TAG, "UID:");
+            ESP_LOG_BUFFER_HEX(TAG, picc->uid.bytes, picc->uid.bytes_length);
         } break;
     }
 }
@@ -87,7 +88,7 @@ static void rc522_event_handler(void *arg, esp_event_base_t base, int32_t event_
 void app_main()
 {
     esp_log_level_set("*", ESP_LOG_INFO);
-    esp_log_level_set("rc522", ESP_LOG_DEBUG);
+    // esp_log_level_set("rc522", ESP_LOG_DEBUG);
 
     spi_bus_initialize(RC522_SPI_HOST, &spi_bus_config, 0);
     spi_bus_add_device(RC522_SPI_HOST, &spi_rc522_config, &rc522_spi_handle);

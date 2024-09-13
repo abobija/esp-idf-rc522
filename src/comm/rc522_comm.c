@@ -190,6 +190,9 @@ static esp_err_t rc522_request_a(rc522_handle_t rc522, uint8_t *atqa_buffer, uin
     return rc522_reqa_or_wupa(rc522, RC522_PICC_CMD_REQA, atqa_buffer, atqa_buffer_size);
 }
 
+/**
+ * Check if PICC is in the PCD field
+ */
 esp_err_t rc522_picc_find(rc522_handle_t rc522, rc522_picc_t *picc)
 {
     ESP_RETURN_ON_FALSE(picc != NULL, ESP_ERR_INVALID_ARG, TAG, "picc is null");
@@ -498,6 +501,9 @@ static rc522_picc_type_t rc522_picc_type(uint8_t sak)
     }
 }
 
+/**
+ * Resolve collision and select PICC
+ */
 esp_err_t rc522_picc_fetch(rc522_handle_t rc522, rc522_picc_t *picc)
 {
     ESP_RETURN_ON_FALSE(picc != NULL, ESP_ERR_INVALID_ARG, TAG, "picc is null");
@@ -505,52 +511,6 @@ esp_err_t rc522_picc_fetch(rc522_handle_t rc522, rc522_picc_t *picc)
     RC522_RETURN_ON_ERROR(rc522_picc_select(rc522, &picc->uid, 0));
 
     picc->type = rc522_picc_type(picc->uid.sak);
-
-    return ESP_OK;
-}
-
-static char *rc522_picc_type_name(rc522_picc_type_t type)
-{
-    switch (type) {
-        case RC522_PICC_TYPE_ISO_14443_4:
-            return "PICC compliant with ISO/IEC 14443-4";
-        case RC522_PICC_TYPE_ISO_18092:
-            return "PICC compliant with ISO/IEC 18092 (NFC)";
-        case RC522_PICC_TYPE_MIFARE_MINI:
-            return "MIFARE Mini, 320 bytes";
-        case RC522_PICC_TYPE_MIFARE_1K:
-            return "MIFARE 1KB";
-        case RC522_PICC_TYPE_MIFARE_4K:
-            return "MIFARE 4KB";
-        case RC522_PICC_TYPE_MIFARE_UL:
-            return "MIFARE Ultralight or Ultralight C";
-        case RC522_PICC_TYPE_MIFARE_PLUS:
-            return "MIFARE Plus";
-        case RC522_PICC_TYPE_MIFARE_DESFIRE:
-            return "MIFARE DESFire";
-        case RC522_PICC_TYPE_TNP3XXX:
-            return "MIFARE TNP3XXX";
-        case RC522_PICC_TYPE_UNKNOWN:
-        default:
-            return "unknown";
-    }
-}
-
-static esp_err_t rc522_picc_log_dump_signature(rc522_picc_t *picc)
-{
-    char uid_str[RC522_PICC_UID_MAX_SIZE * 3];
-    rc522_buffer_to_hex_str(picc->uid.bytes, picc->uid.bytes_length, uid_str, sizeof(uid_str));
-
-    ESP_LOGI(TAG, "\"%s\" (uid=%s, sak=%02x)", rc522_picc_type_name(picc->type), uid_str, picc->uid.sak);
-
-    return ESP_OK;
-}
-
-esp_err_t rc522_picc_log_dump(rc522_handle_t rc522, rc522_picc_t *picc)
-{
-    ESP_RETURN_ON_FALSE(picc != NULL, ESP_ERR_INVALID_ARG, TAG, "picc is null");
-
-    RC522_RETURN_ON_ERROR(rc522_picc_log_dump_signature(picc));
 
     return ESP_OK;
 }

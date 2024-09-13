@@ -28,7 +28,7 @@ typedef struct
 {
     rc522_send_handler_t send_handler;
     rc522_receive_handler_t receive_handler;
-    uint16_t scan_interval_ms; /*<! How fast will ESP32 scan for nearby tags, in miliseconds */
+    uint16_t scan_interval_ms; /*<! How fast will ESP32 scan for nearby PICCs, in miliseconds */
     size_t task_stack_size;    /*<! Stack size of rc522 task */
     uint8_t task_priority;     /*<! Priority of rc522 task */
 } rc522_config_t;
@@ -37,7 +37,7 @@ typedef enum
 {
     RC522_EVENT_ANY = ESP_EVENT_ANY_ID,
     RC522_EVENT_NONE,
-    RC522_EVENT_TAG_SCANNED, /*<! Tag scanned */
+    RC522_EVENT_PICC_SELECTED, /*<! PICC selected (scanned) */
 } rc522_event_t;
 
 typedef struct
@@ -63,7 +63,8 @@ typedef struct
 
 typedef enum
 {
-    RC522_PICC_TYPE_UNKNOWN = 0,
+    RC522_PICC_TYPE_UNKNOWN = -1,
+    RC522_PICC_TYPE_UNDEFINED = 0,
     RC522_PICC_TYPE_ISO_14443_4,    // PICC compliant with ISO/IEC 14443-4
     RC522_PICC_TYPE_ISO_18092,      // PICC compliant with ISO/IEC 18092 (NFC)
     RC522_PICC_TYPE_MIFARE_MINI,    // MIFARE Classic protocol, 320 bytes
@@ -82,9 +83,11 @@ typedef struct
     rc522_picc_type_t type;
 } rc522_picc_t;
 
+char *rc522_picc_type_name(rc522_picc_type_t type);
+
 /**
  * @brief Create RC522 scanner handle.
- *        To start scanning tags call the rc522_start function.
+ *        To start scanning PICCs call the rc522_start function.
  * @param config Configuration
  * @param out_rc522 Pointer to resulting new handle
  * @return ESP_OK on success
@@ -97,7 +100,7 @@ esp_err_t rc522_register_events(
 esp_err_t rc522_unregister_events(rc522_handle_t rc522, rc522_event_t event, esp_event_handler_t event_handler);
 
 /**
- * @brief Start to scan tags. If already started, ESP_OK will just be returned.
+ * @brief Start to scan PICCs. If already started, ESP_OK will just be returned.
  *        Initialization function had to be called before this one.
  * @param rc522 Handle
  * @return ESP_OK on success
@@ -105,14 +108,14 @@ esp_err_t rc522_unregister_events(rc522_handle_t rc522, rc522_event_t event, esp
 esp_err_t rc522_start(rc522_handle_t rc522);
 
 /**
- * @brief Start to scan tags. If already started, ESP_OK will just be returned.
+ * @brief Start to scan PICCs. If already started, ESP_OK will just be returned.
  * @param rc522 Handle
  * @return ESP_OK on success
  */
 #define rc522_resume(rc522) rc522_start(rc522)
 
 /**
- * @brief Pause scan tags. If already paused, ESP_OK will just be returned.
+ * @brief Pause scan PICCs. If already paused, ESP_OK will just be returned.
  * @param rc522 Handle
  * @return ESP_OK on success
  */

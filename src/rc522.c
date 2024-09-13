@@ -202,69 +202,53 @@ void rc522_task(void *arg)
 
     while (rc522->task_running) {
         if (rc522->state != RC522_STATE_SCANNING) {
-            // Idling...
-            rc522_delay_ms(100);
+            rc522_delay_ms(125);
+
+            taskYIELD();
             continue;
         }
 
         rc522_picc_t picc;
         memset(&picc, 0, sizeof(picc));
-
         esp_err_t ret = rc522_picc_find(rc522, &picc);
 
-        if (picc.is_present) {
-            ESP_LOGI(TAG, "picc is present (ret=0x%04x)", ret);
-
-            // FIXME: This is temporary. Remove this code since, calls
-            //        of this foo should be done by te user in the app
-
-            ret = rc522_picc_fetch(rc522, &picc);
-
-            if (ret != ESP_OK) {
-                ESP_LOGE(TAG, "failed to find picc (ret=0x%04x)", ret);
-            }
-            else {
-                ESP_LOGI(TAG, "PICC selected");
-                ret = rc522_picc_log_dump(rc522, &picc);
-
-                if (ret != ESP_OK) {
-                    ESP_LOGE(TAG, "Failed to picc_dump");
-                }
-            }
+        if (picc.is_present && rc522_picc_fetch(rc522, &picc) == ESP_OK) {
+            rc522_dispatch_event(rc522, RC522_EVENT_PICC_SELECTED, &picc);
         }
 
-        // FIXME: Reimplement!
+        rc522_delay_ms(rc522->config->scan_interval_ms);
 
-        // uint8_t *uid_bytes = NULL;
-
-        // if (uid_bytes == NULL) {
-        //     rc522->tag_was_present_last_time = false;
-        // }
-        // else if (!rc522->tag_was_present_last_time) {
-        //     rc522_picc_uid_t uid = {
-        //         .bytes = uid_bytes,
-        //         .length = 5, // TODO: Change once when we dynamicaly find the length of UID
-        //     };
-        //     rc522_picc_t tag = { .uid = uid };
-        //     rc522_dispatch_event(rc522, RC522_EVENT_TAG_SCANNED, &tag);
-        //     FREE(uid_bytes);
-        //     rc522->tag_was_present_last_time = true;
-        // }
-        // else {
-        //     FREE(uid_bytes);
-        // }
-
-        // int delay_interval_ms = rc522->config->scan_interval_ms;
-
-        // if (rc522->tag_was_present_last_time) {
-        //     delay_interval_ms *= 2; // extra scan-bursting prevention
-        // }
-
-        // FIXME: Use delay_interval_ms
-        rc522_delay_ms(1000);
+        taskYIELD();
     }
 
-    vTaskDelete(NULL);
+    vTaskDelete(NULL); // self-delete
+}
+
+char *rc522_picc_type_name(rc522_picc_type_t type)
+{
+    switch (type) {
+        case RC522_PICC_TYPE_ISO_14443_4:
+            return "PICC compliant with ISO/IEC 14443-4";
+        case RC522_PICC_TYPE_ISO_18092:
+            return "PICC compliant with ISO/IEC 18092 (NFC)";
+        case RC522_PICC_TYPE_MIFARE_MINI:
+            return "MIFARE Mini, 320 bytes";
+        case RC522_PICC_TYPE_MIFARE_1K:
+            return "MIFARE 1KB";
+        case RC522_PICC_TYPE_MIFARE_4K:
+            return "MIFARE 4KB";
+        case RC522_PICC_TYPE_MIFARE_UL:
+            return "MIFARE Ultralight or Ultralight C";
+        case RC522_PICC_TYPE_MIFARE_PLUS:
+            return "MIFARE Plus";
+        case RC522_PICC_TYPE_MIFARE_DESFIRE:
+            return "MIFARE DESFire";
+        case RC522_PICC_TYPE_TNP3XXX:
+            return "MIFARE TNP3XXX";
+        case RC522_PICC_TYPE_UNKNOWN:
+        default:
+            return "unknown";
+    }
 }
 
 uint32_t rc522_millis()
@@ -277,7 +261,7 @@ uint32_t rc522_millis()
 
 void rc522_delay_ms(uint32_t ms)
 {
-    vTaskDelay(ms / portTICK_PERIOD_MS);
+    vTaskDelay(pdMS_TO_TICKS(ms));
 }
 
 void rc522_buffer_to_hex_str(uint8_t *buffer, uint8_t buffer_length, char *str_buffer, uint8_t str_buffer_length)

@@ -44,7 +44,6 @@ struct rc522
     TaskHandle_t task_handle;             /*<! Handle of task */
     esp_event_loop_handle_t event_handle; /*<! Handle of event loop */
     rc522_state_t state;                  /*<! Current state */
-    bool tag_was_present_last_time;
 };
 
 #define FREE(ptr)        \
