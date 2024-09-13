@@ -207,16 +207,17 @@ void rc522_task(void *arg)
             continue;
         }
 
-        rc522_picc_presence_t presence_result;
-        esp_err_t ret = rc522_picc_presence(rc522, &presence_result);
+        rc522_picc_t picc;
+        memset(&picc, 0, sizeof(picc));
 
-        if (presence_result.is_present) {
-            ESP_LOGI(TAG, "card is present (ret=0x%04x)", ret);
+        esp_err_t ret = rc522_picc_find(rc522, &picc);
+
+        if (picc.is_present) {
+            ESP_LOGI(TAG, "picc is present (ret=0x%04x)", ret);
 
             // FIXME: This is temporary. Remove this code since, calls
             //        of this foo should be done by te user in the app
 
-            rc522_picc_t picc;
             ret = rc522_picc_fetch(rc522, &picc);
 
             if (ret != ESP_OK) {

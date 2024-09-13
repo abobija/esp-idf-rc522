@@ -190,9 +190,9 @@ static esp_err_t rc522_request_a(rc522_handle_t rc522, uint8_t *atqa_buffer, uin
     return rc522_reqa_or_wupa(rc522, RC522_PICC_CMD_REQA, atqa_buffer, atqa_buffer_size);
 }
 
-esp_err_t rc522_picc_presence(rc522_handle_t rc522, rc522_picc_presence_t *result)
+esp_err_t rc522_picc_find(rc522_handle_t rc522, rc522_picc_t *picc)
 {
-    ESP_RETURN_ON_FALSE(result != NULL, ESP_ERR_INVALID_ARG, TAG, "result is null");
+    ESP_RETURN_ON_FALSE(picc != NULL, ESP_ERR_INVALID_ARG, TAG, "picc is null");
 
     uint8_t atqa_buffer[2];
     uint8_t atqa_buffer_size = sizeof(atqa_buffer);
@@ -205,7 +205,7 @@ esp_err_t rc522_picc_presence(rc522_handle_t rc522, rc522_picc_presence_t *resul
 
     esp_err_t ret = rc522_request_a(rc522, atqa_buffer, &atqa_buffer_size);
 
-    result->is_present = (ret == ESP_OK || ret == ESP_ERR_RC522_COLLISION);
+    picc->is_present = (ret == ESP_OK || ret == ESP_ERR_RC522_COLLISION);
 
     return ret;
 }

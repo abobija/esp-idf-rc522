@@ -77,6 +77,7 @@ typedef enum
 
 typedef struct
 {
+    bool is_present;
     rc522_picc_uid_t uid;
     rc522_picc_type_t type;
 } rc522_picc_t;

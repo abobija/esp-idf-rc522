@@ -7,11 +7,6 @@
 extern "C" {
 #endif
 
-typedef struct
-{
-    bool is_present;
-} rc522_picc_presence_t;
-
 typedef enum
 {
     RC522_FW_CLONE = 0x88,       // clone
@@ -21,7 +16,7 @@ typedef enum
     RC522_FW_COUNTERFEIT = 0x12, // counterfeit chip
 } rc522_firmware_t;
 
-esp_err_t rc522_picc_presence(rc522_handle_t rc522, rc522_picc_presence_t *result);
+esp_err_t rc522_picc_find(rc522_handle_t rc522, rc522_picc_t *picc);
 
 esp_err_t rc522_picc_fetch(rc522_handle_t rc522, rc522_picc_t *picc);
 
