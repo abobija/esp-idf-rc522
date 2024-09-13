@@ -48,7 +48,7 @@ static esp_err_t rc522_picc_comm(rc522_handle_t rc522, rc522_pcd_command_t comma
         }
 
         // Timer interrupt - nothing received in 25ms
-        if (irq & 0x01) {
+        if (irq & RC522_PCD_TIMER_IRQ_BIT) {
             RC522_LOGD("timer interrupt (irq=0x%02x)", irq);
 
             return ESP_ERR_TIMEOUT;
