@@ -108,11 +108,11 @@ typedef enum
  */
 typedef enum
 {
-    // Output signal on pin TX1 delivers the 13.56 MHz energy carrier modulated by the transmission data
-    RC522_PCD_TX1_RF_EN_BIT = BIT0,
-
     // Output signal on pin TX2 delivers the 13.56 MHz energy carrier modulated by the transmission data
     RC522_PCD_TX2_RF_EN_BIT = BIT1,
+
+    // Output signal on pin TX1 delivers the 13.56 MHz energy carrier modulated by the transmission data
+    RC522_PCD_TX1_RF_EN_BIT = BIT0,
 } rc522_pcd_tx_control_reg_bit_t;
 
 /**

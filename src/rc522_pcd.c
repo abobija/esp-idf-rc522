@@ -67,14 +67,7 @@ static esp_err_t rc522_pcd_soft_reset(rc522_handle_t rc522, uint32_t timeout_ms)
 
 static esp_err_t rc522_pcd_antenna_on(rc522_handle_t rc522)
 {
-    uint8_t value;
-    RC522_RETURN_ON_ERROR(rc522_pcd_read(rc522, RC522_PCD_TX_CONTROL_REG, &value));
-
-    if ((value & 0x03) != 0x03) {
-        RC522_RETURN_ON_ERROR(rc522_pcd_write(rc522, RC522_PCD_TX_CONTROL_REG, value | 0x03));
-    }
-
-    return ESP_OK;
+    return rc522_pcd_set_bitmask(rc522, RC522_PCD_TX_CONTROL_REG, (RC522_PCD_TX2_RF_EN_BIT | RC522_PCD_TX1_RF_EN_BIT));
 }
 
 esp_err_t rc522_pcd_init(rc522_handle_t rc522)
