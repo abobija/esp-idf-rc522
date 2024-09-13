@@ -4,7 +4,7 @@
 
 #include "comm/rc522_comm.h"
 #include "comm/rc522_crc.h"
-#include "rc522_io.h"
+#include "rc522_pcd.h"
 
 RC522_LOG_DEFINE_BASE();
 
