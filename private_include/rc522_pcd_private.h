@@ -7,6 +7,10 @@
 extern "C" {
 #endif
 
+#define RC522_PCD_MOD_WIDTH_RESET_VALUE (0x26)
+#define RC522_PCD_TX_MODE_RESET_VALUE   (0x00)
+#define RC522_PCD_RX_MODE_RESET_VALUE   (0x00)
+
 typedef enum
 {
     // Starts and stops command execution
@@ -259,11 +263,6 @@ typedef enum
      */
     RC522_PCD_FLUSH_BUFFER_BIT = BIT7,
 } rc522_pcd_fifo_level_reg_bit_t;
-
-typedef enum
-{
-    RC522_PCD_MOD_WIDTH_RESET_VALUE = 0x26,
-} rc522_pcd_mod_width_t;
 
 /**
  * Bits of RC522_PCD_BIT_FRAMING_REG register
