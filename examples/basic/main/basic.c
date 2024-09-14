@@ -1,6 +1,7 @@
 #include <esp_log.h>
 #include <driver/spi_master.h>
 #include "rc522.h"
+#include "rc522_picc.h"
 
 static const char *TAG = "rc522-basic-example";
 

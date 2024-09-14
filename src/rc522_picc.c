@@ -2,6 +2,7 @@
 #include <esp_check.h>
 #include <string.h>
 
+#include "rc522_private.h"
 #include "rc522_pcd_private.h"
 #include "rc522_picc_private.h"
 
@@ -538,6 +539,13 @@ esp_err_t rc522_picc_fetch(rc522_handle_t rc522, rc522_picc_t *picc)
     RC522_RETURN_ON_ERROR(rc522_picc_select(rc522, picc, 0));
 
     picc->type = rc522_picc_type(picc->sak);
+
+    return ESP_OK;
+}
+
+esp_err_t rc522_picc_dump_to_log(rc522_handle_t rc522)
+{
+    // TODO: Implement
 
     return ESP_OK;
 }

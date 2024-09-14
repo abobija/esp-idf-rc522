@@ -1,7 +1,6 @@
 #pragma once
 
 #include <esp_event.h>
-#include "rc522_picc.h"
 
 #ifdef __cplusplus
 extern "C" {

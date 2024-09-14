@@ -39,6 +39,8 @@ typedef struct
 
 char *rc522_picc_type_name(rc522_picc_type_t type);
 
+esp_err_t rc522_picc_dump_to_log(rc522_handle_t rc522);
+
 #ifdef __cplusplus
 }
 #endif
