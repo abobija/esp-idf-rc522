@@ -525,9 +525,9 @@ char *rc522_picc_type_name(rc522_picc_type_t type)
         case RC522_PICC_TYPE_MIFARE_MINI:
             return "MIFARE Mini, 320 bytes";
         case RC522_PICC_TYPE_MIFARE_1K:
-            return "MIFARE 1KB";
+            return "MIFARE 1K";
         case RC522_PICC_TYPE_MIFARE_4K:
-            return "MIFARE 4KB";
+            return "MIFARE 4K";
         case RC522_PICC_TYPE_MIFARE_UL:
             return "MIFARE Ultralight or Ultralight C";
         case RC522_PICC_TYPE_MIFARE_PLUS:

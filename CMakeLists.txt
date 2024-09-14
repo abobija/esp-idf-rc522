@@ -8,9 +8,7 @@ idf_component_register(
         src/rc522_helpers.c
         src/rc522_pcd.c
         src/rc522_picc.c
-        src/rc522_picc_dump.c
         src/picc/rc522_mifare.c
-        src/picc/rc522_mifare_ul.c
     REQUIRES
         esp_event
 )
