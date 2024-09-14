@@ -28,7 +28,7 @@ static esp_err_t rc522_mifare_read(
 
 inline static void rc522_mifare_dump_memory_header_to_log()
 {
-    RC522_LOG_WRITE("%*s%*s  0 --- 3  4 --- 7  8 --- 11 12 -- 15  AccessBits\n",
+    RC522_LOG_WRITE("%*s%*s  0 1 2 3  4 5 6 7  8 ... 11 12 .. 15  AccessBits\n",
         COLUMN_SECTOR_WIDTH,
         "Sector",
         COLUMN_BLOCK_WIDTH,
