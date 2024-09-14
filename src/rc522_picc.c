@@ -13,6 +13,13 @@ static esp_err_t rc522_picc_comm(rc522_handle_t rc522, rc522_pcd_command_t comma
     uint8_t *send_data, uint8_t send_data_len, uint8_t *back_data, uint8_t *back_data_len, uint8_t *valid_bits,
     uint8_t rx_align, bool check_crc)
 {
+    if (RC522_LOG_LEVEL >= ESP_LOG_DEBUG) {
+        RC522_LOGD("transceive (rx_align=0x%02x, check_crc=%d)", rx_align, check_crc);
+        char debug_buffer[64];
+        rc522_buffer_to_hex_str(send_data, send_data_len, debug_buffer, sizeof(debug_buffer));
+        RC522_LOGD("picc << %s", debug_buffer);
+    }
+
     // Prepare values for bit framing
     uint8_t tx_last_bits = valid_bits ? *valid_bits : 0;
     uint8_t bit_framing = (rx_align << 4) + tx_last_bits;
@@ -112,7 +119,7 @@ static esp_err_t rc522_picc_comm(rc522_handle_t rc522, rc522_pcd_command_t comma
     }
 
     // Perform CRC_A validation if requested.
-    if (back_data && back_data_len && check_crc) {
+    if (check_crc && back_data && back_data_len) {
         // In this case a MIFARE Classic NAK is not OK.
         if (*back_data_len == 1 && _valid_bits == 4) {
             return ESP_ERR_RC522_MIFARE_NACK;
@@ -124,7 +131,7 @@ static esp_err_t rc522_picc_comm(rc522_handle_t rc522, rc522_pcd_command_t comma
         // Verify CRC_A - do our own calculation and store the control in controlBuffer.
         uint8_t control_buffer[2];
 
-        RC522_RETURN_ON_ERROR(rc522_pcd_calculate_crc(rc522, back_data, *back_data_len, control_buffer));
+        RC522_RETURN_ON_ERROR(rc522_pcd_calculate_crc(rc522, back_data, *back_data_len - 2, control_buffer));
 
         if ((back_data[*back_data_len - 2] != control_buffer[0]) ||
             (back_data[*back_data_len - 1] != control_buffer[1])) {
@@ -132,19 +139,29 @@ static esp_err_t rc522_picc_comm(rc522_handle_t rc522, rc522_pcd_command_t comma
         }
     }
 
+    if (RC522_LOG_LEVEL >= ESP_LOG_DEBUG) {
+        if (back_data && back_data_len) {
+            char debug_buffer[64];
+            rc522_buffer_to_hex_str(back_data, *back_data_len, debug_buffer, sizeof(debug_buffer));
+            RC522_LOGD("picc >> %s", debug_buffer);
+        }
+        else {
+            // TODO: Read from PICC above even if back_data is null so we can log.
+            //        But then we would need local buffer. Hmm...
+
+            RC522_LOGW("Cannot log rx data since back_data buffer is null");
+        }
+    }
+
     return ESP_OK;
 }
 
-static esp_err_t rc522_picc_transceive(rc522_handle_t rc522, uint8_t *send_data, uint8_t send_data_len,
-    uint8_t *back_data, uint8_t *back_data_len, uint8_t *valid_bits, uint8_t rx_align, bool check_crc)
+esp_err_t rc522_picc_transceive(rc522_handle_t rc522, uint8_t *send_data, uint8_t send_data_len, uint8_t *back_data,
+    uint8_t *back_data_len, uint8_t *valid_bits, uint8_t rx_align, bool check_crc)
 {
     uint8_t wait_irq = 0x30; // RxIRq and IdleIRq
 
-    RC522_LOGD("transceive (valid_bits=0x%02x, rx_align=0x%02x, check_crc=%d)", *valid_bits, rx_align, check_crc);
-    RC522_LOGD("picc <<");
-    ESP_LOG_BUFFER_HEX_LEVEL(TAG, send_data, send_data_len, ESP_LOG_DEBUG);
-
-    esp_err_t ret = rc522_picc_comm(rc522,
+    return rc522_picc_comm(rc522,
         RC522_PCD_TRANSCEIVE_CMD,
         wait_irq,
         send_data,
@@ -154,11 +171,6 @@ static esp_err_t rc522_picc_transceive(rc522_handle_t rc522, uint8_t *send_data,
         valid_bits,
         rx_align,
         check_crc);
-
-    RC522_LOGD("picc >> ");
-    ESP_LOG_BUFFER_HEX_LEVEL(TAG, back_data, *back_data_len, ESP_LOG_DEBUG);
-
-    return ret;
 }
 
 static esp_err_t rc522_picc_reqa_or_wupa(
@@ -546,8 +558,63 @@ esp_err_t rc522_picc_fetch(rc522_handle_t rc522, rc522_picc_t *picc)
 
 esp_err_t rc522_picc_halta(rc522_handle_t rc522, rc522_picc_t *picc)
 {
-    // TODO: Implement
-    RC522_LOGW("Not implemented");
+    uint8_t buffer[4];
 
-    return ESP_OK;
+    // Build command buffer
+    buffer[0] = RC522_PICC_CMD_HLTA;
+    buffer[1] = 0;
+    // Calculate CRC_A
+    RC522_RETURN_ON_ERROR(rc522_pcd_calculate_crc(rc522, buffer, 2, &buffer[2]));
+
+    // Send the command.
+    // The standard says:
+    //		If the PICC responds with any modulation during a period of 1 ms after the end of the frame containing the
+    //		HLTA command, this response shall be interpreted as 'not acknowledge'.
+    // We interpret that this way: Only STATUS_TIMEOUT is a success.
+    esp_err_t ret = rc522_picc_transceive(rc522, buffer, sizeof(buffer), NULL, NULL, NULL, 0, false);
+
+    if (ret == ESP_ERR_TIMEOUT) {
+        return ESP_OK;
+    }
+
+    if (ret == ESP_OK) {
+        // That is ironically NOT ok in this case ;-)
+        return ESP_FAIL;
+    }
+
+    return ret;
+}
+
+// FIXME: This is MIFARE specific auth? Move it to mifare source?
+esp_err_t rc522_picc_autha(
+    rc522_handle_t rc522, rc522_picc_t *picc, uint8_t block_addr, uint8_t *key, uint8_t key_length)
+{
+    uint8_t wait_irq = 0x10; // IdleIRq
+
+    // Build command buffer
+    uint8_t send_data[12];
+    send_data[0] = RC522_PICC_CMD_MF_AUTH_KEY_A;
+    send_data[1] = block_addr;
+    for (uint8_t i = 0; i < key_length; i++) {
+        send_data[2 + i] = key[i];
+    }
+    // Use the last uid bytes as specified in http://cache.nxp.com/documents/application_note/AN10927.pdf
+    // section 3.2.5 "MIFARE Classic Authentication".
+    // The only missed case is the MF1Sxxxx shortcut activation,
+    // but it requires cascade tag (CT) byte, that is not part of uid.
+    for (uint8_t i = 0; i < 4; i++) { // The last 4 bytes of the UID
+        send_data[8 + i] = picc->uid.bytes[i + picc->uid.bytes_length - 4];
+    }
+
+    // Start the authentication.
+    return rc522_picc_comm(rc522,
+        RC522_PCD_MF_AUTH_CMD,
+        wait_irq,
+        send_data,
+        sizeof(send_data),
+        NULL,
+        NULL,
+        NULL,
+        0,
+        false);
 }

@@ -110,11 +110,17 @@ typedef enum
     RC522_PICC_CMD_UL_WRITE = 0xA2,
 } rc522_picc_command_t;
 
+esp_err_t rc522_picc_transceive(rc522_handle_t rc522, uint8_t *send_data, uint8_t send_data_len, uint8_t *back_data,
+    uint8_t *back_data_len, uint8_t *valid_bits, uint8_t rx_align, bool check_crc);
+
 esp_err_t rc522_picc_find(rc522_handle_t rc522, rc522_picc_t *picc);
 
 esp_err_t rc522_picc_fetch(rc522_handle_t rc522, rc522_picc_t *picc);
 
 esp_err_t rc522_picc_halta(rc522_handle_t rc522, rc522_picc_t *picc);
+
+esp_err_t rc522_picc_autha(
+    rc522_handle_t rc522, rc522_picc_t *picc, uint8_t block_addr, uint8_t *key, uint8_t key_length);
 
 #ifdef __cplusplus
 }
