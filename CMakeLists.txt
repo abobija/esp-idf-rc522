@@ -5,6 +5,7 @@ idf_component_register(
         private_include
     SRCS
         src/rc522.c
+        src/rc522_helpers.c
         src/rc522_pcd.c
         src/rc522_picc.c
     REQUIRES

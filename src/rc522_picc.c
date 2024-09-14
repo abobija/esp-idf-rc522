@@ -2,7 +2,8 @@
 #include <esp_check.h>
 #include <string.h>
 
-#include "rc522_private.h"
+#include "rc522_types_private.h"
+#include "rc522_helpers_private.h"
 #include "rc522_pcd_private.h"
 #include "rc522_picc_private.h"
 

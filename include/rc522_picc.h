@@ -1,6 +1,6 @@
 #pragma once
 
-#include "rc522.h"
+#include "rc522_types.h"
 
 #ifdef __cplusplus
 extern "C" {
