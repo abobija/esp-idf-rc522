@@ -8,9 +8,14 @@
 
 RC522_LOG_DEFINE_BASE();
 
-// Buffer should be at least 2 bytes long
-// Only first 2 elements will be used where the result will be stored
-// TODO: Use uint16_t type for the result instead of buffer array?
+/**
+ * Buffer should be at least 2 bytes long
+ * Only first 2 elements will be used where the result will be stored
+ *
+ * TODO: Use uint16_t type for the result instead of buffer array?
+ *
+ * @see https://stackoverflow.com/a/48705557
+ */
 esp_err_t rc522_pcd_calculate_crc(rc522_handle_t rc522, uint8_t *data, uint8_t n, uint8_t *buffer)
 {
     RC522_RETURN_ON_ERROR(rc522_pcd_stop_active_command(rc522));
@@ -26,7 +31,7 @@ esp_err_t rc522_pcd_calculate_crc(rc522_handle_t rc522, uint8_t *data, uint8_t n
         uint8_t irq;
         RC522_RETURN_ON_ERROR(rc522_pcd_read(rc522, RC522_PCD_DIV_INT_REQ_REG, &irq));
 
-        if (RC522_PCD_CRC_IRQ_BIT & irq) {
+        if (irq & RC522_PCD_CRC_IRQ_BIT) {
             calculation_done = true;
             break;
         }
@@ -39,9 +44,21 @@ esp_err_t rc522_pcd_calculate_crc(rc522_handle_t rc522, uint8_t *data, uint8_t n
         return ESP_ERR_TIMEOUT;
     }
 
+    uint8_t lo;
+    uint8_t hi;
+
     RC522_RETURN_ON_ERROR(rc522_pcd_stop_active_command(rc522));
-    RC522_RETURN_ON_ERROR(rc522_pcd_read(rc522, RC522_PCD_CRC_RESULT_LSB_REG, buffer));
-    RC522_RETURN_ON_ERROR(rc522_pcd_read(rc522, RC522_PCD_CRC_RESULT_MSB_REG, buffer + 1));
+    RC522_RETURN_ON_ERROR(rc522_pcd_read(rc522, RC522_PCD_CRC_RESULT_LSB_REG, &lo));
+    RC522_RETURN_ON_ERROR(rc522_pcd_read(rc522, RC522_PCD_CRC_RESULT_MSB_REG, &hi));
+
+    buffer[0] = lo;
+    buffer[1] = hi;
+
+    if (RC522_LOG_LEVEL >= ESP_LOG_DEBUG) {
+        char debug_buffer[64];
+        rc522_buffer_to_hex_str(data, n, debug_buffer, sizeof(debug_buffer));
+        RC522_LOGD("crc(%s) => 0x%02x%02x", debug_buffer, hi, lo);
+    }
 
     return ESP_OK;
 }
@@ -200,6 +217,11 @@ inline esp_err_t rc522_pcd_start_data_transmission(rc522_handle_t rc522)
 inline esp_err_t rc522_pcd_stop_data_transmission(rc522_handle_t rc522)
 {
     return rc522_pcd_clear_bits(rc522, RC522_PCD_BIT_FRAMING_REG, RC522_PCD_START_SEND_BIT);
+}
+
+inline esp_err_t rc522_pcd_stop_crypto1(rc522_handle_t rc522)
+{
+    return rc522_pcd_clear_bits(rc522, RC522_PCD_STATUS_2_REG, RC522_PCD_MK_CRYPTO1_ON_BIT);
 }
 
 esp_err_t rc522_pcd_rw_test(rc522_handle_t rc522)

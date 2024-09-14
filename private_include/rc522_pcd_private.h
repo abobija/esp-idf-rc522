@@ -287,6 +287,22 @@ typedef enum
     RC522_PCD_START_SEND_BIT = BIT7,
 } rc522_pcd_bit_framing_reg_bit_t;
 
+/**
+ * Bits of RC522_PCD_STATUS_2_REG register
+ */
+typedef enum
+{
+    /**
+     * Indicates that the MIFARE Crypto1 unit is switched on and
+     * therefore all data communication with the card is encrypted
+     * can only be set to logic 1 by a successful execution of the
+     * MFAuthent command.
+     * Only valid in Read/Write mode for MIFARE standard cards.
+     * This bit is cleared by software.
+     */
+    RC522_PCD_MK_CRYPTO1_ON_BIT = BIT3,
+} rc522_pcd_status_2_reg_bit_t;
+
 typedef enum
 {
     RC522_PCD_FIRMWARE_CLONE = 0x88,       // clone
@@ -318,6 +334,8 @@ esp_err_t rc522_pcd_fifo_flush(rc522_handle_t rc522);
 esp_err_t rc522_pcd_start_data_transmission(rc522_handle_t rc522);
 
 esp_err_t rc522_pcd_stop_data_transmission(rc522_handle_t rc522);
+
+esp_err_t rc522_pcd_stop_crypto1(rc522_handle_t rc522);
 
 esp_err_t rc522_pcd_rw_test(rc522_handle_t rc522);
 
