@@ -3,7 +3,7 @@ Language: Cpp
 BasedOnStyle: WebKit
 AlignConsecutiveBitFields: true
 AlignConsecutiveMacros: true
-AlignEscapedNewlines: Left
+AlignEscapedNewlines: Right
 AlignOperands: true
 AlignTrailingComments: true
 AllowAllArgumentsOnNextLine: false

@@ -20,13 +20,13 @@ extern "C" {
 #define RC522_RETURN_ON_ERROR(x)           ESP_RETURN_ON_ERROR(x, TAG, "")
 #define RC522_RETURN_ON_FALSE(a, err_code) ESP_RETURN_ON_FALSE(a, err_code, TAG, "")
 
-#define RC522_RETURN_ON_ERROR_SILENTLY(x)  \
-    do {                                   \
-        esp_err_t err_rc_ = (x);           \
-        if (unlikely(err_rc_ != ESP_OK)) { \
-            return err_rc_;                \
-        }                                  \
-    }                                      \
+#define RC522_RETURN_ON_ERROR_SILENTLY(x)                                                                              \
+    do {                                                                                                               \
+        esp_err_t err_rc_ = (x);                                                                                       \
+        if (unlikely(err_rc_ != ESP_OK)) {                                                                             \
+            return err_rc_;                                                                                            \
+        }                                                                                                              \
+    }                                                                                                                  \
     while (0)
 
 typedef enum
@@ -46,10 +46,10 @@ struct rc522
     rc522_state_t state;                  /*<! Current state */
 };
 
-#define FREE(ptr)        \
-    if ((ptr) != NULL) { \
-        free(ptr);       \
-        (ptr) = NULL;    \
+#define FREE(ptr)                                                                                                      \
+    if ((ptr) != NULL) {                                                                                               \
+        free(ptr);                                                                                                     \
+        (ptr) = NULL;                                                                                                  \
     }
 
 uint32_t rc522_millis();
