@@ -536,6 +536,7 @@ char *rc522_picc_type_name(rc522_picc_type_t type)
             return "MIFARE DESFire";
         case RC522_PICC_TYPE_TNP3XXX:
             return "MIFARE TNP3XXX";
+        case RC522_PICC_TYPE_UNDEFINED:
         case RC522_PICC_TYPE_UNKNOWN:
         default:
             return "unknown";

@@ -12,3 +12,20 @@ idf_component_register(
     REQUIRES
         esp_event
 )
+
+target_compile_options(${COMPONENT_LIB} PRIVATE
+    #-Werror # Warning as error
+    #-pedantic
+    -Wextra
+    -Wall
+    -Wshadow
+    -Wcast-qual
+    -Wswitch-default
+    -Wswitch-enum
+    #-Wconversion
+    -Wunreachable-code
+    -Wuninitialized
+    -Winit-self
+    -Wpointer-arith
+    -Werror-implicit-function-declaration
+)

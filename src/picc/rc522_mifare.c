@@ -204,6 +204,31 @@ static esp_err_t rc522_mifare_dump_sector_to_log(
     return ESP_OK;
 }
 
+static esp_err_t rc522_mifare_number_of_sectors(rc522_picc_t *picc, uint8_t *result)
+{
+    if (picc->type == RC522_PICC_TYPE_MIFARE_MINI) {
+        // Has 5 sectors * 4 blocks/sector * 16 bytes/block = 320 bytes.
+        *result = 5;
+        return ESP_OK;
+    }
+
+    if (picc->type == RC522_PICC_TYPE_MIFARE_1K) {
+        // Has 16 sectors * 4 blocks/sector * 16 bytes/block = 1024 bytes.
+        *result = 16;
+        return ESP_OK;
+    }
+
+    if (picc->type == RC522_PICC_TYPE_MIFARE_4K) {
+        // Has (32 sectors * 4 blocks/sector + 8 sectors * 16 blocks/sector) * 16 bytes/block = 4096 bytes.
+        *result = 40;
+        return ESP_OK;
+    }
+
+    RC522_LOGE("Unsupported PICC type");
+
+    return ESP_ERR_INVALID_ARG;
+}
+
 esp_err_t rc522_mifare_dump_data_to_log(
     rc522_handle_t rc522, rc522_picc_t *picc, const uint8_t *key, uint8_t key_length)
 {
@@ -212,28 +237,8 @@ esp_err_t rc522_mifare_dump_data_to_log(
         TAG,
         "picc not compatible with MIFARE Classic");
 
-    uint8_t sectors_length = 0;
-
-    switch (picc->type) {
-        case RC522_PICC_TYPE_MIFARE_MINI:
-            // Has 5 sectors * 4 blocks/sector * 16 bytes/block = 320 bytes.
-            sectors_length = 5;
-            break;
-
-        case RC522_PICC_TYPE_MIFARE_1K:
-            // Has 16 sectors * 4 blocks/sector * 16 bytes/block = 1024 bytes.
-            sectors_length = 16;
-            break;
-
-        case RC522_PICC_TYPE_MIFARE_4K:
-            // Has (32 sectors * 4 blocks/sector + 8 sectors * 16 blocks/sector) * 16 bytes/block = 4096 bytes.
-            sectors_length = 40;
-            break;
-
-        default:
-            RC522_LOGE("Unsupported picc type");
-            return ESP_FAIL;
-    }
+    uint8_t sectors_length;
+    RC522_RETURN_ON_ERROR_SILENTLY(rc522_mifare_number_of_sectors(picc, &sectors_length));
 
     esp_err_t ret = ESP_OK;
 

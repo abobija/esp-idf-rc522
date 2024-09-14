@@ -184,9 +184,9 @@ char *rc522_pcd_firmware_name(rc522_pcd_firmware_t firmware)
             return "v2.0";
         case RC522_PCD_FIRMWARE_COUNTERFEIT:
             return "counterfeit_chip";
+        default:
+            return "unknown";
     }
-
-    return "unknown";
 }
 
 inline esp_err_t rc522_pcd_stop_active_command(rc522_handle_t rc522)
