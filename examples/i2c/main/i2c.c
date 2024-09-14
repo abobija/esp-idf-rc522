@@ -1,7 +1,7 @@
 #include <esp_log.h>
 #include <driver/i2c.h>
 #include "rc522.h"
-#include "rc522_picc.h"
+#include "rc522_picc_dump.h"
 
 static const char *TAG = "rc522-i2c-example";
 

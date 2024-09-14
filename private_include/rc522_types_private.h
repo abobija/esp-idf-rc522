@@ -1,5 +1,7 @@
 #pragma once
 
+#include <esp_log.h>
+#include <esp_check.h>
 #include "rc522_types.h"
 
 #ifdef __cplusplus
@@ -8,7 +10,8 @@ extern "C" {
 
 #define RC522_LOG_TAG "rc522"
 
-#define RC522_LOG_DEFINE_BASE()             static const char *TAG = RC522_LOG_TAG
+#define RC522_LOG_DEFINE_BASE() static const char *TAG = RC522_LOG_TAG
+
 #define RC522_LOG(esp_log_foo, format, ...) esp_log_foo(TAG, "%s(%d): " format, __FUNCTION__, __LINE__, ##__VA_ARGS__)
 #define RC522_LOGE(format, ...)             RC522_LOG(ESP_LOGE, format, ##__VA_ARGS__)
 #define RC522_LOGW(format, ...)             RC522_LOG(ESP_LOGW, format, ##__VA_ARGS__)

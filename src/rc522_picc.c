@@ -544,12 +544,10 @@ esp_err_t rc522_picc_fetch(rc522_handle_t rc522, rc522_picc_t *picc)
     return ESP_OK;
 }
 
-esp_err_t rc522_picc_dump_to_log(rc522_handle_t rc522, rc522_picc_t *picc)
+esp_err_t rc522_picc_halta(rc522_handle_t rc522, rc522_picc_t *picc)
 {
-    char uid_str[RC522_PICC_UID_MAX_SIZE * 3];
-    rc522_buffer_to_hex_str(picc->uid.bytes, picc->uid.bytes_length, uid_str, sizeof(uid_str));
-
-    ESP_LOGI(TAG, "PICC (uid=%s, sak=%02x, type=%s)", uid_str, picc->sak, rc522_picc_type_name(picc->type));
+    // TODO: Implement
+    RC522_LOGW("Not implemented");
 
     return ESP_OK;
 }
