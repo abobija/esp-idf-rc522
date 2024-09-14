@@ -9,6 +9,12 @@ RC522_LOG_DEFINE_BASE();
 #define COLUMN_SECTOR_WIDTH (6)
 #define COLUMN_BLOCK_WIDTH  (7)
 
+bool rc522_mifare_is_mifare_classic_compatible(rc522_picc_t *picc)
+{
+    return picc->type == RC522_PICC_TYPE_MIFARE_MINI || picc->type == RC522_PICC_TYPE_MIFARE_1K
+           || picc->type == RC522_PICC_TYPE_MIFARE_4K;
+}
+
 static esp_err_t rc522_mifare_autha(
     rc522_handle_t rc522, rc522_picc_t *picc, uint8_t block_addr, uint8_t *key, uint8_t key_length)
 {
@@ -184,8 +190,8 @@ static esp_err_t rc522_mifare_dump_sector_to_log(
         }
 
         if (group != 3 && (g[group] == 1 || g[group] == 6)) { // Not a sector trailer, a value block
-            int32_t value = ((int32_t)(buffer[3]) << 24) | ((int32_t)(buffer[2]) << 16) | ((int32_t)(buffer[1]) << 8) |
-                            (int32_t)(buffer[0]);
+            int32_t value = ((int32_t)(buffer[3]) << 24) | ((int32_t)(buffer[2]) << 16) | ((int32_t)(buffer[1]) << 8)
+                            | (int32_t)(buffer[0]);
             RC522_LOG_WRITE(" Value=0x%02lx", value);
             RC522_LOG_WRITE(" Adr=0x%02x", buffer[12]);
         }
@@ -200,6 +206,11 @@ static esp_err_t rc522_mifare_dump_sector_to_log(
 
 esp_err_t rc522_mifare_dump_data_to_log(rc522_handle_t rc522, rc522_picc_t *picc, uint8_t *key, uint8_t key_length)
 {
+    ESP_RETURN_ON_FALSE(rc522_mifare_is_mifare_classic_compatible(picc),
+        ESP_ERR_INVALID_ARG,
+        TAG,
+        "picc not compatible with MIFARE Classic");
+
     uint8_t sectors_length = 0;
 
     switch (picc->type) {
@@ -218,8 +229,9 @@ esp_err_t rc522_mifare_dump_data_to_log(rc522_handle_t rc522, rc522_picc_t *picc
             sectors_length = 40;
             break;
 
-        default: // Should not happen. Ignore.
-            break;
+        default:
+            RC522_LOGE("Unsupported picc type");
+            return ESP_FAIL;
     }
 
     esp_err_t ret = ESP_OK;

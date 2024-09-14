@@ -11,17 +11,16 @@ RC522_LOG_DEFINE_BASE();
 
 static esp_err_t rc522_picc_dump_data_to_log(rc522_handle_t rc522, rc522_picc_t *picc)
 {
+    if (rc522_mifare_is_mifare_classic_compatible(picc)) {
+        uint8_t key[6];
+
+        // MIFARE factory key is set to FFFFFFFFFFFFh
+        memset(key, 0xFF, sizeof(key));
+
+        return rc522_mifare_dump_data_to_log(rc522, picc, key, sizeof(key));
+    }
+
     switch (picc->type) {
-        case RC522_PICC_TYPE_MIFARE_MINI:
-        case RC522_PICC_TYPE_MIFARE_1K:
-        case RC522_PICC_TYPE_MIFARE_4K:
-            uint8_t key[6];
-
-            // MIFARE factory key is set to FFFFFFFFFFFFh
-            memset(key, 0xFF, sizeof(key));
-
-            return rc522_mifare_dump_data_to_log(rc522, picc, key, sizeof(key));
-
         case RC522_PICC_TYPE_MIFARE_UL:
             return rc522_mifare_ul_dump_data_to_log(rc522, picc);
 

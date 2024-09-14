@@ -133,8 +133,8 @@ esp_err_t rc522_picc_comm(rc522_handle_t rc522, rc522_pcd_command_t command, uin
 
         RC522_RETURN_ON_ERROR(rc522_pcd_calculate_crc(rc522, back_data, *back_data_len - 2, control_buffer));
 
-        if ((back_data[*back_data_len - 2] != control_buffer[0]) ||
-            (back_data[*back_data_len - 1] != control_buffer[1])) {
+        if ((back_data[*back_data_len - 2] != control_buffer[0])
+            || (back_data[*back_data_len - 1] != control_buffer[1])) {
             return ESP_ERR_RC522_CRC_WRONG;
         }
     }
