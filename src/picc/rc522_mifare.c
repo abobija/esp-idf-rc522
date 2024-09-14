@@ -13,7 +13,7 @@ typedef struct
 {
     uint8_t index;                    // Zero-based index of Sector
     uint8_t number_of_blocks;         // Total number of blocks inside of Sector
-    uint8_t first_block_global_index; // Zero-based index of Block inside of MIFARE memory
+    uint8_t first_block_index_global; // Zero-based index of Block inside of MIFARE memory
 } rc522_mifare_sector_info_t;
 
 /**
@@ -75,15 +75,6 @@ static esp_err_t rc522_mifare_read(
     return rc522_picc_transceive(rc522, buffer, 4, buffer, buffer_length, NULL, 0, true);
 }
 
-inline static void rc522_mifare_dump_memory_header_to_log()
-{
-    RC522_LOG_WRITE("%*s%*s  0 1 2 3  4 5 6 7  8 ... 11 12 .. 15  AccessBits\n",
-        COLUMN_SECTOR_WIDTH,
-        "Sector",
-        COLUMN_BLOCK_WIDTH,
-        "Block");
-}
-
 static esp_err_t rc522_mifare_number_of_sectors(rc522_picc_type_t type, uint8_t *result)
 {
     ESP_RETURN_ON_FALSE(rc522_mifare_type_is_classic_compatible(type), ESP_ERR_INVALID_ARG, TAG, "invalid type");
@@ -119,19 +110,28 @@ static esp_err_t rc522_mifare_sector_info(uint8_t sector_index, rc522_mifare_sec
     // Determine position and size of sector.
     if (result->index < 32) { // Sectors 0..31 has 4 blocks each
         result->number_of_blocks = 4;
-        result->first_block_global_index = result->index * result->number_of_blocks;
+        result->first_block_index_global = result->index * result->number_of_blocks;
 
         return ESP_OK;
     }
 
     if (result->index < 40) { // Sectors 32-39 has 16 blocks each
         result->number_of_blocks = 16;
-        result->first_block_global_index = 128 + (result->index - 32) * result->number_of_blocks;
+        result->first_block_index_global = 128 + (result->index - 32) * result->number_of_blocks;
 
         return ESP_OK;
     }
 
     return ESP_FAIL;
+}
+
+inline static void rc522_mifare_dump_memory_header_to_log()
+{
+    RC522_LOG_WRITE("%*s%*s  0 1 2 3  4 5 6 7  8 9 . 11 12 .. 15  AccessBits\n",
+        COLUMN_SECTOR_WIDTH,
+        "Sector",
+        COLUMN_BLOCK_WIDTH,
+        "Block");
 }
 
 static esp_err_t rc522_mifare_dump_sector_to_log(
@@ -165,10 +165,10 @@ static esp_err_t rc522_mifare_dump_sector_to_log(
     inverted_error = false; // Avoid "unused variable" warning.
 
     // Establish encrypted communications before reading the first block
-    RC522_RETURN_ON_ERROR(rc522_mifare_autha(rc522, picc, sector.first_block_global_index, key, key_length));
+    RC522_RETURN_ON_ERROR(rc522_mifare_autha(rc522, picc, sector.first_block_index_global, key, key_length));
 
     for (int8_t block_offset = sector.number_of_blocks - 1; block_offset >= 0; block_offset--) {
-        block_addr = sector.first_block_global_index + block_offset;
+        block_addr = sector.first_block_index_global + block_offset;
 
         // Sector number - only on first line
         if (is_sector_trailer) {
@@ -178,14 +178,12 @@ static esp_err_t rc522_mifare_dump_sector_to_log(
             RC522_LOG_WRITE("%*s", COLUMN_SECTOR_WIDTH, " ");
         }
 
-        RC522_LOG_WRITE("%*d", COLUMN_BLOCK_WIDTH, block_addr % 4);
+        RC522_LOG_WRITE("%*d", COLUMN_BLOCK_WIDTH, block_addr);
         RC522_LOG_WRITE("  ");
 
         // Read block
         byte_count = sizeof(buffer);
         RC522_RETURN_ON_ERROR(rc522_mifare_read(rc522, picc, block_addr, buffer, &byte_count));
-
-        // TODO: what if byte_count != 16 ???
 
         // Dump data
         for (uint8_t index = 0; index < 16; index++) {
