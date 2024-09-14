@@ -9,6 +9,39 @@ RC522_LOG_DEFINE_BASE();
 #define COLUMN_SECTOR_WIDTH (6)
 #define COLUMN_BLOCK_WIDTH  (7)
 
+static esp_err_t rc522_mifare_autha(
+    rc522_handle_t rc522, rc522_picc_t *picc, uint8_t block_addr, uint8_t *key, uint8_t key_length)
+{
+    uint8_t wait_irq = 0x10; // IdleIRq
+
+    // Build command buffer
+    uint8_t send_data[12];
+    send_data[0] = RC522_PICC_CMD_MF_AUTH_KEY_A;
+    send_data[1] = block_addr;
+    for (uint8_t i = 0; i < key_length; i++) {
+        send_data[2 + i] = key[i];
+    }
+    // Use the last uid bytes as specified in http://cache.nxp.com/documents/application_note/AN10927.pdf
+    // section 3.2.5 "MIFARE Classic Authentication".
+    // The only missed case is the MF1Sxxxx shortcut activation,
+    // but it requires cascade tag (CT) byte, that is not part of uid.
+    for (uint8_t i = 0; i < 4; i++) { // The last 4 bytes of the UID
+        send_data[8 + i] = picc->uid.bytes[i + picc->uid.bytes_length - 4];
+    }
+
+    // Start the authentication.
+    return rc522_picc_comm(rc522,
+        RC522_PCD_MF_AUTH_CMD,
+        wait_irq,
+        send_data,
+        sizeof(send_data),
+        NULL,
+        NULL,
+        NULL,
+        0,
+        false);
+}
+
 static esp_err_t rc522_mifare_read(
     rc522_handle_t rc522, rc522_picc_t *picc, uint8_t block_addr, uint8_t *buffer, uint8_t *buffer_length)
 {
@@ -80,7 +113,7 @@ static esp_err_t rc522_mifare_dump_sector_to_log(
     inverted_error = false; // Avoid "unused variable" warning.
 
     // Establish encrypted communications before reading the first block
-    RC522_RETURN_ON_ERROR(rc522_picc_autha(rc522, picc, first_block, key, key_length));
+    RC522_RETURN_ON_ERROR(rc522_mifare_autha(rc522, picc, first_block, key, key_length));
 
     for (int8_t blockOffset = no_of_blocks - 1; blockOffset >= 0; blockOffset--) {
         block_addr = first_block + blockOffset;

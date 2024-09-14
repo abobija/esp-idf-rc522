@@ -9,9 +9,9 @@
 
 RC522_LOG_DEFINE_BASE();
 
-static esp_err_t rc522_picc_comm(rc522_handle_t rc522, rc522_pcd_command_t command, uint8_t wait_irq,
-    uint8_t *send_data, uint8_t send_data_len, uint8_t *back_data, uint8_t *back_data_len, uint8_t *valid_bits,
-    uint8_t rx_align, bool check_crc)
+esp_err_t rc522_picc_comm(rc522_handle_t rc522, rc522_pcd_command_t command, uint8_t wait_irq, uint8_t *send_data,
+    uint8_t send_data_len, uint8_t *back_data, uint8_t *back_data_len, uint8_t *valid_bits, uint8_t rx_align,
+    bool check_crc)
 {
     if (RC522_LOG_LEVEL >= ESP_LOG_DEBUG) {
         RC522_LOGD("transceive (rx_align=0x%02x, check_crc=%d)", rx_align, check_crc);
@@ -583,38 +583,4 @@ esp_err_t rc522_picc_halta(rc522_handle_t rc522, rc522_picc_t *picc)
     }
 
     return ret;
-}
-
-// FIXME: This is MIFARE specific auth? Move it to mifare source?
-esp_err_t rc522_picc_autha(
-    rc522_handle_t rc522, rc522_picc_t *picc, uint8_t block_addr, uint8_t *key, uint8_t key_length)
-{
-    uint8_t wait_irq = 0x10; // IdleIRq
-
-    // Build command buffer
-    uint8_t send_data[12];
-    send_data[0] = RC522_PICC_CMD_MF_AUTH_KEY_A;
-    send_data[1] = block_addr;
-    for (uint8_t i = 0; i < key_length; i++) {
-        send_data[2 + i] = key[i];
-    }
-    // Use the last uid bytes as specified in http://cache.nxp.com/documents/application_note/AN10927.pdf
-    // section 3.2.5 "MIFARE Classic Authentication".
-    // The only missed case is the MF1Sxxxx shortcut activation,
-    // but it requires cascade tag (CT) byte, that is not part of uid.
-    for (uint8_t i = 0; i < 4; i++) { // The last 4 bytes of the UID
-        send_data[8 + i] = picc->uid.bytes[i + picc->uid.bytes_length - 4];
-    }
-
-    // Start the authentication.
-    return rc522_picc_comm(rc522,
-        RC522_PCD_MF_AUTH_CMD,
-        wait_irq,
-        send_data,
-        sizeof(send_data),
-        NULL,
-        NULL,
-        NULL,
-        0,
-        false);
 }
