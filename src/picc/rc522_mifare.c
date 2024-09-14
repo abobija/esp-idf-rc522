@@ -26,12 +26,20 @@ static esp_err_t rc522_mifare_read(
     return rc522_picc_transceive(rc522, buffer, 4, buffer, buffer_length, NULL, 0, true);
 }
 
+inline static void rc522_mifare_dump_memory_header_to_log()
+{
+    RC522_LOG_WRITE("%*s%*s  0 --- 3  4 --- 7  8 --- 11 12 -- 15  AccessBits\n",
+        COLUMN_SECTOR_WIDTH,
+        "Sector",
+        COLUMN_BLOCK_WIDTH,
+        "Block");
+}
+
 static esp_err_t rc522_mifare_dump_sector_to_log(
     rc522_handle_t rc522, rc522_picc_t *picc, uint8_t *key, uint8_t key_length, uint8_t sector)
 {
-    uint8_t first_block;    // Address of lowest address to dump actually last block dumped)
-    uint8_t no_of_blocks;   // Number of blocks in sector
-    bool is_sector_trailer; // Set to true while handling the "last" (ie highest address) in the sector.
+    uint8_t first_block;  // Address of lowest address to dump actually last block dumped)
+    uint8_t no_of_blocks; // Number of blocks in sector
 
     // The access bits are stored in a peculiar fashion.
     // There are four groups:
@@ -68,8 +76,12 @@ static esp_err_t rc522_mifare_dump_sector_to_log(
     memset(buffer, 0x00, sizeof(buffer));
 
     uint8_t block_addr;
-    is_sector_trailer = true;
+    bool is_sector_trailer = true;
     inverted_error = false; // Avoid "unused variable" warning.
+
+    // Establish encrypted communications before reading the first block
+    RC522_RETURN_ON_ERROR(rc522_picc_autha(rc522, picc, first_block, key, key_length));
+
     for (int8_t blockOffset = no_of_blocks - 1; blockOffset >= 0; blockOffset--) {
         block_addr = first_block + blockOffset;
 
@@ -84,14 +96,11 @@ static esp_err_t rc522_mifare_dump_sector_to_log(
         RC522_LOG_WRITE("%*d", COLUMN_BLOCK_WIDTH, block_addr % 4);
         RC522_LOG_WRITE("  ");
 
-        // Establish encrypted communications before reading the first block
-        if (is_sector_trailer) {
-            RC522_RETURN_ON_ERROR(rc522_picc_autha(rc522, picc, first_block, key, key_length));
-        }
-
         // Read block
         byte_count = sizeof(buffer);
         RC522_RETURN_ON_ERROR(rc522_mifare_read(rc522, picc, block_addr, buffer, &byte_count));
+
+        // TODO: what if byte_count != 16 ???
 
         // Dump data
         for (uint8_t index = 0; index < 16; index++) {
@@ -115,7 +124,6 @@ static esp_err_t rc522_mifare_dump_sector_to_log(
             g[1] = ((c1 & 2) << 1) | ((c2 & 2) << 0) | ((c3 & 2) >> 1);
             g[2] = ((c1 & 4) << 0) | ((c2 & 4) >> 1) | ((c3 & 4) >> 2);
             g[3] = ((c1 & 8) >> 1) | ((c2 & 8) >> 2) | ((c3 & 8) >> 3);
-            is_sector_trailer = false;
         }
 
         // Which access group is this block in?
@@ -150,6 +158,8 @@ static esp_err_t rc522_mifare_dump_sector_to_log(
         }
 
         RC522_LOG_WRITE("\n");
+
+        is_sector_trailer = false;
     }
 
     return ESP_OK;
@@ -181,11 +191,7 @@ esp_err_t rc522_mifare_dump_data_to_log(rc522_handle_t rc522, rc522_picc_t *picc
 
     // Dump sectors, highest address first.
     if (sectors_length) {
-        RC522_LOG_WRITE("%*s%*s  0 --- 3  4 --- 7  8 --- 11 12 -- 15  AccessBits\n",
-            COLUMN_SECTOR_WIDTH,
-            "Sector",
-            COLUMN_BLOCK_WIDTH,
-            "Block");
+        rc522_mifare_dump_memory_header_to_log();
 
         for (int8_t i = sectors_length - 1; i >= 0; i--) {
             RC522_RETURN_ON_ERROR(rc522_mifare_dump_sector_to_log(rc522, picc, key, key_length, i));
