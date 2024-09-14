@@ -222,17 +222,26 @@ esp_err_t rc522_mifare_dump_data_to_log(rc522_handle_t rc522, rc522_picc_t *picc
             break;
     }
 
+    esp_err_t ret = ESP_OK;
+
     // Dump sectors, highest address first.
     if (sectors_length) {
         rc522_mifare_dump_memory_header_to_log();
 
         for (int8_t i = sectors_length - 1; i >= 0; i--) {
-            RC522_RETURN_ON_ERROR(rc522_mifare_dump_sector_to_log(rc522, picc, key, key_length, i));
+            ret = rc522_mifare_dump_sector_to_log(rc522, picc, key, key_length, i);
+
+            if (ret != ESP_OK) {
+                break;
+            }
         }
     }
 
-    RC522_RETURN_ON_ERROR(rc522_picc_halta(rc522, picc));
+    if (ret == ESP_OK) {
+        RC522_RETURN_ON_ERROR(rc522_picc_halta(rc522, picc));
+    }
+
     RC522_RETURN_ON_ERROR(rc522_pcd_stop_crypto1(rc522));
 
-    return ESP_OK;
+    return ret;
 }
