@@ -61,7 +61,7 @@ typedef enum
     RC522_PICC_CMD_MF_TRANSFER = 0xB0,
 } rc522_mifare_command_t;
 
-bool rc522_mifare_is_mifare_classic_compatible(rc522_picc_t *picc);
+bool rc522_mifare_type_is_classic_compatible(rc522_picc_type_t type);
 
 esp_err_t rc522_mifare_dump(rc522_handle_t rc522, rc522_picc_t *picc, const uint8_t *key, uint8_t key_length);
 

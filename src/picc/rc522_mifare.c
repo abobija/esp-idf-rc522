@@ -9,10 +9,20 @@ RC522_LOG_DEFINE_BASE();
 #define COLUMN_SECTOR_WIDTH (6)
 #define COLUMN_BLOCK_WIDTH  (7)
 
-bool rc522_mifare_is_mifare_classic_compatible(rc522_picc_t *picc)
+typedef struct
 {
-    return picc->type == RC522_PICC_TYPE_MIFARE_MINI || picc->type == RC522_PICC_TYPE_MIFARE_1K
-           || picc->type == RC522_PICC_TYPE_MIFARE_4K;
+    uint8_t index;                    // Zero-based index of Sector
+    uint8_t number_of_blocks;         // Total number of blocks inside of Sector
+    uint8_t first_block_global_index; // Zero-based index of Block inside of MIFARE memory
+} rc522_mifare_sector_info_t;
+
+/**
+ * Checks if PICC type is compatible with MIFARE Classic protocol
+ */
+bool rc522_mifare_type_is_classic_compatible(rc522_picc_type_t type)
+{
+    return type == RC522_PICC_TYPE_MIFARE_MINI || type == RC522_PICC_TYPE_MIFARE_1K
+           || type == RC522_PICC_TYPE_MIFARE_4K;
 }
 
 static esp_err_t rc522_mifare_autha(
@@ -74,12 +84,59 @@ inline static void rc522_mifare_dump_memory_header_to_log()
         "Block");
 }
 
-static esp_err_t rc522_mifare_dump_sector_to_log(
-    rc522_handle_t rc522, rc522_picc_t *picc, const uint8_t *key, uint8_t key_length, uint8_t sector)
+static esp_err_t rc522_mifare_number_of_sectors(rc522_picc_type_t type, uint8_t *result)
 {
-    uint8_t first_block;  // Address of lowest address to dump actually last block dumped)
-    uint8_t no_of_blocks; // Number of blocks in sector
+    ESP_RETURN_ON_FALSE(rc522_mifare_type_is_classic_compatible(type), ESP_ERR_INVALID_ARG, TAG, "invalid type");
 
+    if (type == RC522_PICC_TYPE_MIFARE_MINI) {
+        // Has 5 sectors * 4 blocks/sector * 16 bytes/block = 320 bytes.
+        *result = 5;
+        return ESP_OK;
+    }
+
+    if (type == RC522_PICC_TYPE_MIFARE_1K) {
+        // Has 16 sectors * 4 blocks/sector * 16 bytes/block = 1024 bytes.
+        *result = 16;
+        return ESP_OK;
+    }
+
+    if (type == RC522_PICC_TYPE_MIFARE_4K) {
+        // Has (32 sectors * 4 blocks/sector + 8 sectors * 16 blocks/sector) * 16 bytes/block = 4096 bytes.
+        *result = 40;
+        return ESP_OK;
+    }
+
+    return ESP_FAIL;
+}
+
+static esp_err_t rc522_mifare_sector_info(uint8_t sector_index, rc522_mifare_sector_info_t *result)
+{
+    // No MIFARE Classic has more than 40 sectors
+    ESP_RETURN_ON_FALSE(sector_index < 40, ESP_ERR_INVALID_ARG, TAG, "invalid sector_index");
+
+    result->index = sector_index;
+
+    // Determine position and size of sector.
+    if (result->index < 32) { // Sectors 0..31 has 4 blocks each
+        result->number_of_blocks = 4;
+        result->first_block_global_index = result->index * result->number_of_blocks;
+
+        return ESP_OK;
+    }
+
+    if (result->index < 40) { // Sectors 32-39 has 16 blocks each
+        result->number_of_blocks = 16;
+        result->first_block_global_index = 128 + (result->index - 32) * result->number_of_blocks;
+
+        return ESP_OK;
+    }
+
+    return ESP_FAIL;
+}
+
+static esp_err_t rc522_mifare_dump_sector_to_log(
+    rc522_handle_t rc522, rc522_picc_t *picc, const uint8_t *key, uint8_t key_length, uint8_t sector_index)
+{
     // The access bits are stored in a peculiar fashion.
     // There are four groups:
     //		g[3]	Access bits for the sector trailer, block 3 (for sectors 0-31) or block 15 (for sectors 32-39)
@@ -95,19 +152,8 @@ static esp_err_t rc522_mifare_dump_sector_to_log(
     uint8_t group;         // 0-3 - active group for access bits
     bool first_in_group;   // True for the first block dumped in the group
 
-    // Determine position and size of sector.
-    if (sector < 32) { // Sectors 0..31 has 4 blocks each
-        no_of_blocks = 4;
-        first_block = sector * no_of_blocks;
-    }
-    else if (sector < 40) { // Sectors 32-39 has 16 blocks each
-        no_of_blocks = 16;
-        first_block = 128 + (sector - 32) * no_of_blocks;
-    }
-    else {
-        ESP_LOGE(TAG, "Illegal input, no MIFARE Classic PICC has more than 40 sectors");
-        return ESP_ERR_INVALID_STATE;
-    }
+    rc522_mifare_sector_info_t sector;
+    RC522_RETURN_ON_ERROR(rc522_mifare_sector_info(sector_index, &sector));
 
     // Dump blocks, highest address first.
     uint8_t byte_count;
@@ -119,14 +165,14 @@ static esp_err_t rc522_mifare_dump_sector_to_log(
     inverted_error = false; // Avoid "unused variable" warning.
 
     // Establish encrypted communications before reading the first block
-    RC522_RETURN_ON_ERROR(rc522_mifare_autha(rc522, picc, first_block, key, key_length));
+    RC522_RETURN_ON_ERROR(rc522_mifare_autha(rc522, picc, sector.first_block_global_index, key, key_length));
 
-    for (int8_t blockOffset = no_of_blocks - 1; blockOffset >= 0; blockOffset--) {
-        block_addr = first_block + blockOffset;
+    for (int8_t block_offset = sector.number_of_blocks - 1; block_offset >= 0; block_offset--) {
+        block_addr = sector.first_block_global_index + block_offset;
 
         // Sector number - only on first line
         if (is_sector_trailer) {
-            RC522_LOG_WRITE("%*d", COLUMN_SECTOR_WIDTH, sector);
+            RC522_LOG_WRITE("%*d", COLUMN_SECTOR_WIDTH, sector_index);
         }
         else {
             RC522_LOG_WRITE("%*s", COLUMN_SECTOR_WIDTH, " ");
@@ -166,13 +212,13 @@ static esp_err_t rc522_mifare_dump_sector_to_log(
         }
 
         // Which access group is this block in?
-        if (no_of_blocks == 4) {
-            group = blockOffset;
+        if (sector.number_of_blocks == 4) {
+            group = block_offset;
             first_in_group = true;
         }
         else {
-            group = blockOffset / 5;
-            first_in_group = (group == 3) || (group != (blockOffset + 1) / 5);
+            group = block_offset / 5;
+            first_in_group = (group == 3) || (group != (block_offset + 1) / 5);
         }
 
         if (first_in_group) {
@@ -204,40 +250,15 @@ static esp_err_t rc522_mifare_dump_sector_to_log(
     return ESP_OK;
 }
 
-static esp_err_t rc522_mifare_number_of_sectors(rc522_picc_t *picc, uint8_t *result)
-{
-    if (picc->type == RC522_PICC_TYPE_MIFARE_MINI) {
-        // Has 5 sectors * 4 blocks/sector * 16 bytes/block = 320 bytes.
-        *result = 5;
-        return ESP_OK;
-    }
-
-    if (picc->type == RC522_PICC_TYPE_MIFARE_1K) {
-        // Has 16 sectors * 4 blocks/sector * 16 bytes/block = 1024 bytes.
-        *result = 16;
-        return ESP_OK;
-    }
-
-    if (picc->type == RC522_PICC_TYPE_MIFARE_4K) {
-        // Has (32 sectors * 4 blocks/sector + 8 sectors * 16 blocks/sector) * 16 bytes/block = 4096 bytes.
-        *result = 40;
-        return ESP_OK;
-    }
-
-    RC522_LOGE("Unsupported PICC type");
-
-    return ESP_ERR_INVALID_ARG;
-}
-
 esp_err_t rc522_mifare_dump(rc522_handle_t rc522, rc522_picc_t *picc, const uint8_t *key, uint8_t key_length)
 {
-    ESP_RETURN_ON_FALSE(rc522_mifare_is_mifare_classic_compatible(picc),
+    ESP_RETURN_ON_FALSE(rc522_mifare_type_is_classic_compatible(picc->type),
         ESP_ERR_INVALID_ARG,
         TAG,
-        "picc not compatible with MIFARE Classic");
+        "invalid picc type");
 
     uint8_t sectors_length;
-    RC522_RETURN_ON_ERROR_SILENTLY(rc522_mifare_number_of_sectors(picc, &sectors_length));
+    RC522_RETURN_ON_ERROR_SILENTLY(rc522_mifare_number_of_sectors(picc->type, &sectors_length));
 
     esp_err_t ret = ESP_OK;
 

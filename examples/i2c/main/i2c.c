@@ -48,7 +48,7 @@ static esp_err_t rc522_picc_dump(rc522_handle_t rc522, rc522_picc_t *picc)
     ESP_LOGI(TAG, "UID:");
     ESP_LOG_BUFFER_HEX(TAG, picc->uid.bytes, picc->uid.bytes_length);
 
-    if (rc522_mifare_is_mifare_classic_compatible(picc)) {
+    if (rc522_mifare_type_is_classic_compatible(picc->type)) {
         const uint8_t key[] = RC522_MIFARE_DEFAULT_KEY;
 
         return rc522_mifare_dump(rc522, picc, key, sizeof(key));
