@@ -51,7 +51,7 @@ static esp_err_t rc522_picc_dump(rc522_handle_t rc522, rc522_picc_t *picc)
     if (rc522_mifare_is_mifare_classic_compatible(picc)) {
         const uint8_t key[] = RC522_MIFARE_DEFAULT_KEY;
 
-        return rc522_mifare_dump_data_to_log(rc522, picc, key, sizeof(key));
+        return rc522_mifare_dump(rc522, picc, key, sizeof(key));
     }
 
     ESP_LOGW(TAG, "Dumping data not implemented for PICC of type %02x", picc->type);
