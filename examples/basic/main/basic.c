@@ -79,9 +79,8 @@ static void rc522_event_handler(void *arg, esp_event_base_t base, int32_t event_
         case RC522_EVENT_PICC_SELECTED: {
             rc522_picc_t *picc = (rc522_picc_t *)data->ptr;
 
-            ESP_LOGI(TAG, "PICC (sak=%02x, type=%s) scanned!", picc->sak, rc522_picc_type_name(picc->type));
-            ESP_LOGI(TAG, "UID:");
-            ESP_LOG_BUFFER_HEX(TAG, picc->uid.bytes, picc->uid.bytes_length);
+            ESP_LOGI(TAG, "PICC scanned");
+            rc522_picc_dump_to_log(rc522_handle, picc);
         } break;
     }
 }
