@@ -87,9 +87,6 @@ static void rc522_event_handler(void *arg, esp_event_base_t base, int32_t event_
 
 void app_main()
 {
-    esp_log_level_set("*", ESP_LOG_INFO);
-    // esp_log_level_set("rc522", ESP_LOG_DEBUG);
-
     spi_bus_initialize(RC522_SPI_HOST, &spi_bus_config, 0);
     spi_bus_add_device(RC522_SPI_HOST, &spi_rc522_config, &rc522_spi_handle);
 
