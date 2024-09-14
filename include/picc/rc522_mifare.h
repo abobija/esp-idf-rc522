@@ -7,6 +7,7 @@
 extern "C" {
 #endif
 
+#define RC522_MIFARE_KEY_SIZE (6)
 #define RC522_MIFARE_DEFAULT_KEY                                                                                       \
     {                                                                                                                  \
         0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF                                                                             \

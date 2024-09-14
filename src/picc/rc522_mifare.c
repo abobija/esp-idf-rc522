@@ -221,13 +221,8 @@ static esp_err_t rc522_mifare_dump_sector_to_log(
 
         if (first_in_group) {
             // Print access bits
-            RC522_LOG_WRITE(" [ ");
-            RC522_LOG_WRITE("%d", (g[group] >> 2) & 1);
-            RC522_LOG_WRITE(" ");
-            RC522_LOG_WRITE("%d", (g[group] >> 1) & 1);
-            RC522_LOG_WRITE(" ");
-            RC522_LOG_WRITE("%d", (g[group] >> 0) & 1);
-            RC522_LOG_WRITE(" ] ");
+            RC522_LOG_WRITE(" [ %d %d %d ]", (g[group] >> 2) & 1, (g[group] >> 1) & 1, (g[group] >> 0) & 1);
+
             if (inverted_error) {
                 RC522_LOG_WRITE(" Inverted access bits did not match! ");
             }
@@ -236,8 +231,10 @@ static esp_err_t rc522_mifare_dump_sector_to_log(
         if (group != 3 && (g[group] == 1 || g[group] == 6)) { // Not a sector trailer, a value block
             int32_t value = ((int32_t)(buffer[3]) << 24) | ((int32_t)(buffer[2]) << 16) | ((int32_t)(buffer[1]) << 8)
                             | (int32_t)(buffer[0]);
-            RC522_LOG_WRITE(" Value=0x%02lx", value);
-            RC522_LOG_WRITE(" Adr=0x%02x", buffer[12]);
+
+            RC522_LOG_WRITE(" Value=0x%02lx, Adr=0x%02x", value, buffer[12]);
+
+            // TODO: We can check here for inverted error of value block
         }
 
         RC522_LOG_WRITE("\n");
