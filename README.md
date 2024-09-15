@@ -36,7 +36,7 @@ And flash it to the board:
 idf.py -p PORT flash monitor
 ```
 
-Find defined GPIO configuration in [basic.c](examples/basic/main/basic.c) file.
+Find defined GPIO configuration in [basic.c](examples/basic/main/basic.c) file, while RST pin should be connected to 3.3V.
 
 ## License
 
