@@ -1,5 +1,6 @@
 #include <string.h>
 #include "rc522_types_private.h"
+#include "rc522_private.h"
 #include "rc522_pcd_private.h"
 #include "rc522_picc_private.h"
 #include "picc/rc522_mifare.h"
@@ -216,22 +217,31 @@ static esp_err_t rc522_mifare_parse_value_block(
     return ESP_OK;
 }
 
-inline static void rc522_mifare_dump_memory_header_to_log()
+static esp_err_t rc522_mifare_dump_header(rc522_handle_t rc522)
 {
-    RC522_LOG_WRITE("%*s%*s                 Bytes                 AccessBits\n",
+    char stream_buffer[256];
+    int sbp = 0;
+
+    sbp += sprintf(stream_buffer + sbp,
+        "%*s%*s                 Bytes                 AccessBits\n",
         COLUMN_SECTOR_WIDTH,
         "Sector",
         COLUMN_BLOCK_WIDTH,
         "Block");
 
-    RC522_LOG_WRITE("%*s%*s   0 1 2 3  4 5 6 7  8 9  11 12    15    c1 c2 c3\n",
+    sbp += sprintf(stream_buffer + sbp,
+        "%*s%*s   0 1 2 3  4 5 6 7  8 9  11 12    15    c1 c2 c3\n",
         COLUMN_SECTOR_WIDTH,
         " ",
         COLUMN_BLOCK_WIDTH,
         " ");
+
+    RC522_RETURN_ON_ERROR(rc522_stream(rc522, stream_buffer));
+
+    return ESP_OK;
 }
 
-static esp_err_t rc522_mifare_dump_sector_to_log(
+static esp_err_t rc522_mifare_dump_sector(
     rc522_handle_t rc522, rc522_picc_t *picc, rc522_mifare_key_t *key, uint8_t sector_index)
 {
     esp_err_t ret = ESP_OK;
@@ -246,18 +256,21 @@ static esp_err_t rc522_mifare_dump_sector_to_log(
     bool is_trailer = true;
 
     for (int8_t block_offset = sector.number_of_blocks - 1; block_offset >= 0; block_offset--) {
+        char stream_buffer[256];
+        int sbp = 0;
+
         uint8_t block_addr = sector.block_0_address + block_offset;
 
         // Sector number - only on first line
         if (is_trailer) {
-            RC522_LOG_WRITE("%*d", COLUMN_SECTOR_WIDTH, sector_index);
+            sbp += sprintf(stream_buffer + sbp, "%*d", COLUMN_SECTOR_WIDTH, sector_index);
         }
         else {
-            RC522_LOG_WRITE("%*s", COLUMN_SECTOR_WIDTH, " ");
+            sbp += sprintf(stream_buffer + sbp, "%*s", COLUMN_SECTOR_WIDTH, " ");
         }
 
-        RC522_LOG_WRITE("%*d", COLUMN_BLOCK_WIDTH, block_addr);
-        RC522_LOG_WRITE("  ");
+        sbp += sprintf(stream_buffer + sbp, "%*d", COLUMN_BLOCK_WIDTH, block_addr);
+        sbp += sprintf(stream_buffer + sbp, "  ");
 
         // Read block
         uint8_t buffer[18];
@@ -267,10 +280,10 @@ static esp_err_t rc522_mifare_dump_sector_to_log(
 
         // Dump data
         for (uint8_t index = 0; index < 16; index++) {
-            RC522_LOG_WRITE("%02x", buffer[index]);
+            sbp += sprintf(stream_buffer + sbp, "%02x", buffer[index]);
 
             if ((index % 4) == 3) {
-                RC522_LOG_WRITE(" ");
+                sbp += sprintf(stream_buffer + sbp, " ");
             }
         }
 
@@ -294,13 +307,14 @@ static esp_err_t rc522_mifare_dump_sector_to_log(
 
         if (first_in_group) {
             // Print access bits
-            RC522_LOG_WRITE("    %d  %d  %d",
+            sbp += sprintf(stream_buffer + sbp,
+                "    %d  %d  %d",
                 (trailer.access_bits[group] >> 2) & 1,
                 (trailer.access_bits[group] >> 1) & 1,
                 (trailer.access_bits[group] >> 0) & 1);
 
             if (ret == RC522_ERR_MIFARE_ACCESS_BITS_INTEGRITY_VIOLATION) {
-                RC522_LOG_WRITE(" (access bits integrity violation)");
+                sbp += sprintf(stream_buffer + sbp, " (access bits integrity violation)");
             }
         }
 
@@ -308,14 +322,20 @@ static esp_err_t rc522_mifare_dump_sector_to_log(
             rc522_mifare_value_block_t block;
             ret = rc522_mifare_parse_value_block(buffer, &block);
 
-            RC522_LOG_WRITE(" (value=%ld (0x%04lx), adr=0x%02x)", block.value, block.value, block.address);
+            sbp += sprintf(stream_buffer + sbp,
+                " (value=%ld (0x%04lx), adr=0x%02x)",
+                block.value,
+                block.value,
+                block.address);
 
             if (ret == RC522_ERR_MIFARE_VALUE_BLOCK_INTEGRITY_VIOLATION) {
-                RC522_LOG_WRITE(" (value block integrity violation)");
+                sbp += sprintf(stream_buffer + sbp, " (value block integrity violation)");
             }
         }
 
-        RC522_LOG_WRITE("\n");
+        sbp += sprintf(stream_buffer + sbp, "\n");
+
+        RC522_RETURN_ON_ERROR(rc522_stream(rc522, stream_buffer));
 
         is_trailer = false;
     }
@@ -333,12 +353,12 @@ esp_err_t rc522_mifare_dump(rc522_handle_t rc522, rc522_picc_t *picc, rc522_mifa
     uint8_t number_of_sectors;
     RC522_RETURN_ON_ERROR(rc522_mifare_number_of_sectors(picc->type, &number_of_sectors));
 
-    rc522_mifare_dump_memory_header_to_log();
+    RC522_RETURN_ON_ERROR(rc522_mifare_dump_header(rc522));
 
     // Dump sectors, highest address first.
     esp_err_t ret = ESP_OK;
     for (int8_t i = number_of_sectors - 1; i >= 0; i--) {
-        ret = rc522_mifare_dump_sector_to_log(rc522, picc, key, i);
+        ret = rc522_mifare_dump_sector(rc522, picc, key, i);
 
         if (ret != ESP_OK) {
             break;

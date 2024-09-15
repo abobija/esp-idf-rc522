@@ -180,21 +180,16 @@ esp_err_t rc522_destroy(rc522_handle_t rc522)
     return err;
 }
 
-static esp_err_t rc522_dispatch_event(rc522_handle_t rc522, rc522_event_t event, void *data)
+static esp_err_t rc522_dispatch_event(rc522_handle_t rc522, rc522_event_t event, const void *data, size_t data_size)
 {
-    rc522_event_data_t e_data = {
-        .rc522 = rc522,
-        .ptr = data,
-    };
-
-    RC522_RETURN_ON_ERROR(esp_event_post_to(rc522->event_handle,
-        RC522_EVENTS,
-        event,
-        &e_data,
-        sizeof(rc522_event_data_t),
-        portMAX_DELAY));
+    RC522_RETURN_ON_ERROR(esp_event_post_to(rc522->event_handle, RC522_EVENTS, event, data, data_size, portMAX_DELAY));
 
     return esp_event_loop_run(rc522->event_handle, 0);
+}
+
+inline esp_err_t rc522_stream(rc522_handle_t rc522, const char *data /** Null terminated */)
+{
+    return rc522_dispatch_event(rc522, RC522_EVENT_STREAMING, data, strlen(data) + 1);
 }
 
 void rc522_task(void *arg)
@@ -214,7 +209,7 @@ void rc522_task(void *arg)
         rc522_picc_find(rc522, &picc);
 
         if (picc.is_present && rc522_picc_fetch(rc522, &picc) == ESP_OK) {
-            rc522_dispatch_event(rc522, RC522_EVENT_PICC_SELECTED, &picc);
+            rc522_dispatch_event(rc522, RC522_EVENT_PICC_SELECTED, &picc, sizeof(picc));
         }
 
         rc522_delay_ms(rc522->config->scan_interval_ms);
