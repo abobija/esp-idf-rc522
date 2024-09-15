@@ -7,6 +7,9 @@
 extern "C" {
 #endif
 
+#define RC522_ERR_MIFARE_BASE                            (ESP_ERR_RC522_BASE + 100)
+#define RC522_ERR_MIFARE_ACCESS_BITS_INTEGRITY_VIOLATION (RC522_ERR_MIFARE_BASE + 1)
+
 #define RC522_MIFARE_KEY_SIZE (6)
 #define RC522_MIFARE_DEFAULT_KEY_VALUE                                                                                 \
     {                                                                                                                  \

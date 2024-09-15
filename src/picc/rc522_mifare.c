@@ -16,6 +16,24 @@ typedef struct
     uint8_t block_0_address;  // Zero-based index of the first Block inside of MIFARE memory
 } rc522_mifare_sector_info_t;
 
+typedef struct
+{
+    /**
+     * [3] Access bits for the sector trailer, block 3 (for sectors 0-31) or block 15 (for sectors 32-39)
+     * [2] Access bits for block 2 (for sectors 0-31) or blocks 10-14 (for sectors 32-39)
+     * [1] Access bits for block 1 (for sectors 0-31) or blocks 5-9 (for sectors 32-39)
+     * [0] Access bits for block 0 (for sectors 0-31) or blocks 0-4 (for sectors 32-39)
+     *
+     * Bits of each element are in next format:
+     *
+     * | 7 | 6 | 5 | 4 | 3 |  2 |  1 |  0 |
+     * | - | - | - | - | - | -- | -- | -- |
+     * | 0 | 0 | 0 | 0 | 0 | C1 | C2 | C3 |
+     *
+     */
+    uint8_t access_bits[4];
+} rc522_mifare_sector_trailer_t;
+
 /**
  * Checks if PICC type is compatible with MIFARE Classic protocol
  */
@@ -133,53 +151,73 @@ static esp_err_t rc522_mifare_sector_info(uint8_t sector_index, rc522_mifare_sec
     return ESP_FAIL;
 }
 
+/**
+ * Bytes 6, 7 and 8 of sector trailer block are bytes that holds access bits.
+ * Next table shows bit descriptions for each of those bytes.
+ *
+ * |      |   7  |   6  |   5  |   4  |   3  |   2  |   1  |   0  |
+ * | ---- | ---- | ---- | ---- | ---- | ---- | ---- | ---- | ---- |
+ * | [6]  | C23_ | C22_ | C21_ | C20_ | C13_ | C12_ | C11_ | C10_ |
+ * | [7]  | C13  | C12  | C11  | C10  | C33_ | C32_ | C31_ | C30_ |
+ * | [8]  | C33  | C32  | C31  | C30  | C23  | C22  | C21  | C20  |
+ *
+ */
+static esp_err_t rc522_mifare_parse_sector_trailer(uint8_t *block, /** Sector trailer block data */
+    rc522_mifare_sector_trailer_t *trailer)
+{
+    uint8_t c1 = block[7] >> 4;
+    uint8_t c2 = block[8] & 0x0F;
+    uint8_t c3 = block[8] >> 4;
+    uint8_t c1_ = block[6] & 0x0F;
+    uint8_t c2_ = block[6] >> 4;
+    uint8_t c3_ = block[7] & 0x0F;
+
+    if ((c1 != (~c1_ & 0xF)) || (c2 != (~c2_ & 0xF)) || (c3 != (~c3_ & 0xF))) {
+        return RC522_ERR_MIFARE_ACCESS_BITS_INTEGRITY_VIOLATION;
+    }
+
+    trailer->access_bits[0] = ((c1 & 1) << 2) | ((c2 & 1) << 1) | ((c3 & 1) << 0);
+    trailer->access_bits[1] = ((c1 & 2) << 1) | ((c2 & 2) << 0) | ((c3 & 2) >> 1);
+    trailer->access_bits[2] = ((c1 & 4) << 0) | ((c2 & 4) >> 1) | ((c3 & 4) >> 2);
+    trailer->access_bits[3] = ((c1 & 8) >> 1) | ((c2 & 8) >> 2) | ((c3 & 8) >> 3);
+
+    return ESP_OK;
+}
+
 inline static void rc522_mifare_dump_memory_header_to_log()
 {
-    RC522_LOG_WRITE("%*s%*s  0 1 2 3  4 5 6 7  8 9 . 11 12 .. 15  AccessBits\n",
+    RC522_LOG_WRITE("%*s%*s                 Bytes                 AccessBits\n",
         COLUMN_SECTOR_WIDTH,
         "Sector",
         COLUMN_BLOCK_WIDTH,
         "Block");
+
+    RC522_LOG_WRITE("%*s%*s   0 1 2 3  4 5 6 7  8 9  11 12    15    c1 c2 c3\n",
+        COLUMN_SECTOR_WIDTH,
+        " ",
+        COLUMN_BLOCK_WIDTH,
+        " ");
 }
 
 static esp_err_t rc522_mifare_dump_sector_to_log(
     rc522_handle_t rc522, rc522_picc_t *picc, rc522_mifare_key_t *key, uint8_t sector_index)
 {
-    // The access bits are stored in a peculiar fashion.
-    // There are four groups:
-    //		g[3]	Access bits for the sector trailer, block 3 (for sectors 0-31) or block 15 (for sectors 32-39)
-    //		g[2]	Access bits for block 2 (for sectors 0-31) or blocks 10-14 (for sectors 32-39)
-    //		g[1]	Access bits for block 1 (for sectors 0-31) or blocks 5-9 (for sectors 32-39)
-    //		g[0]	Access bits for block 0 (for sectors 0-31) or blocks 0-4 (for sectors 32-39)
-    // Each group has access bits [C1 C2 C3]. In this code C1 is MSB and C3 is LSB.
-    // The four CX bits are stored together in a nible cx and an inverted nible cx_.
-    uint8_t c1, c2, c3;    // Nibbles
-    uint8_t c1_, c2_, c3_; // Inverted nibbles
-    bool inverted_error;   // True if one of the inverted nibbles did not match
-    uint8_t g[4];          // Access bits for each of the four groups.
-    uint8_t group;         // 0-3 - active group for access bits
-    bool first_in_group;   // True for the first block dumped in the group
+    esp_err_t ret = ESP_OK;
 
     rc522_mifare_sector_info_t sector;
     RC522_RETURN_ON_ERROR(rc522_mifare_sector_info(sector_index, &sector));
 
-    // Dump blocks, highest address first.
-    uint8_t byte_count;
-    uint8_t buffer[18];
-    memset(buffer, 0x00, sizeof(buffer));
-
-    uint8_t block_addr;
-    bool is_sector_trailer = true;
-    inverted_error = false; // Avoid "unused variable" warning.
-
     // Establish encrypted communications before reading the first block
     RC522_RETURN_ON_ERROR(rc522_mifare_auth(rc522, picc, RC522_MIFARE_KEY_A, sector.block_0_address, key));
 
+    rc522_mifare_sector_trailer_t trailer;
+    bool is_trailer = true;
+
     for (int8_t block_offset = sector.number_of_blocks - 1; block_offset >= 0; block_offset--) {
-        block_addr = sector.block_0_address + block_offset;
+        uint8_t block_addr = sector.block_0_address + block_offset;
 
         // Sector number - only on first line
-        if (is_sector_trailer) {
+        if (is_trailer) {
             RC522_LOG_WRITE("%*d", COLUMN_SECTOR_WIDTH, sector_index);
         }
         else {
@@ -190,7 +228,9 @@ static esp_err_t rc522_mifare_dump_sector_to_log(
         RC522_LOG_WRITE("  ");
 
         // Read block
-        byte_count = sizeof(buffer);
+        uint8_t buffer[18];
+        uint8_t byte_count = sizeof(buffer);
+        memset(buffer, 0x00, byte_count);
         RC522_RETURN_ON_ERROR(rc522_mifare_read(rc522, picc, block_addr, buffer, &byte_count));
 
         // Dump data
@@ -202,22 +242,17 @@ static esp_err_t rc522_mifare_dump_sector_to_log(
             }
         }
 
+        RC522_LOG_WRITE(" ");
+
         // Parse sector trailer data
-        if (is_sector_trailer) {
-            c1 = buffer[7] >> 4;
-            c2 = buffer[8] & 0xF;
-            c3 = buffer[8] >> 4;
-            c1_ = buffer[6] & 0xF;
-            c2_ = buffer[6] >> 4;
-            c3_ = buffer[7] & 0xF;
-            inverted_error = (c1 != (~c1_ & 0xF)) || (c2 != (~c2_ & 0xF)) || (c3 != (~c3_ & 0xF));
-            g[0] = ((c1 & 1) << 2) | ((c2 & 1) << 1) | ((c3 & 1) << 0);
-            g[1] = ((c1 & 2) << 1) | ((c2 & 2) << 0) | ((c3 & 2) >> 1);
-            g[2] = ((c1 & 4) << 0) | ((c2 & 4) >> 1) | ((c3 & 4) >> 2);
-            g[3] = ((c1 & 8) >> 1) | ((c2 & 8) >> 2) | ((c3 & 8) >> 3);
+        if (is_trailer) {
+            ret = rc522_mifare_parse_sector_trailer(buffer, &trailer);
         }
 
         // Which access group is this block in?
+        uint8_t group;       // 0-3 - active group for access bits
+        bool first_in_group; // True for the first block dumped in the group
+
         if (sector.number_of_blocks == 4) {
             group = block_offset;
             first_in_group = true;
@@ -229,28 +264,33 @@ static esp_err_t rc522_mifare_dump_sector_to_log(
 
         if (first_in_group) {
             // Print access bits
-            RC522_LOG_WRITE(" [ %d %d %d ]", (g[group] >> 2) & 1, (g[group] >> 1) & 1, (g[group] >> 0) & 1);
+            RC522_LOG_WRITE("   %d  %d  %d",
+                (trailer.access_bits[group] >> 2) & 1,
+                (trailer.access_bits[group] >> 1) & 1,
+                (trailer.access_bits[group] >> 0) & 1);
 
-            if (inverted_error) {
-                RC522_LOG_WRITE(" Inverted access bits did not match! ");
+            if (ret == RC522_ERR_MIFARE_ACCESS_BITS_INTEGRITY_VIOLATION) {
+                RC522_LOG_WRITE(" (Access bits integrity violation!) ");
             }
         }
 
-        if (group != 3 && (g[group] == 1 || g[group] == 6)) { // Not a sector trailer, a value block
+        if (group != 3
+            && (trailer.access_bits[group] == 1
+                || trailer.access_bits[group] == 6)) { // Not a sector trailer, a value block
             int32_t value = ((int32_t)(buffer[3]) << 24) | ((int32_t)(buffer[2]) << 16) | ((int32_t)(buffer[1]) << 8)
                             | (int32_t)(buffer[0]);
 
             RC522_LOG_WRITE(" Value=0x%02lx, Adr=0x%02x", value, buffer[12]);
 
-            // TODO: We can check here for inverted error of value block
+            // TODO: We can check here for integrity violation of value block
         }
 
         RC522_LOG_WRITE("\n");
 
-        is_sector_trailer = false;
+        is_trailer = false;
     }
 
-    return ESP_OK;
+    return ret;
 }
 
 esp_err_t rc522_mifare_dump(rc522_handle_t rc522, rc522_picc_t *picc, rc522_mifare_key_t *key)
