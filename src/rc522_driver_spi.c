@@ -81,40 +81,17 @@ static esp_err_t rc522_driver_spi_uninstall(rc522_driver_handle_t driver)
 
 esp_err_t rc522_driver_spi_create(rc522_driver_config_t *config, rc522_driver_handle_t *driver)
 {
-    ESP_RETURN_ON_FALSE(config != NULL, ESP_ERR_INVALID_ARG, TAG, "config is null");
-    ESP_RETURN_ON_FALSE(driver != NULL, ESP_ERR_INVALID_ARG, TAG, "driver is null");
+    RC522_RETURN_ON_ERROR(rc522_driver_create(config, driver));
 
-    esp_err_t ret;
-
-    rc522_driver_handle_t _driver = calloc(1, sizeof(struct rc522_driver_handle));
-    ESP_RETURN_ON_FALSE(_driver != NULL, ESP_ERR_NO_MEM, TAG, "no mem");
-
-    _driver->config = calloc(1, sizeof(rc522_driver_config_t));
-    ESP_GOTO_ON_FALSE(_driver->config != NULL, ESP_ERR_NO_MEM, error, TAG, "no mem");
-
-    memcpy(_driver->config, config, sizeof(rc522_driver_config_t));
-
-    _driver->install = rc522_driver_spi_install;
-    _driver->send = rc522_driver_spi_send;
-    _driver->receive = rc522_driver_spi_receive;
-    _driver->uninstall = rc522_driver_spi_uninstall;
-
-    goto success;
-error:
-    rc522_driver_spi_destroy(_driver);
-    goto exit;
-success:
-    *driver = _driver;
-exit:
-    return ret;
-}
-
-esp_err_t rc522_driver_spi_destroy(rc522_driver_handle_t driver)
-{
-    ESP_RETURN_ON_FALSE(driver != NULL, ESP_ERR_INVALID_ARG, TAG, "driver is null");
-
-    FREE(driver->config);
-    FREE(driver);
+    (*driver)->install = rc522_driver_spi_install;
+    (*driver)->send = rc522_driver_spi_send;
+    (*driver)->receive = rc522_driver_spi_receive;
+    (*driver)->uninstall = rc522_driver_spi_uninstall;
 
     return ESP_OK;
+}
+
+inline esp_err_t rc522_driver_spi_destroy(rc522_driver_handle_t driver)
+{
+    return rc522_driver_destroy(driver);
 }

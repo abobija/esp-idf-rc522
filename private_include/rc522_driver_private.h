@@ -17,3 +17,6 @@ struct rc522_driver_handle
 
     spi_device_handle_t spi;
 };
+
+esp_err_t rc522_driver_create(rc522_driver_config_t *config, rc522_driver_handle_t *driver);
+esp_err_t rc522_driver_destroy(rc522_driver_handle_t driver);

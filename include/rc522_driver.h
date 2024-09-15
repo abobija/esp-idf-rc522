@@ -1,7 +1,7 @@
 #pragma once
 
 #include <driver/spi_master.h>
-#include <driver/i2c.h>
+#include <driver/i2c.h> // TODO: Migrate to new i2c API
 
 #ifdef __cplusplus
 extern "C" {
