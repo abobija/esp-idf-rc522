@@ -23,43 +23,42 @@ typedef enum
     /**
      * Perform authentication with Key A
      */
-    RC522_PICC_CMD_MF_AUTH_KEY_A = 0x60,
+    RC522_MIFARE_AUTH_KEY_A_CMD = 0x60,
 
     /**
      * Perform authentication with Key B
      */
-    RC522_PICC_CMD_MF_AUTH_KEY_B = 0x61,
+    RC522_MIFARE_AUTH_KEY_B_CMD = 0x61,
 
     /**
-     * Reads one 16 byte block from the authenticated sector of the PICC. Also used for MIFARE Ultralight.
+     * Reads one 16 byte block from the authenticated sector of the PICC
      */
-    RC522_PICC_CMD_MF_READ = 0x30,
+    RC522_MIFARE_READ_CMD = 0x30,
 
     /**
-     * Writes one 16 byte block to the authenticated sector of the PICC. Called "COMPATIBILITY
-     * WRITE" for MIFARE Ultralight.
+     * Writes one 16 byte block to the authenticated sector of the PICC
      */
-    RC522_PICC_CMD_MF_WRITE = 0xA0,
+    RC522_MIFARE_WRITE_CMD = 0xA0,
 
     /**
-     * Decrements the contents of a block and stores the result in the internal data register.
+     * Decrements the contents of a block and stores the result in the internal data register
      */
-    RC522_PICC_CMD_MF_DECREMENT = 0xC0,
+    RC522_MIFARE_DECREMENT_CMD = 0xC0,
 
     /**
-     * Increments the contents of a block and stores the result in the internal data register.
+     * Increments the contents of a block and stores the result in the internal data register
      */
-    RC522_PICC_CMD_MF_INCREMENT = 0xC1,
+    RC522_MIFARE_INCREMENT_CMD = 0xC1,
 
     /**
-     * Reads the contents of a block into the internal data register.
+     * Reads the contents of a block into the internal data register
      */
-    RC522_PICC_CMD_MF_RESTORE = 0xC2,
+    RC522_MIFARE_RESTORE_CMD = 0xC2,
 
     /**
-     * Writes the contents of the internal data register to a block.
+     * Writes the contents of the internal data register to a block
      */
-    RC522_PICC_CMD_MF_TRANSFER = 0xB0,
+    RC522_MIFARE_TRANSFER_CMD = 0xB0,
 } rc522_mifare_command_t;
 
 bool rc522_mifare_type_is_classic_compatible(rc522_picc_type_t type);

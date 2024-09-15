@@ -32,7 +32,7 @@ static esp_err_t rc522_mifare_autha(
 
     // Build command buffer
     uint8_t send_data[12];
-    send_data[0] = RC522_PICC_CMD_MF_AUTH_KEY_A;
+    send_data[0] = RC522_MIFARE_AUTH_KEY_A_CMD;
     send_data[1] = block_addr;
     for (uint8_t i = 0; i < key_length; i++) {
         send_data[2 + i] = key[i];
@@ -65,7 +65,7 @@ static esp_err_t rc522_mifare_read(
     ESP_RETURN_ON_FALSE(*buffer_length >= 18, ESP_ERR_NO_MEM, TAG, "buffer too small");
 
     // Build command buffer
-    buffer[0] = RC522_PICC_CMD_MF_READ;
+    buffer[0] = RC522_MIFARE_READ_CMD;
     buffer[1] = block_addr;
 
     // Calculate CRC_A
