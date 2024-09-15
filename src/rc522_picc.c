@@ -120,9 +120,8 @@ esp_err_t rc522_picc_comm(rc522_handle_t rc522, rc522_pcd_command_t command, uin
 
     // Perform CRC_A validation if requested.
     if (check_crc && back_data && back_data_len) {
-        // In this case a MIFARE Classic NAK is not OK.
         if (*back_data_len == 1 && _valid_bits == 4) {
-            return ESP_ERR_RC522_MIFARE_NACK;
+            return ESP_FAIL;
         }
         // We need at least the CRC_A value and all 8 bits of the last byte must be received.
         if (*back_data_len < 2 || _valid_bits != 0) {
