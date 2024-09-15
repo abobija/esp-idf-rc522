@@ -17,6 +17,11 @@ extern "C" {
         0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF                                                                             \
     }
 
+typedef struct
+{
+    uint8_t number_of_sectors;
+} rc522_mifare_t;
+
 typedef enum
 {
     RC522_MIFARE_KEY_A,
@@ -28,57 +33,54 @@ typedef struct
     uint8_t value[RC522_MIFARE_KEY_SIZE];
 } rc522_mifare_key_t;
 
-/**
- * The commands used for MIFARE Classic (from http://www.mouser.com/ds/2/302/MF1S503x-89574.pdf, Section 9)
- * Use PCD_MFAuthent to authenticate access to a sector, then use these commands to read/write/modify the blocks on
- * the sector.
- */
-typedef enum
+typedef struct
+{
+    uint8_t index;            // Zero-based index of Sector
+    uint8_t number_of_blocks; // Total number of blocks inside of Sector
+    uint8_t block_0_address;  // Zero-based index of the first Block inside of MIFARE memory
+} rc522_mifare_sector_t;
+
+typedef struct
 {
     /**
-     * Perform authentication with Key A
+     * [3] Access bits for the sector trailer, block 3 (for sectors 0-31) or block 15 (for sectors 32-39)
+     * [2] Access bits for block 2 (for sectors 0-31) or blocks 10-14 (for sectors 32-39)
+     * [1] Access bits for block 1 (for sectors 0-31) or blocks 5-9 (for sectors 32-39)
+     * [0] Access bits for block 0 (for sectors 0-31) or blocks 0-4 (for sectors 32-39)
+     *
+     * Bits of each element are in next format:
+     *
+     * | 7 | 6 | 5 | 4 | 3 |  2 |  1 |  0 |
+     * | - | - | - | - | - | -- | -- | -- |
+     * | 0 | 0 | 0 | 0 | 0 | C1 | C2 | C3 |
+     *
      */
-    RC522_MIFARE_AUTH_KEY_A_CMD = 0x60,
+    uint8_t access_bits[4];
+} rc522_mifare_sector_trailer_t;
 
-    /**
-     * Perform authentication with Key B
-     */
-    RC522_MIFARE_AUTH_KEY_B_CMD = 0x61,
-
-    /**
-     * Reads one 16 byte block from the authenticated sector of the PICC
-     */
-    RC522_MIFARE_READ_CMD = 0x30,
-
-    /**
-     * Writes one 16 byte block to the authenticated sector of the PICC
-     */
-    RC522_MIFARE_WRITE_CMD = 0xA0,
-
-    /**
-     * Decrements the contents of a block and stores the result in the internal data register
-     */
-    RC522_MIFARE_DECREMENT_CMD = 0xC0,
-
-    /**
-     * Increments the contents of a block and stores the result in the internal data register
-     */
-    RC522_MIFARE_INCREMENT_CMD = 0xC1,
-
-    /**
-     * Reads the contents of a block into the internal data register
-     */
-    RC522_MIFARE_RESTORE_CMD = 0xC2,
-
-    /**
-     * Writes the contents of the internal data register to a block
-     */
-    RC522_MIFARE_TRANSFER_CMD = 0xB0,
-} rc522_mifare_command_t;
+typedef struct
+{
+    int32_t value;
+    uint8_t address;
+} rc522_mifare_value_block_t;
 
 bool rc522_mifare_type_is_classic_compatible(rc522_picc_type_t type);
 
-esp_err_t rc522_mifare_stream_memory_dump(rc522_handle_t rc522, rc522_picc_t *picc, rc522_mifare_key_t *key);
+esp_err_t rc522_mifare_info(rc522_picc_t *picc, rc522_mifare_t *mifare);
+
+esp_err_t rc522_mifare_sector_info(uint8_t sector_index, rc522_mifare_sector_t *result);
+
+esp_err_t rc522_mifare_auth(rc522_handle_t rc522, rc522_picc_t *picc, rc522_mifare_key_type_t key_type,
+    uint8_t block_addr, rc522_mifare_key_t *key);
+
+esp_err_t rc522_mifare_read(
+    rc522_handle_t rc522, rc522_picc_t *picc, uint8_t block_addr, uint8_t *buffer, uint8_t *buffer_length);
+
+esp_err_t rc522_mifare_parse_sector_trailer(uint8_t *bytes, rc522_mifare_sector_trailer_t *trailer);
+
+bool rc522_mifare_block_is_value(uint8_t access_bits);
+
+esp_err_t rc522_mifare_parse_value_block(uint8_t *bytes, rc522_mifare_value_block_t *block);
 
 #ifdef __cplusplus
 }

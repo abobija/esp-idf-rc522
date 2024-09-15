@@ -187,11 +187,6 @@ static esp_err_t rc522_dispatch_event(rc522_handle_t rc522, rc522_event_t event,
     return esp_event_loop_run(rc522->event_handle, 0);
 }
 
-inline esp_err_t rc522_stream(rc522_handle_t rc522, const char *data /** Null terminated */)
-{
-    return rc522_dispatch_event(rc522, RC522_EVENT_STREAMING, data, strlen(data) + 1);
-}
-
 void rc522_task(void *arg)
 {
     rc522_handle_t rc522 = (rc522_handle_t)arg;

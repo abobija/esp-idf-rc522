@@ -32,7 +32,6 @@ typedef enum
     RC522_EVENT_ANY = ESP_EVENT_ANY_ID,
     RC522_EVENT_NONE,
     RC522_EVENT_PICC_SELECTED, /*<! PICC is detected in the field of the PCD (UID is available) */
-    RC522_EVENT_STREAMING,     /*<! Data streamed from the library (not from PCD nor PICC) */
 } rc522_event_t;
 
 #ifdef __cplusplus
