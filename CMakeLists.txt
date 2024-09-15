@@ -20,7 +20,7 @@ target_compile_options(${COMPONENT_LIB} PRIVATE
     -Wall
     -Wshadow
     -Wcast-qual
-    #-Wswitch-default
+    -Wswitch-default
     #-Wswitch-enum
     #-Wconversion
     -Wunreachable-code
