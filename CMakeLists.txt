@@ -14,7 +14,7 @@ idf_component_register(
 )
 
 target_compile_options(${COMPONENT_LIB} PRIVATE
-    #-Werror # Warning as error
+    -Werror # Warning as error
     #-pedantic
     -Wextra
     -Wall
