@@ -13,6 +13,12 @@ extern "C" {
         0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF                                                                             \
     }
 
+typedef enum
+{
+    RC522_MIFARE_KEY_A,
+    RC522_MIFARE_KEY_B,
+} rc522_mifare_key_type_t;
+
 typedef struct
 {
     uint8_t value[RC522_MIFARE_KEY_SIZE];

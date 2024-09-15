@@ -75,7 +75,7 @@ static esp_err_t rc522_picc_dump(rc522_handle_t rc522, rc522_picc_t *picc)
 {
     ESP_LOGI(TAG, "PICC (sak=%02x, type=%s)", picc->sak, rc522_picc_type_name(picc->type));
     ESP_LOGI(TAG, "UID:");
-    ESP_LOG_BUFFER_HEX(TAG, picc->uid.bytes, picc->uid.bytes_length);
+    ESP_LOG_BUFFER_HEX(TAG, picc->uid.value, picc->uid.length);
 
     if (rc522_mifare_type_is_classic_compatible(picc->type)) {
         return rc522_mifare_dump(rc522,

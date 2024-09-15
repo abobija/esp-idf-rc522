@@ -11,9 +11,9 @@ RC522_LOG_DEFINE_BASE();
 
 typedef struct
 {
-    uint8_t index;                    // Zero-based index of Sector
-    uint8_t number_of_blocks;         // Total number of blocks inside of Sector
-    uint8_t first_block_index_global; // Zero-based index of Block inside of MIFARE memory
+    uint8_t index;            // Zero-based index of Sector
+    uint8_t number_of_blocks; // Total number of blocks inside of Sector
+    uint8_t block_0_address;  // Zero-based index of the first Block inside of MIFARE memory
 } rc522_mifare_sector_info_t;
 
 /**
@@ -25,14 +25,28 @@ bool rc522_mifare_type_is_classic_compatible(rc522_picc_type_t type)
            || type == RC522_PICC_TYPE_MIFARE_4K;
 }
 
-static esp_err_t rc522_mifare_autha(
-    rc522_handle_t rc522, rc522_picc_t *picc, uint8_t block_addr, rc522_mifare_key_t *key)
+static esp_err_t rc522_mifare_auth(rc522_handle_t rc522, rc522_picc_t *picc, rc522_mifare_key_type_t key_type,
+    uint8_t block_addr, rc522_mifare_key_t *key)
 {
+    uint8_t auth_cmd;
+
+    switch (key_type) {
+        case RC522_MIFARE_KEY_A:
+            auth_cmd = RC522_MIFARE_AUTH_KEY_A_CMD;
+            break;
+        case RC522_MIFARE_KEY_B:
+            auth_cmd = RC522_MIFARE_AUTH_KEY_B_CMD;
+            break;
+        default:
+            RC522_LOGE("Invalid key type");
+            return ESP_ERR_INVALID_ARG;
+    }
+
     uint8_t wait_irq = 0x10; // IdleIRq
 
     // Build command buffer
     uint8_t send_data[12];
-    send_data[0] = RC522_MIFARE_AUTH_KEY_A_CMD;
+    send_data[0] = auth_cmd;
     send_data[1] = block_addr;
     for (uint8_t i = 0; i < RC522_MIFARE_KEY_SIZE; i++) {
         send_data[2 + i] = key->value[i];
@@ -42,7 +56,7 @@ static esp_err_t rc522_mifare_autha(
     // The only missed case is the MF1Sxxxx shortcut activation,
     // but it requires cascade tag (CT) byte, that is not part of uid.
     for (uint8_t i = 0; i < 4; i++) { // The last 4 bytes of the UID
-        send_data[8 + i] = picc->uid.bytes[i + picc->uid.bytes_length - 4];
+        send_data[8 + i] = picc->uid.value[i + picc->uid.length - 4];
     }
 
     // Start the authentication.
@@ -110,14 +124,14 @@ static esp_err_t rc522_mifare_sector_info(uint8_t sector_index, rc522_mifare_sec
     // Determine position and size of sector.
     if (result->index < 32) { // Sectors 0..31 has 4 blocks each
         result->number_of_blocks = 4;
-        result->first_block_index_global = result->index * result->number_of_blocks;
+        result->block_0_address = result->index * result->number_of_blocks;
 
         return ESP_OK;
     }
 
     if (result->index < 40) { // Sectors 32-39 has 16 blocks each
         result->number_of_blocks = 16;
-        result->first_block_index_global = 128 + (result->index - 32) * result->number_of_blocks;
+        result->block_0_address = 128 + (result->index - 32) * result->number_of_blocks;
 
         return ESP_OK;
     }
@@ -165,10 +179,10 @@ static esp_err_t rc522_mifare_dump_sector_to_log(
     inverted_error = false; // Avoid "unused variable" warning.
 
     // Establish encrypted communications before reading the first block
-    RC522_RETURN_ON_ERROR(rc522_mifare_autha(rc522, picc, sector.first_block_index_global, key));
+    RC522_RETURN_ON_ERROR(rc522_mifare_auth(rc522, picc, RC522_MIFARE_KEY_A, sector.block_0_address, key));
 
     for (int8_t block_offset = sector.number_of_blocks - 1; block_offset >= 0; block_offset--) {
-        block_addr = sector.first_block_index_global + block_offset;
+        block_addr = sector.block_0_address + block_offset;
 
         // Sector number - only on first line
         if (is_sector_trailer) {

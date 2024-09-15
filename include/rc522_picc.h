@@ -10,8 +10,8 @@ extern "C" {
 
 typedef struct
 {
-    uint8_t bytes[RC522_PICC_UID_MAX_SIZE];
-    uint8_t bytes_length;
+    uint8_t value[RC522_PICC_UID_MAX_SIZE];
+    uint8_t length;
 } rc522_picc_uid_t;
 
 typedef enum
