@@ -34,6 +34,12 @@ typedef struct
     uint8_t access_bits[4];
 } rc522_mifare_sector_trailer_t;
 
+typedef struct
+{
+    int32_t value;
+    uint8_t address;
+} rc522_mifare_value_block_t;
+
 /**
  * Checks if PICC type is compatible with MIFARE Classic protocol
  */
@@ -162,15 +168,15 @@ static esp_err_t rc522_mifare_sector_info(uint8_t sector_index, rc522_mifare_sec
  * | [8]  | C33  | C32  | C31  | C30  | C23  | C22  | C21  | C20  |
  *
  */
-static esp_err_t rc522_mifare_parse_sector_trailer(uint8_t *block, /** Sector trailer block data */
+static esp_err_t rc522_mifare_parse_sector_trailer(uint8_t *bytes, /** Sector trailer block data */
     rc522_mifare_sector_trailer_t *trailer)
 {
-    uint8_t c1 = block[7] >> 4;
-    uint8_t c2 = block[8] & 0x0F;
-    uint8_t c3 = block[8] >> 4;
-    uint8_t c1_ = block[6] & 0x0F;
-    uint8_t c2_ = block[6] >> 4;
-    uint8_t c3_ = block[7] & 0x0F;
+    uint8_t c1 = bytes[7] >> 4;
+    uint8_t c2 = bytes[8] & 0x0F;
+    uint8_t c3 = bytes[8] >> 4;
+    uint8_t c1_ = bytes[6] & 0x0F;
+    uint8_t c2_ = bytes[6] >> 4;
+    uint8_t c3_ = bytes[7] & 0x0F;
 
     if ((c1 != (~c1_ & 0xF)) || (c2 != (~c2_ & 0xF)) || (c3 != (~c3_ & 0xF))) {
         return RC522_ERR_MIFARE_ACCESS_BITS_INTEGRITY_VIOLATION;
@@ -180,6 +186,32 @@ static esp_err_t rc522_mifare_parse_sector_trailer(uint8_t *block, /** Sector tr
     trailer->access_bits[1] = ((c1 & 2) << 1) | ((c2 & 2) << 0) | ((c3 & 2) >> 1);
     trailer->access_bits[2] = ((c1 & 4) << 0) | ((c2 & 4) >> 1) | ((c3 & 4) >> 2);
     trailer->access_bits[3] = ((c1 & 8) >> 1) | ((c2 & 8) >> 2) | ((c3 & 8) >> 3);
+
+    return ESP_OK;
+}
+
+/**
+ * Checks if block is Value block based on access bits
+ */
+inline static bool rc522_mifare_block_is_value(uint8_t access_bits)
+{
+    return access_bits == 0b110 || access_bits == 0b001;
+}
+
+static esp_err_t rc522_mifare_parse_value_block(
+    uint8_t *bytes, /** Value block data */ rc522_mifare_value_block_t *block)
+{
+    block->value = 0;
+
+    block->value |= ((int32_t)(bytes[3]) << (8 * 3));
+    block->value |= ((int32_t)(bytes[2]) << (8 * 2));
+    block->value |= ((int32_t)(bytes[1]) << (8 * 1));
+    block->value |= ((int32_t)(bytes[0]) << (8 * 0));
+
+    block->address = bytes[12];
+
+    // TODO: Check for integrity violation
+    //       Use RC522_ERR_MIFARE_VALUE_BLOCK_INTEGRITY_VIOLATION
 
     return ESP_OK;
 }
@@ -242,8 +274,6 @@ static esp_err_t rc522_mifare_dump_sector_to_log(
             }
         }
 
-        RC522_LOG_WRITE(" ");
-
         // Parse sector trailer data
         if (is_trailer) {
             ret = rc522_mifare_parse_sector_trailer(buffer, &trailer);
@@ -264,25 +294,25 @@ static esp_err_t rc522_mifare_dump_sector_to_log(
 
         if (first_in_group) {
             // Print access bits
-            RC522_LOG_WRITE("   %d  %d  %d",
+            RC522_LOG_WRITE("    %d  %d  %d",
                 (trailer.access_bits[group] >> 2) & 1,
                 (trailer.access_bits[group] >> 1) & 1,
                 (trailer.access_bits[group] >> 0) & 1);
 
             if (ret == RC522_ERR_MIFARE_ACCESS_BITS_INTEGRITY_VIOLATION) {
-                RC522_LOG_WRITE(" (Access bits integrity violation!) ");
+                RC522_LOG_WRITE(" (access bits integrity violation)");
             }
         }
 
-        if (group != 3
-            && (trailer.access_bits[group] == 1
-                || trailer.access_bits[group] == 6)) { // Not a sector trailer, a value block
-            int32_t value = ((int32_t)(buffer[3]) << 24) | ((int32_t)(buffer[2]) << 16) | ((int32_t)(buffer[1]) << 8)
-                            | (int32_t)(buffer[0]);
+        if (ret == ESP_OK && group != 3 && rc522_mifare_block_is_value(trailer.access_bits[group])) {
+            rc522_mifare_value_block_t block;
+            ret = rc522_mifare_parse_value_block(buffer, &block);
 
-            RC522_LOG_WRITE(" Value=0x%02lx, Adr=0x%02x", value, buffer[12]);
+            RC522_LOG_WRITE(" (value=%ld (0x%04lx), adr=0x%02x)", block.value, block.value, block.address);
 
-            // TODO: We can check here for integrity violation of value block
+            if (ret == RC522_ERR_MIFARE_VALUE_BLOCK_INTEGRITY_VIOLATION) {
+                RC522_LOG_WRITE(" (value block integrity violation)");
+            }
         }
 
         RC522_LOG_WRITE("\n");
