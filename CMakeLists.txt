@@ -11,8 +11,11 @@ idf_component_register(
         src/picc/rc522_mifare.c
         src/rc522_driver.c
         src/rc522_driver_spi.c
+        src/rc522_driver_i2c.c
     REQUIRES
-        esp_event esp_driver_spi
+        esp_event
+        esp_driver_spi
+        driver # required for i2c
 )
 
 target_compile_options(${COMPONENT_LIB} PRIVATE
