@@ -48,16 +48,13 @@ static esp_err_t rc522_mifare_auth(rc522_handle_t rc522, rc522_picc_t *picc, rc5
     uint8_t send_data[12];
     send_data[0] = auth_cmd;
     send_data[1] = block_addr;
-    for (uint8_t i = 0; i < RC522_MIFARE_KEY_SIZE; i++) {
-        send_data[2 + i] = key->value[i];
-    }
+    memcpy(send_data + 2, key->value, RC522_MIFARE_KEY_SIZE);
+
     // Use the last uid bytes as specified in http://cache.nxp.com/documents/application_note/AN10927.pdf
     // section 3.2.5 "MIFARE Classic Authentication".
     // The only missed case is the MF1Sxxxx shortcut activation,
     // but it requires cascade tag (CT) byte, that is not part of uid.
-    for (uint8_t i = 0; i < 4; i++) { // The last 4 bytes of the UID
-        send_data[8 + i] = picc->uid.value[i + picc->uid.length - 4];
-    }
+    memcpy(send_data + 8, picc->uid.value + picc->uid.length - 4, 4);
 
     // Start the authentication.
     return rc522_picc_comm(rc522,
@@ -93,25 +90,22 @@ static esp_err_t rc522_mifare_number_of_sectors(rc522_picc_type_t type, uint8_t 
 {
     ESP_RETURN_ON_FALSE(rc522_mifare_type_is_classic_compatible(type), ESP_ERR_INVALID_ARG, TAG, "invalid type");
 
-    if (type == RC522_PICC_TYPE_MIFARE_MINI) {
-        // Has 5 sectors * 4 blocks/sector * 16 bytes/block = 320 bytes.
-        *result = 5;
-        return ESP_OK;
+    switch (type) {
+        case RC522_PICC_TYPE_MIFARE_MINI:
+            // Has 5 sectors * 4 blocks/sector * 16 bytes/block = 320 bytes.
+            *result = 5;
+            return ESP_OK;
+        case RC522_PICC_TYPE_MIFARE_1K:
+            // Has 16 sectors * 4 blocks/sector * 16 bytes/block = 1024 bytes.
+            *result = 16;
+            return ESP_OK;
+        case RC522_PICC_TYPE_MIFARE_4K:
+            // Has (32 sectors * 4 blocks/sector + 8 sectors * 16 blocks/sector) * 16 bytes/block = 4096 bytes.
+            *result = 40;
+            return ESP_OK;
+        default:
+            return ESP_FAIL;
     }
-
-    if (type == RC522_PICC_TYPE_MIFARE_1K) {
-        // Has 16 sectors * 4 blocks/sector * 16 bytes/block = 1024 bytes.
-        *result = 16;
-        return ESP_OK;
-    }
-
-    if (type == RC522_PICC_TYPE_MIFARE_4K) {
-        // Has (32 sectors * 4 blocks/sector + 8 sectors * 16 blocks/sector) * 16 bytes/block = 4096 bytes.
-        *result = 40;
-        return ESP_OK;
-    }
-
-    return ESP_FAIL;
 }
 
 static esp_err_t rc522_mifare_sector_info(uint8_t sector_index, rc522_mifare_sector_info_t *result)
@@ -266,21 +260,18 @@ esp_err_t rc522_mifare_dump(rc522_handle_t rc522, rc522_picc_t *picc, rc522_mifa
         TAG,
         "invalid picc type");
 
-    uint8_t sectors_length;
-    RC522_RETURN_ON_ERROR(rc522_mifare_number_of_sectors(picc->type, &sectors_length));
+    uint8_t number_of_sectors;
+    RC522_RETURN_ON_ERROR(rc522_mifare_number_of_sectors(picc->type, &number_of_sectors));
 
-    esp_err_t ret = ESP_OK;
+    rc522_mifare_dump_memory_header_to_log();
 
     // Dump sectors, highest address first.
-    if (sectors_length) {
-        rc522_mifare_dump_memory_header_to_log();
+    esp_err_t ret = ESP_OK;
+    for (int8_t i = number_of_sectors - 1; i >= 0; i--) {
+        ret = rc522_mifare_dump_sector_to_log(rc522, picc, key, i);
 
-        for (int8_t i = sectors_length - 1; i >= 0; i--) {
-            ret = rc522_mifare_dump_sector_to_log(rc522, picc, key, i);
-
-            if (ret != ESP_OK) {
-                break;
-            }
+        if (ret != ESP_OK) {
+            break;
         }
     }
 
