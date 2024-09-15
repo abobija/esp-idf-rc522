@@ -3,6 +3,7 @@
 #include <esp_err.h>
 #include <esp_event.h>
 #include <inttypes.h>
+#include "rc522_driver.h"
 
 #ifdef __cplusplus
 extern "C" {
@@ -18,13 +19,9 @@ extern "C" {
 
 typedef struct rc522 *rc522_handle_t;
 
-typedef esp_err_t (*rc522_send_handler_t)(uint8_t *buffer, uint8_t length);
-typedef esp_err_t (*rc522_receive_handler_t)(uint8_t address, uint8_t *buffer, uint8_t length);
-
 typedef struct
 {
-    rc522_send_handler_t send_handler;
-    rc522_receive_handler_t receive_handler;
+    rc522_driver_handle_t driver;
     uint16_t scan_interval_ms; /*<! How fast will ESP32 scan for nearby PICCs, in miliseconds */
     size_t task_stack_size;    /*<! Stack size of rc522 task */
     uint8_t task_priority;     /*<! Priority of rc522 task */

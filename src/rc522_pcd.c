@@ -4,6 +4,7 @@
 
 #include "rc522_types_private.h"
 #include "rc522_helpers_private.h"
+#include "rc522_driver.h"
 #include "rc522_pcd_private.h"
 
 RC522_LOG_DEFINE_BASE();
@@ -280,7 +281,7 @@ esp_err_t rc522_pcd_write_n(rc522_handle_t rc522, rc522_pcd_register_t addr, uin
     buffer[0] = addr;
     memcpy(buffer + 1, data, n);
 
-    esp_err_t ret = rc522->config->send_handler(buffer, n + 1);
+    esp_err_t ret = rc522_driver_send(rc522->config->driver, addr, buffer, n + 1);
 
     FREE(buffer);
 
@@ -294,7 +295,7 @@ inline esp_err_t rc522_pcd_write(rc522_handle_t rc522, rc522_pcd_register_t addr
 
 esp_err_t rc522_pcd_read_n(rc522_handle_t rc522, rc522_pcd_register_t addr, uint8_t n, uint8_t *buffer)
 {
-    esp_err_t ret = rc522->config->receive_handler(addr, buffer, n);
+    esp_err_t ret = rc522_driver_receive(rc522->config->driver, addr, buffer, n);
 
     if (n > 1) {
         RC522_LOGV("\t[0x%02x] =>", addr);

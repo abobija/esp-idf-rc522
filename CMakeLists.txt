@@ -9,8 +9,10 @@ idf_component_register(
         src/rc522_pcd.c
         src/rc522_picc.c
         src/picc/rc522_mifare.c
+        src/rc522_driver.c
+        src/rc522_driver_spi.c
     REQUIRES
-        esp_event
+        esp_event esp_driver_spi
 )
 
 target_compile_options(${COMPONENT_LIB} PRIVATE
