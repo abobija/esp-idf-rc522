@@ -4,9 +4,6 @@
 
 This repository contains ESP-IDF library for communication with MFRC522 RFID card reader, packaged as ESP-IDF component. Library supports SPI and I2C protocols.
 
-> [!NOTE]
-> Library currently supports only reading of UIDs of RFID tags, which is enough for most applications. Feel free to open PR if you want to implement read/write data to the cards.
-
 ## How to use
 
 Run the following command in your ESP-IDF project to install this component:
