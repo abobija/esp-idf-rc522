@@ -26,7 +26,7 @@ bool rc522_mifare_type_is_classic_compatible(rc522_picc_type_t type)
 }
 
 static esp_err_t rc522_mifare_autha(
-    rc522_handle_t rc522, rc522_picc_t *picc, uint8_t block_addr, const uint8_t *key, uint8_t key_length)
+    rc522_handle_t rc522, rc522_picc_t *picc, uint8_t block_addr, rc522_mifare_key_t *key)
 {
     uint8_t wait_irq = 0x10; // IdleIRq
 
@@ -34,8 +34,8 @@ static esp_err_t rc522_mifare_autha(
     uint8_t send_data[12];
     send_data[0] = RC522_MIFARE_AUTH_KEY_A_CMD;
     send_data[1] = block_addr;
-    for (uint8_t i = 0; i < key_length; i++) {
-        send_data[2 + i] = key[i];
+    for (uint8_t i = 0; i < RC522_MIFARE_KEY_SIZE; i++) {
+        send_data[2 + i] = key->value[i];
     }
     // Use the last uid bytes as specified in http://cache.nxp.com/documents/application_note/AN10927.pdf
     // section 3.2.5 "MIFARE Classic Authentication".
@@ -135,7 +135,7 @@ inline static void rc522_mifare_dump_memory_header_to_log()
 }
 
 static esp_err_t rc522_mifare_dump_sector_to_log(
-    rc522_handle_t rc522, rc522_picc_t *picc, const uint8_t *key, uint8_t key_length, uint8_t sector_index)
+    rc522_handle_t rc522, rc522_picc_t *picc, rc522_mifare_key_t *key, uint8_t sector_index)
 {
     // The access bits are stored in a peculiar fashion.
     // There are four groups:
@@ -165,7 +165,7 @@ static esp_err_t rc522_mifare_dump_sector_to_log(
     inverted_error = false; // Avoid "unused variable" warning.
 
     // Establish encrypted communications before reading the first block
-    RC522_RETURN_ON_ERROR(rc522_mifare_autha(rc522, picc, sector.first_block_index_global, key, key_length));
+    RC522_RETURN_ON_ERROR(rc522_mifare_autha(rc522, picc, sector.first_block_index_global, key));
 
     for (int8_t block_offset = sector.number_of_blocks - 1; block_offset >= 0; block_offset--) {
         block_addr = sector.first_block_index_global + block_offset;
@@ -245,7 +245,7 @@ static esp_err_t rc522_mifare_dump_sector_to_log(
     return ESP_OK;
 }
 
-esp_err_t rc522_mifare_dump(rc522_handle_t rc522, rc522_picc_t *picc, const uint8_t *key, uint8_t key_length)
+esp_err_t rc522_mifare_dump(rc522_handle_t rc522, rc522_picc_t *picc, rc522_mifare_key_t *key)
 {
     ESP_RETURN_ON_FALSE(rc522_mifare_type_is_classic_compatible(picc->type),
         ESP_ERR_INVALID_ARG,
@@ -253,7 +253,7 @@ esp_err_t rc522_mifare_dump(rc522_handle_t rc522, rc522_picc_t *picc, const uint
         "invalid picc type");
 
     uint8_t sectors_length;
-    RC522_RETURN_ON_ERROR_SILENTLY(rc522_mifare_number_of_sectors(picc->type, &sectors_length));
+    RC522_RETURN_ON_ERROR(rc522_mifare_number_of_sectors(picc->type, &sectors_length));
 
     esp_err_t ret = ESP_OK;
 
@@ -262,7 +262,7 @@ esp_err_t rc522_mifare_dump(rc522_handle_t rc522, rc522_picc_t *picc, const uint
         rc522_mifare_dump_memory_header_to_log();
 
         for (int8_t i = sectors_length - 1; i >= 0; i--) {
-            ret = rc522_mifare_dump_sector_to_log(rc522, picc, key, key_length, i);
+            ret = rc522_mifare_dump_sector_to_log(rc522, picc, key, i);
 
             if (ret != ESP_OK) {
                 break;

@@ -8,10 +8,15 @@ extern "C" {
 #endif
 
 #define RC522_MIFARE_KEY_SIZE (6)
-#define RC522_MIFARE_DEFAULT_KEY                                                                                       \
+#define RC522_MIFARE_DEFAULT_KEY_VALUE                                                                                 \
     {                                                                                                                  \
         0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF                                                                             \
     }
+
+typedef struct
+{
+    uint8_t value[RC522_MIFARE_KEY_SIZE];
+} rc522_mifare_key_t;
 
 /**
  * The commands used for MIFARE Classic (from http://www.mouser.com/ds/2/302/MF1S503x-89574.pdf, Section 9)
@@ -63,7 +68,7 @@ typedef enum
 
 bool rc522_mifare_type_is_classic_compatible(rc522_picc_type_t type);
 
-esp_err_t rc522_mifare_dump(rc522_handle_t rc522, rc522_picc_t *picc, const uint8_t *key, uint8_t key_length);
+esp_err_t rc522_mifare_dump(rc522_handle_t rc522, rc522_picc_t *picc, rc522_mifare_key_t *key);
 
 #ifdef __cplusplus
 }
