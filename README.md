@@ -43,4 +43,4 @@ Find defined GPIO configuration in [basic.c](examples/basic/main/basic.c) file.
 
 ## License
 
-[MIT](LICENSE)
+This component is provided under Apache 2.0 license, see [LICENSE](LICENSE) file for details.
