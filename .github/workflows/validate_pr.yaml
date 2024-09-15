@@ -26,7 +26,8 @@ jobs:
       matrix:
         example:
           - basic
-          - i2c
+          - basic_i2c
+          - memory_dump
         idf_ver:
           - release-v5.0
           - release-v5.1
