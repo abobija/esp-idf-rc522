@@ -34,19 +34,13 @@ static rc522_driver_config_t driver_config = {
 static rc522_driver_handle_t driver;
 static rc522_handle_t rc522;
 
-static void rc522_event_handler(void *arg, esp_event_base_t base, int32_t event_id, void *event_data)
+static void rc522_on_picc_selected(void *arg, esp_event_base_t base, int32_t event_id, void *data)
 {
-    rc522_event_data_t *data = (rc522_event_data_t *)event_data;
+    rc522_picc_t *picc = (rc522_picc_t *)data;
 
-    switch (event_id) {
-        case RC522_EVENT_PICC_SELECTED: {
-            rc522_picc_t *picc = (rc522_picc_t *)data->ptr;
-
-            ESP_LOGI(TAG, "PICC detected (sak=%02x, type=%s)", picc->sak, rc522_picc_type_name(picc->type));
-            ESP_LOGI(TAG, "UID:");
-            ESP_LOG_BUFFER_HEX(TAG, picc->uid.value, picc->uid.length);
-        } break;
-    }
+    ESP_LOGI(TAG, "PICC detected (sak=%02x, type=%s)", picc->sak, rc522_picc_type_name(picc->type));
+    ESP_LOGI(TAG, "UID:");
+    ESP_LOG_BUFFER_HEX(TAG, picc->uid.value, picc->uid.length);
 }
 
 void app_main()
@@ -59,6 +53,6 @@ void app_main()
     };
 
     rc522_create(&config, &rc522);
-    rc522_register_events(rc522, RC522_EVENT_PICC_SELECTED, rc522_event_handler, NULL);
+    rc522_register_events(rc522, RC522_EVENT_PICC_SELECTED, rc522_on_picc_selected, NULL);
     rc522_start(rc522);
 }
