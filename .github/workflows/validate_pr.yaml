@@ -28,6 +28,7 @@ jobs:
           - basic
           - i2c
         idf_ver:
+          - release-v5.0
           - release-v5.1
           - release-v5.2
           - release-v5.3
