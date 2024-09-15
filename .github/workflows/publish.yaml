@@ -1,4 +1,4 @@
-name: Publish component
+name: Publish ESP-IDF Component
 
 on:
   release:
