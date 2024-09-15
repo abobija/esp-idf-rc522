@@ -78,7 +78,7 @@ typedef enum
 
 bool rc522_mifare_type_is_classic_compatible(rc522_picc_type_t type);
 
-esp_err_t rc522_mifare_dump(rc522_handle_t rc522, rc522_picc_t *picc, rc522_mifare_key_t *key);
+esp_err_t rc522_mifare_stream_memory_dump(rc522_handle_t rc522, rc522_picc_t *picc, rc522_mifare_key_t *key);
 
 #ifdef __cplusplus
 }
