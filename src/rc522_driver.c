@@ -24,7 +24,7 @@ inline esp_err_t rc522_driver_uninstall(rc522_driver_handle_t driver)
     return driver->uninstall(driver);
 }
 
-esp_err_t rc522_driver_create(rc522_driver_config_t *config, rc522_driver_handle_t *driver)
+esp_err_t rc522_driver_create(void *config, size_t config_size, rc522_driver_handle_t *driver)
 {
     ESP_RETURN_ON_FALSE(config != NULL, ESP_ERR_INVALID_ARG, TAG, "config is null");
     ESP_RETURN_ON_FALSE(driver != NULL, ESP_ERR_INVALID_ARG, TAG, "driver is null");
@@ -34,10 +34,10 @@ esp_err_t rc522_driver_create(rc522_driver_config_t *config, rc522_driver_handle
     rc522_driver_handle_t _driver = calloc(1, sizeof(struct rc522_driver_handle));
     ESP_RETURN_ON_FALSE(_driver != NULL, ESP_ERR_NO_MEM, TAG, "no mem");
 
-    _driver->config = calloc(1, sizeof(rc522_driver_config_t));
+    _driver->config = calloc(1, config_size);
     ESP_GOTO_ON_FALSE(_driver->config != NULL, ESP_ERR_NO_MEM, error, TAG, "no mem");
 
-    memcpy(_driver->config, config, sizeof(rc522_driver_config_t));
+    memcpy(_driver->config, config, config_size);
 
     goto success;
 error:
