@@ -11,8 +11,9 @@ extern "C" {
 #define RC522_ERR_MIFARE_ACCESS_BITS_INTEGRITY_VIOLATION (RC522_ERR_MIFARE_BASE + 1)
 #define RC522_ERR_MIFARE_VALUE_BLOCK_INTEGRITY_VIOLATION (RC522_ERR_MIFARE_BASE + 2)
 
-#define RC522_MIFARE_CLASSIC_MAX_SECTOR_INDEX (39) // No MIFARE Classic has more than 40 sectors
-#define RC522_MIFARE_KEY_SIZE                 (6)
+#define RC522_MIFARE_MAX_SECTOR_INDEX (39) // No MIFARE Classic has more than 40 sectors
+#define RC522_MIFARE_BLOCK_SIZE       (16)
+#define RC522_MIFARE_KEY_SIZE         (6)
 #define RC522_MIFARE_DEFAULT_KEY_VALUE                                                                                 \
     {                                                                                                                  \
         0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF                                                                             \
@@ -59,7 +60,7 @@ typedef struct
 {
     uint8_t sector_index;
     uint8_t address;
-    uint8_t bytes[18];
+    uint8_t bytes[RC522_MIFARE_BLOCK_SIZE];
     rc522_mifare_block_type_t type;
     uint8_t access_bits;
     esp_err_t access_bits_err;
@@ -82,7 +83,8 @@ esp_err_t rc522_mifare_autha(rc522_handle_t rc522, rc522_picc_t *picc, uint8_t b
 
 esp_err_t rc522_mifare_authb(rc522_handle_t rc522, rc522_picc_t *picc, uint8_t block_addr, rc522_mifare_key_t *key);
 
-esp_err_t rc522_mifare_read(rc522_handle_t rc522, rc522_picc_t *picc, uint8_t block_addr, uint8_t buffer[18]);
+esp_err_t rc522_mifare_read(
+    rc522_handle_t rc522, rc522_picc_t *picc, uint8_t block_addr, uint8_t buffer[RC522_MIFARE_BLOCK_SIZE]);
 
 esp_err_t rc522_mifare_parse_access_bits(uint8_t *trailer_bytes, uint8_t access_bits[4]);
 
