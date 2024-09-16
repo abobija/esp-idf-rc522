@@ -1,7 +1,12 @@
-name: Validate PR
+name: Validate
 
 on:
   pull_request:
+  push:
+    branches:
+      - main
+  schedule:
+    - cron: "0 0 * * 6"
 
 jobs:
   format_check:
