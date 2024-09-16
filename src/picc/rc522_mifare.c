@@ -79,6 +79,10 @@ inline esp_err_t rc522_mifare_authb(
 esp_err_t rc522_mifare_auth(rc522_handle_t rc522, rc522_picc_t *picc, rc522_mifare_key_type_t key_type,
     uint8_t block_addr, rc522_mifare_key_t *key)
 {
+    RC522_CHECK(rc522 == NULL);
+    RC522_CHECK(picc == NULL);
+    RC522_CHECK(key == NULL);
+
     uint8_t auth_cmd;
 
     switch (key_type) {
@@ -120,11 +124,11 @@ esp_err_t rc522_mifare_auth(rc522_handle_t rc522, rc522_picc_t *picc, rc522_mifa
         false);
 }
 
-esp_err_t rc522_mifare_read(
-    rc522_handle_t rc522, rc522_picc_t *picc, uint8_t block_addr, uint8_t *buffer, uint8_t *buffer_length)
+esp_err_t rc522_mifare_read(rc522_handle_t rc522, rc522_picc_t *picc, uint8_t block_addr, uint8_t buffer[18])
 {
-    ESP_RETURN_ON_FALSE(buffer != NULL, ESP_ERR_INVALID_ARG, TAG, "buffer is null");
-    ESP_RETURN_ON_FALSE(*buffer_length >= 18, ESP_ERR_NO_MEM, TAG, "buffer too small");
+    RC522_CHECK(rc522 == NULL);
+    RC522_CHECK(picc == NULL);
+    RC522_CHECK(buffer == NULL);
 
     // Build command buffer
     buffer[0] = RC522_MIFARE_READ_CMD;
@@ -134,7 +138,8 @@ esp_err_t rc522_mifare_read(
     RC522_RETURN_ON_ERROR(rc522_pcd_calculate_crc(rc522, buffer, 2, &buffer[2]));
 
     // Transmit the buffer and receive the response, validate CRC_A.
-    return rc522_picc_transceive(rc522, buffer, 4, buffer, buffer_length, NULL, 0, true);
+    uint8_t _;
+    return rc522_picc_transceive(rc522, buffer, 4, buffer, &_, NULL, 0, true);
 }
 
 static esp_err_t rc522_mifare_number_of_sectors(rc522_picc_type_t type, uint8_t *result)
@@ -161,6 +166,9 @@ static esp_err_t rc522_mifare_number_of_sectors(rc522_picc_type_t type, uint8_t 
 
 esp_err_t rc522_mifare_info(rc522_picc_t *picc, rc522_mifare_t *mifare)
 {
+    RC522_CHECK(picc == NULL);
+    RC522_CHECK(mifare == NULL);
+
     RC522_RETURN_ON_ERROR(rc522_mifare_number_of_sectors(picc->type, &mifare->number_of_sectors));
 
     return ESP_OK;
@@ -168,8 +176,8 @@ esp_err_t rc522_mifare_info(rc522_picc_t *picc, rc522_mifare_t *mifare)
 
 esp_err_t rc522_mifare_sector_info(uint8_t sector_index, rc522_mifare_sector_t *result)
 {
-    // No MIFARE Classic has more than 40 sectors
-    ESP_RETURN_ON_FALSE(sector_index < 40, ESP_ERR_INVALID_ARG, TAG, "invalid sector_index");
+    RC522_CHECK(sector_index > RC522_MIFARE_CLASSIC_MAX_SECTOR_INDEX);
+    RC522_CHECK(result == NULL);
 
     result->index = sector_index;
 
@@ -219,6 +227,9 @@ esp_err_t rc522_mifare_sector_info(uint8_t sector_index, rc522_mifare_sector_t *
 esp_err_t rc522_mifare_parse_access_bits(uint8_t *trailer_bytes, /** Sector trailer block data */
     uint8_t access_bits[4] /* Pointer to 4 bytes array */)
 {
+    RC522_CHECK(trailer_bytes == NULL);
+    RC522_CHECK(access_bits == NULL);
+
     uint8_t c1 = trailer_bytes[7] >> 4;
     uint8_t c2 = trailer_bytes[8] & 0x0F;
     uint8_t c3 = trailer_bytes[8] >> 4;
@@ -248,6 +259,9 @@ inline bool rc522_mifare_block_is_value(uint8_t access_bits)
 
 esp_err_t rc522_mifare_parse_value_block(uint8_t *bytes, /** Value block data */ rc522_mifare_value_block_t *block)
 {
+    RC522_CHECK(bytes == NULL);
+    RC522_CHECK(block == NULL);
+
     block->value = 0;
 
     block->value |= ((int32_t)(bytes[3]) << (8 * 3));
@@ -265,6 +279,9 @@ esp_err_t rc522_mifare_parse_value_block(uint8_t *bytes, /** Value block data */
 
 esp_err_t rc522_mifare_transactions_end(rc522_handle_t rc522, rc522_picc_t *picc)
 {
+    RC522_CHECK(rc522 == NULL);
+    RC522_CHECK(picc == NULL);
+
     if (rc522_picc_halta(rc522, picc) != ESP_OK) {
         RC522_LOGW("halta failed");
     }
@@ -275,6 +292,12 @@ esp_err_t rc522_mifare_transactions_end(rc522_handle_t rc522, rc522_picc_t *picc
 esp_err_t rc522_mifare_iterate_sector_blocks(rc522_handle_t rc522, rc522_picc_t *picc, uint8_t sector_index,
     rc522_mifare_key_t *key, rc522_mifare_sector_block_iterator iterator)
 {
+    RC522_CHECK(rc522 == NULL);
+    RC522_CHECK(picc == NULL);
+    RC522_CHECK(sector_index > RC522_MIFARE_CLASSIC_MAX_SECTOR_INDEX);
+    RC522_CHECK(key == NULL);
+    RC522_CHECK(iterator == NULL);
+
     esp_err_t ret = ESP_OK;
 
     rc522_mifare_sector_t sector;
@@ -297,10 +320,7 @@ esp_err_t rc522_mifare_iterate_sector_blocks(rc522_handle_t rc522, rc522_picc_t 
             block.type = RC522_MIFARE_BLOCK_TRAILER;
         }
 
-        uint8_t bytes_length = sizeof(block.bytes);
-        ESP_RETURN_ON_ERROR(rc522_mifare_read(rc522, picc, block.address, block.bytes, &bytes_length),
-            TAG,
-            "read failed");
+        ESP_RETURN_ON_ERROR(rc522_mifare_read(rc522, picc, block.address, block.bytes), TAG, "read failed");
 
         if (block.type == RC522_MIFARE_BLOCK_TRAILER) {
             block.access_bits_err = rc522_mifare_parse_access_bits(block.bytes, access_bits);
