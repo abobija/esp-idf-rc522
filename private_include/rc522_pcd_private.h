@@ -142,7 +142,7 @@ typedef enum
     /**
      * Places the MFRC522 in Idle mode. The Idle command also terminates itself.
      */
-    RC522_PCD_IDLE_CMD = 0x00,
+    RC522_PCD_IDLE_CMD = 0b0000,
 
     /**
      * The FIFO buffer content is transferred to the CRC coprocessor and the CRC calculation is
@@ -161,7 +161,7 @@ typedef enum
      * Test mode. Starting the CalcCRC command initiates a digital self test. The result of the
      * self test is written to the FIFO buffer.
      */
-    RC522_PCD_CALC_CRC_CMD = 0b00000011,
+    RC522_PCD_CALC_CRC_CMD = 0b0011,
 
     /**
      * This command continuously repeats the transmission of data from the FIFO buffer and the
@@ -172,20 +172,20 @@ typedef enum
      * bit to logic 1. This command must be cleared by writing any command to the
      * CommandReg register
      */
-    RC522_PCD_TRANSCEIVE_CMD = 0b00001100,
+    RC522_PCD_TRANSCEIVE_CMD = 0b1100,
 
     /**
      * This command manages MIFARE authentication to enable a secure communication to
      * any MIFARE Mini, MIFARE 1K and MIFARE 4K card
      */
-    RC522_PCD_MF_AUTH_CMD = 0b00001110,
+    RC522_PCD_MF_AUTH_CMD = 0b1110,
 
     /**
      * This command performs a reset of the device. The configuration data of the internal buffer
      * remains unchanged. All registers are set to the reset values. This command automatically
      * terminates when finished.
      */
-    RC522_PCD_SOFT_RESET_CMD = 0b00001111,
+    RC522_PCD_SOFT_RESET_CMD = 0b1111,
 } rc522_pcd_command_t;
 
 typedef enum
