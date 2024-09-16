@@ -33,6 +33,7 @@ jobs:
           - basic
           - basic_i2c
           - memory_dump
+          - read_write
         idf_ver:
           - release-v5.0
           - release-v5.1
