@@ -141,7 +141,8 @@ static void on_picc_selected(void *arg, esp_event_base_t base, int32_t event_id,
                 picc,
                 &(rc522_mifare_key_t) {
                     .value = RC522_MIFARE_DEFAULT_KEY_VALUE,
-                })) {
+                })
+            != ESP_OK) {
             ESP_LOGE(TAG, "memory dump failed");
         }
 
