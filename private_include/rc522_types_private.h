@@ -20,7 +20,6 @@ extern "C" {
 #define RC522_LOGI(format, ...)             RC522_LOG(ESP_LOGI, format, ##__VA_ARGS__)
 #define RC522_LOGD(format, ...)             RC522_LOG(ESP_LOGD, format, ##__VA_ARGS__)
 #define RC522_LOGV(format, ...)             RC522_LOG(ESP_LOGV, format, ##__VA_ARGS__)
-#define RC522_LOG_HI()                      RC522_LOGD("👋")
 #define RC522_LOG_WRITE(format, ...)        esp_log_write(ESP_LOG_INFO, TAG, format, ##__VA_ARGS__)
 
 #define RC522_RETURN_ON_ERROR(x)                                                                                       \
