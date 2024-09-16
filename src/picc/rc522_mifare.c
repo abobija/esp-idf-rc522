@@ -138,9 +138,90 @@ esp_err_t rc522_mifare_read(
     // Calculate CRC_A
     RC522_RETURN_ON_ERROR(rc522_pcd_calculate_crc(rc522, buffer, 2, &buffer[2]));
 
+    // FIXME: Cloning the buffer since picc_transceive uses +2 bytes buffer
+    //        to store some extra data (crc i think). Refactor picc_transceive
+    //        and picc_comm functions!
+    uint8_t buffer_clone[RC522_MIFARE_BLOCK_SIZE + 2];
+
     // Transmit the buffer and receive the response, validate CRC_A.
-    uint8_t _;
-    return rc522_picc_transceive(rc522, buffer, 4, buffer, &_, NULL, 0, true);
+    uint8_t _ = sizeof(buffer_clone);
+    RC522_RETURN_ON_ERROR(rc522_picc_transceive(rc522, buffer, 4, buffer_clone, &_, NULL, 0, true));
+
+    // FIXME: Move data back to the original buffer
+    memcpy(buffer, buffer_clone, RC522_MIFARE_BLOCK_SIZE);
+
+    return ESP_OK;
+}
+
+static esp_err_t rc522_mifare_transceive(
+    rc522_handle_t rc522, uint8_t *send_data, uint8_t send_length, bool accept_timeout)
+{
+    RC522_CHECK(send_data == NULL);
+    RC522_CHECK(send_length > RC522_MIFARE_BLOCK_SIZE);
+
+    uint8_t cmd_buffer[RC522_MIFARE_BLOCK_SIZE + 2]; // We need room for data + 2 bytes CRC_A
+
+    // Copy sendData[] to cmdBuffer[] and add CRC_A
+    memcpy(cmd_buffer, send_data, send_length);
+
+    RC522_RETURN_ON_ERROR(rc522_pcd_calculate_crc(rc522, cmd_buffer, send_length, cmd_buffer + send_length));
+
+    send_length += 2;
+
+    // Transceive the data, store the reply in cmdBuffer[]
+    uint8_t wait_irq = 0x30; // RxIRq and IdleIRq
+    uint8_t cmd_buffer_size = sizeof(cmd_buffer);
+    uint8_t valid_bits = 0;
+
+    esp_err_t ret = rc522_picc_comm(rc522,
+        RC522_PCD_TRANSCEIVE_CMD,
+        wait_irq,
+        cmd_buffer,
+        send_length,
+        cmd_buffer,
+        &cmd_buffer_size,
+        &valid_bits,
+        0,
+        false);
+
+    if (accept_timeout && ret == ESP_ERR_TIMEOUT) {
+        return ESP_OK;
+    }
+
+    if (ret != ESP_OK) {
+        return ret;
+    }
+
+    // The PICC must reply with a 4 bit ACK
+    if (cmd_buffer_size != 1 || valid_bits != 4) {
+        return ESP_FAIL;
+    }
+
+    if (cmd_buffer[0] != RC522_MIFARE_ACK) {
+        return RC522_ERR_MIFARE_NACK;
+    }
+
+    return ret;
+}
+
+esp_err_t rc522_mifare_write(
+    rc522_handle_t rc522, rc522_picc_t *picc, uint8_t block_addr, uint8_t buffer[RC522_MIFARE_BLOCK_SIZE])
+{
+    RC522_CHECK(rc522 == NULL);
+    RC522_CHECK(picc == NULL);
+    RC522_CHECK(buffer == NULL);
+
+    // Step 1: Tell the PICC we want to write to block blockAddr.
+    uint8_t cmd_buffer[] = { RC522_MIFARE_WRITE_CMD, block_addr };
+    RC522_RETURN_ON_ERROR(
+        rc522_mifare_transceive(rc522, cmd_buffer, 2, false)); // Adds CRC_A and checks that the response is MF_ACK.
+
+    RC522_RETURN_ON_ERROR(rc522_mifare_transceive(rc522,
+        buffer,
+        RC522_MIFARE_BLOCK_SIZE,
+        false)); // Adds CRC_A and checks that the response is MF_ACK.
+
+    return ESP_OK;
 }
 
 static esp_err_t rc522_mifare_number_of_sectors(rc522_picc_type_t type, uint8_t *result)
@@ -288,6 +369,25 @@ esp_err_t rc522_mifare_transactions_end(rc522_handle_t rc522, rc522_picc_t *picc
     }
 
     return rc522_pcd_stop_crypto1(rc522);
+}
+
+/**
+ * Ensures that communication with PICC is ended correctly by calling rc522_mifare_transactions_end
+ */
+esp_err_t rc522_mifare_handle_as_transaction(
+    rc522_handle_t rc522, rc522_picc_t *picc, rc522_mifare_transaction_handler transaction_handler)
+{
+    RC522_CHECK(rc522 == NULL);
+    RC522_CHECK(picc == NULL);
+    RC522_CHECK(transaction_handler == NULL);
+
+    esp_err_t ret = transaction_handler(rc522, picc);
+
+    if (rc522_mifare_transactions_end(rc522, picc) != ESP_OK) {
+        RC522_LOGW("ending transaction failed");
+    }
+
+    return ret;
 }
 
 esp_err_t rc522_mifare_iterate_sector_blocks(rc522_handle_t rc522, rc522_picc_t *picc, uint8_t sector_index,

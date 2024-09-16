@@ -10,9 +10,11 @@ extern "C" {
 #define RC522_ERR_MIFARE_BASE                            (ESP_ERR_RC522_BASE + 100)
 #define RC522_ERR_MIFARE_ACCESS_BITS_INTEGRITY_VIOLATION (RC522_ERR_MIFARE_BASE + 1)
 #define RC522_ERR_MIFARE_VALUE_BLOCK_INTEGRITY_VIOLATION (RC522_ERR_MIFARE_BASE + 2)
+#define RC522_ERR_MIFARE_NACK                            (RC522_ERR_MIFARE_BASE + 3)
 
 #define RC522_MIFARE_MAX_SECTOR_INDEX (39) // No MIFARE Classic has more than 40 sectors
 #define RC522_MIFARE_BLOCK_SIZE       (16)
+#define RC522_MIFARE_ACK              (0x0A) // The MIFARE Classic uses a 4 bit ACK/NAK. Any other value than 0xA is NAK.
 #define RC522_MIFARE_KEY_SIZE         (6)
 #define RC522_MIFARE_DEFAULT_KEY_VALUE                                                                                 \
     {                                                                                                                  \
@@ -69,6 +71,7 @@ typedef struct
 } rc522_mifare_sector_block_t;
 
 typedef esp_err_t (*rc522_mifare_sector_block_iterator)(rc522_mifare_sector_block_t *block);
+typedef esp_err_t (*rc522_mifare_transaction_handler)(rc522_handle_t rc522, rc522_picc_t *picc);
 
 bool rc522_mifare_type_is_classic_compatible(rc522_picc_type_t type);
 
@@ -86,6 +89,9 @@ esp_err_t rc522_mifare_authb(rc522_handle_t rc522, rc522_picc_t *picc, uint8_t b
 esp_err_t rc522_mifare_read(
     rc522_handle_t rc522, rc522_picc_t *picc, uint8_t block_addr, uint8_t buffer[RC522_MIFARE_BLOCK_SIZE]);
 
+esp_err_t rc522_mifare_write(
+    rc522_handle_t rc522, rc522_picc_t *picc, uint8_t block_addr, uint8_t buffer[RC522_MIFARE_BLOCK_SIZE]);
+
 esp_err_t rc522_mifare_parse_access_bits(uint8_t *trailer_bytes, uint8_t access_bits[4]);
 
 bool rc522_mifare_block_is_value(uint8_t access_bits);
@@ -93,6 +99,9 @@ bool rc522_mifare_block_is_value(uint8_t access_bits);
 esp_err_t rc522_mifare_parse_value_block(uint8_t *bytes, rc522_mifare_value_block_t *block);
 
 esp_err_t rc522_mifare_transactions_end(rc522_handle_t rc522, rc522_picc_t *picc);
+
+esp_err_t rc522_mifare_handle_as_transaction(
+    rc522_handle_t rc522, rc522_picc_t *picc, rc522_mifare_transaction_handler transaction_handler);
 
 esp_err_t rc522_mifare_iterate_sector_blocks(rc522_handle_t rc522, rc522_picc_t *picc, uint8_t sector_index,
     rc522_mifare_key_t *key, rc522_mifare_sector_block_iterator iterator);
