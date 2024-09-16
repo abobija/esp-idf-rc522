@@ -335,6 +335,8 @@ esp_err_t rc522_pcd_start_data_transmission(rc522_handle_t rc522);
 
 esp_err_t rc522_pcd_stop_data_transmission(rc522_handle_t rc522);
 
+esp_err_t rc522_pcd_stop_crypto1(rc522_handle_t rc522);
+
 esp_err_t rc522_pcd_rw_test(rc522_handle_t rc522);
 
 esp_err_t rc522_pcd_write_n(rc522_handle_t rc522, rc522_pcd_register_t addr, uint8_t n, uint8_t *data);

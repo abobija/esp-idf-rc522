@@ -64,6 +64,18 @@ bool rc522_mifare_type_is_classic_compatible(rc522_picc_type_t type)
            || type == RC522_PICC_TYPE_MIFARE_4K;
 }
 
+inline esp_err_t rc522_mifare_autha(
+    rc522_handle_t rc522, rc522_picc_t *picc, uint8_t block_addr, rc522_mifare_key_t *key)
+{
+    return rc522_mifare_auth(rc522, picc, RC522_MIFARE_KEY_A, block_addr, key);
+}
+
+inline esp_err_t rc522_mifare_authb(
+    rc522_handle_t rc522, rc522_picc_t *picc, uint8_t block_addr, rc522_mifare_key_t *key)
+{
+    return rc522_mifare_auth(rc522, picc, RC522_MIFARE_KEY_B, block_addr, key);
+}
+
 esp_err_t rc522_mifare_auth(rc522_handle_t rc522, rc522_picc_t *picc, rc522_mifare_key_type_t key_type,
     uint8_t block_addr, rc522_mifare_key_t *key)
 {
@@ -235,4 +247,13 @@ esp_err_t rc522_mifare_parse_value_block(uint8_t *bytes, /** Value block data */
     //       Use RC522_ERR_MIFARE_VALUE_BLOCK_INTEGRITY_VIOLATION
 
     return ESP_OK;
+}
+
+esp_err_t rc522_mifare_transactions_end(rc522_handle_t rc522, rc522_picc_t *picc)
+{
+    if (rc522_picc_halta(rc522, picc) != ESP_OK) {
+        RC522_LOGW("halta failed");
+    }
+
+    return rc522_pcd_stop_crypto1(rc522);
 }

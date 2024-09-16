@@ -50,9 +50,7 @@ static esp_err_t rc522_mifare_sector_dump(
     ESP_RETURN_ON_ERROR(rc522_mifare_sector_info(sector_index, &sector), TAG, "");
 
     // Establish encrypted communications before reading the first block
-    ESP_RETURN_ON_ERROR(rc522_mifare_auth(rc522, picc, RC522_MIFARE_KEY_A, sector.block_0_address, key),
-        TAG,
-        "auth failed");
+    ESP_RETURN_ON_ERROR(rc522_mifare_autha(rc522, picc, sector.block_0_address, key), TAG, "auth failed");
 
     rc522_mifare_sector_trailer_t trailer;
     bool is_trailer = true;
@@ -154,22 +152,15 @@ static esp_err_t rc522_mifare_memory_dump(rc522_handle_t rc522, rc522_picc_t *pi
         " ");
 
     // Dump sectors, highest address first.
-    esp_err_t ret = ESP_OK;
     for (int8_t i = mifare.number_of_sectors - 1; i >= 0; i--) {
-        ret = rc522_mifare_sector_dump(rc522, picc, key, i);
-
-        if (ret != ESP_OK) {
+        if (rc522_mifare_sector_dump(rc522, picc, key, i) != ESP_OK) {
             break;
         }
     }
 
-    if (ret == ESP_OK) {
-        ESP_RETURN_ON_ERROR(rc522_picc_halta(rc522, picc), TAG, "halta failed");
-    }
+    ESP_RETURN_ON_ERROR(rc522_mifare_transactions_end(rc522, picc), TAG, "");
 
-    ESP_RETURN_ON_ERROR(rc522_pcd_stop_crypto1(rc522), TAG, "crypto1 stop failed");
-
-    return ret;
+    return ESP_OK;
 }
 
 static void rc522_on_picc_selected(void *arg, esp_event_base_t base, int32_t event_id, void *data)
