@@ -74,7 +74,6 @@ static esp_err_t rc522_pcd_soft_reset(rc522_handle_t rc522, uint32_t timeout_ms)
     // Wait for the PowerDown bit in CommandReg to be cleared
     do {
         rc522_delay_ms(25);
-        taskYIELD();
 
         uint8_t cmd;
         RC522_RETURN_ON_ERROR(rc522_pcd_read(rc522, RC522_PCD_COMMAND_REG, &cmd));

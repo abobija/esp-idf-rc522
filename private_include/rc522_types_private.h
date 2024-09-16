@@ -49,14 +49,14 @@ typedef enum
 {
     RC522_STATE_UNDEFINED = 0,
     RC522_STATE_CREATED,
-    RC522_STATE_SCANNING,
+    RC522_STATE_SCANNING, /*<! Scanning for nearby PICCs */
     RC522_STATE_PAUSED,
 } rc522_state_t;
 
 struct rc522
 {
     rc522_config_t *config;               /*<! Configuration */
-    bool task_running;                    /*<! Indicates whether rc522 task is running or not */
+    bool exit_requested;                  /*<! Indicates whether polling task exit is requested */
     TaskHandle_t task_handle;             /*<! Handle of task */
     esp_event_loop_handle_t event_handle; /*<! Handle of event loop */
     rc522_state_t state;                  /*<! Current state */

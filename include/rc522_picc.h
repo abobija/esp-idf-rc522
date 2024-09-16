@@ -36,6 +36,7 @@ typedef struct
     rc522_picc_uid_t uid;
     uint8_t sak; // Select acknowledge (SAK) byte returned from the PICC after successful selection
     rc522_picc_type_t type;
+    uint32_t activated_at_ms;
 } rc522_picc_t;
 
 char *rc522_picc_type_name(rc522_picc_type_t type);

@@ -29,12 +29,11 @@ static esp_err_t rc522_clone_config(rc522_config_t *config, rc522_config_t **res
     memcpy(_clone_config, config, sizeof(rc522_config_t));
 
     // defaults
-    _clone_config->scan_interval_ms =
-        config->scan_interval_ms < 50 ? RC522_DEFAULT_SCAN_INTERVAL_MS : config->scan_interval_ms;
+    _clone_config->task_throttling_ms =
+        config->task_throttling_ms < 50 ? RC522_DEFAULT_TASK_THROTTLING_MS : config->task_throttling_ms;
     _clone_config->task_stack_size =
         config->task_stack_size == 0 ? RC522_DEFAULT_TASK_STACK_SIZE : config->task_stack_size;
-    _clone_config->task_priority =
-        config->task_priority == 0 ? RC522_DEFAULT_TASK_STACK_PRIORITY : config->task_priority;
+    _clone_config->task_priority = config->task_priority == 0 ? RC522_DEFAULT_TASK_PRIORITY : config->task_priority;
 
     *result = _clone_config;
 
@@ -62,8 +61,6 @@ esp_err_t rc522_create(rc522_config_t *config, rc522_handle_t *out_rc522)
         _error,
         TAG,
         "Failed to create event loop");
-
-    rc522->task_running = true;
 
     BaseType_t task_create_result = xTaskCreate(rc522_task,
         "rc522_polling_task",
@@ -160,7 +157,7 @@ esp_err_t rc522_destroy(rc522_handle_t rc522)
         TAG,
         "Cannot destroy from event handler");
 
-    rc522->task_running = false; //  task will delete itself
+    rc522->exit_requested = true; //  task will delete itself
 
     // TODO: Wait for task to exit
 
@@ -191,25 +188,32 @@ void rc522_task(void *arg)
 {
     rc522_handle_t rc522 = (rc522_handle_t)arg;
 
-    while (rc522->task_running) {
+    while (!rc522->exit_requested) {
         if (rc522->state != RC522_STATE_SCANNING) {
             rc522_delay_ms(125);
 
-            taskYIELD();
             continue;
         }
 
+        // TODO: Save activated PICC and on next poll check
+        //       if it is the same PICC in order to avoid
+        //       unnecessary PICC activation and event
+        //       dispatching. In the picc type there
+        //       is activation timestamp, so we can
+        //       use that for expiration check.
+
         rc522_picc_t picc;
         memset(&picc, 0, sizeof(picc));
+
         rc522_picc_find(rc522, &picc);
 
-        if (picc.is_present && rc522_picc_fetch(rc522, &picc) == ESP_OK) {
-            rc522_dispatch_event(rc522, RC522_EVENT_PICC_ACTIVE, &picc, sizeof(picc));
+        if (picc.is_present && rc522_picc_activate(rc522, &picc) == ESP_OK) {
+            if (rc522_dispatch_event(rc522, RC522_EVENT_PICC_ACTIVE, &picc, sizeof(picc)) != ESP_OK) {
+                RC522_LOGW("event dispatch failed");
+            }
         }
 
-        rc522_delay_ms(rc522->config->scan_interval_ms);
-
-        taskYIELD();
+        rc522_delay_ms(rc522->config->task_throttling_ms);
     }
 
     vTaskDelete(NULL); // self-delete

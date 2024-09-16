@@ -204,7 +204,7 @@ static esp_err_t rc522_picc_reqa(rc522_handle_t rc522, uint8_t *atqa_buffer, uin
 }
 
 /**
- * Check if PICC is in the PCD field
+ * Check if PICC is in the PCD field by sending REQA
  */
 esp_err_t rc522_picc_find(rc522_handle_t rc522, rc522_picc_t *picc)
 {
@@ -557,15 +557,17 @@ esp_err_t rc522_picc_uid_to_str(rc522_picc_uid_t *uid, char *buffer)
 }
 
 /**
- * Resolve collision and select PICC
+ * Resolve collision and select PICC.
+ * If ESP_OK is returned, PICC is in ACTIVE state.
  */
-esp_err_t rc522_picc_fetch(rc522_handle_t rc522, rc522_picc_t *picc)
+esp_err_t rc522_picc_activate(rc522_handle_t rc522, rc522_picc_t *picc)
 {
     ESP_RETURN_ON_FALSE(picc != NULL, ESP_ERR_INVALID_ARG, TAG, "picc is null");
 
     RC522_RETURN_ON_ERROR(rc522_picc_select(rc522, picc, 0));
 
     picc->type = rc522_picc_type(picc->sak);
+    picc->activated_at_ms = rc522_millis();
 
     return ESP_OK;
 }
