@@ -3,21 +3,19 @@
 #include "rc522_driver_private.h"
 #include "driver/rc522_i2c.h"
 
-// TODO: Migrate to new i2c API
-
 RC522_LOG_DEFINE_BASE();
 
 static esp_err_t rc522_i2c_install(rc522_driver_handle_t driver)
 {
     ESP_RETURN_ON_FALSE(driver != NULL, ESP_ERR_INVALID_ARG, TAG, "driver is null");
 
-    rc522_driver_config_t *config = (rc522_driver_config_t *)(driver->config);
+    rc522_i2c_config_t *conf = (rc522_i2c_config_t *)(driver->config);
 
     // TODO: Skip bus initialization if it's already configured by the user
     //       Do this once when we migrate to new i2c API
-    RC522_RETURN_ON_ERROR(i2c_param_config(config->i2c.port, &config->i2c.config));
+    RC522_RETURN_ON_ERROR(i2c_param_config(conf->port, &conf->config));
 
-    RC522_RETURN_ON_ERROR(i2c_driver_install(config->i2c.port, config->i2c.config.mode, 0, 0, 0x00));
+    RC522_RETURN_ON_ERROR(i2c_driver_install(conf->port, conf->config.mode, 0, 0, 0x00));
 
     return ESP_OK;
 }
@@ -26,28 +24,28 @@ static esp_err_t rc522_i2c_send(rc522_driver_handle_t driver, uint8_t _address, 
 {
     // ignore _address parameter since buffer[0] is address sent by library
 
-    rc522_driver_config_t *config = (rc522_driver_config_t *)(driver->config);
+    rc522_i2c_config_t *conf = (rc522_i2c_config_t *)(driver->config);
 
-    RC522_RETURN_ON_ERROR(i2c_master_write_to_device(config->i2c.port,
-        config->i2c.device_address,
+    RC522_RETURN_ON_ERROR(i2c_master_write_to_device(conf->port,
+        conf->device_address,
         buffer,
         length,
-        pdMS_TO_TICKS(config->i2c.rw_timeout_ms)));
+        pdMS_TO_TICKS(conf->rw_timeout_ms)));
 
     return ESP_OK;
 }
 
 static esp_err_t rc522_i2c_receive(rc522_driver_handle_t driver, uint8_t address, uint8_t *buffer, uint8_t length)
 {
-    rc522_driver_config_t *config = (rc522_driver_config_t *)(driver->config);
+    rc522_i2c_config_t *conf = (rc522_i2c_config_t *)(driver->config);
 
-    RC522_RETURN_ON_ERROR(i2c_master_write_read_device(config->i2c.port,
-        config->i2c.device_address,
+    RC522_RETURN_ON_ERROR(i2c_master_write_read_device(conf->port,
+        conf->device_address,
         &address,
         1,
         buffer,
         length,
-        pdMS_TO_TICKS(config->i2c.rw_timeout_ms)));
+        pdMS_TO_TICKS(conf->rw_timeout_ms)));
 
     return ESP_OK;
 }
@@ -56,16 +54,16 @@ static esp_err_t rc522_i2c_uninstall(rc522_driver_handle_t driver)
 {
     ESP_RETURN_ON_FALSE(driver != NULL, ESP_ERR_INVALID_ARG, TAG, "driver is null");
 
-    rc522_driver_config_t *config = (rc522_driver_config_t *)(driver->config);
+    rc522_i2c_config_t *conf = (rc522_i2c_config_t *)(driver->config);
 
-    RC522_RETURN_ON_ERROR(i2c_driver_delete(config->i2c.port));
+    RC522_RETURN_ON_ERROR(i2c_driver_delete(conf->port));
 
     return ESP_OK;
 }
 
-esp_err_t rc522_i2c_create(rc522_driver_config_t *config, rc522_driver_handle_t *driver)
+esp_err_t rc522_i2c_create(rc522_i2c_config_t *config, rc522_driver_handle_t *driver)
 {
-    RC522_RETURN_ON_ERROR(rc522_driver_create(config, sizeof(rc522_driver_config_t), driver));
+    RC522_RETURN_ON_ERROR(rc522_driver_create(config, sizeof(rc522_i2c_config_t), driver));
 
     (*driver)->install = rc522_i2c_install;
     (*driver)->send = rc522_i2c_send;

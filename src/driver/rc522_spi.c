@@ -9,14 +9,14 @@ static esp_err_t rc522_spi_install(rc522_driver_handle_t driver)
 {
     ESP_RETURN_ON_FALSE(driver != NULL, ESP_ERR_INVALID_ARG, TAG, "driver is null");
 
-    rc522_driver_config_t *config = (rc522_driver_config_t *)(driver->config);
+    rc522_spi_config_t *conf = (rc522_spi_config_t *)(driver->config);
 
-    if (config->spi.bus_config) {
-        RC522_RETURN_ON_ERROR(spi_bus_initialize(config->spi.host_id, config->spi.bus_config, config->spi.dma_chan));
+    if (conf->bus_config) {
+        RC522_RETURN_ON_ERROR(spi_bus_initialize(conf->host_id, conf->bus_config, conf->dma_chan));
     }
 
     RC522_RETURN_ON_ERROR(
-        spi_bus_add_device(config->spi.host_id, &config->spi.dev_config, (spi_device_handle_t *)(&driver->device)));
+        spi_bus_add_device(conf->host_id, &conf->dev_config, (spi_device_handle_t *)(&driver->device)));
 
     return ESP_OK;
 }
@@ -71,18 +71,18 @@ static esp_err_t rc522_spi_uninstall(rc522_driver_handle_t driver)
     RC522_RETURN_ON_ERROR(spi_bus_remove_device((spi_device_handle_t)(driver->device)));
     driver->device = NULL;
 
-    rc522_driver_config_t *config = (rc522_driver_config_t *)(driver->config);
+    rc522_spi_config_t *conf = (rc522_spi_config_t *)(driver->config);
 
-    if (config->spi.bus_config) {
-        RC522_RETURN_ON_ERROR(spi_bus_free(config->spi.host_id));
+    if (conf->bus_config) {
+        RC522_RETURN_ON_ERROR(spi_bus_free(conf->host_id));
     }
 
     return ESP_OK;
 }
 
-esp_err_t rc522_spi_create(rc522_driver_config_t *config, rc522_driver_handle_t *driver)
+esp_err_t rc522_spi_create(rc522_spi_config_t *config, rc522_driver_handle_t *driver)
 {
-    RC522_RETURN_ON_ERROR(rc522_driver_create(config, sizeof(rc522_driver_config_t), driver));
+    RC522_RETURN_ON_ERROR(rc522_driver_create(config, sizeof(rc522_spi_config_t), driver));
 
     (*driver)->install = rc522_spi_install;
     (*driver)->send = rc522_spi_send;

@@ -1,35 +1,10 @@
 #pragma once
 
-#include <driver/spi_master.h>
-#include <driver/i2c.h> // TODO: Migrate to new i2c API
-
 #ifdef __cplusplus
 extern "C" {
 #endif
 
 typedef struct rc522_driver_handle *rc522_driver_handle_t;
-
-typedef struct
-{
-    union
-    {
-        struct
-        {
-            spi_host_device_t host_id;
-            spi_bus_config_t *bus_config;
-            spi_device_interface_config_t dev_config;
-            spi_dma_chan_t dma_chan;
-        } spi;
-
-        struct
-        {
-            i2c_config_t config;
-            i2c_port_t port;
-            uint8_t device_address;
-            uint32_t rw_timeout_ms;
-        } i2c;
-    };
-} rc522_driver_config_t;
 
 esp_err_t rc522_driver_install(rc522_driver_handle_t driver);
 
