@@ -1,6 +1,6 @@
 #include <esp_log.h>
 #include "rc522.h"
-#include "rc522_driver_i2c.h"
+#include "driver/rc522_i2c.h"
 #include "rc522_picc.h"
 
 static const char *TAG = "rc522-basic-i2c-example";
@@ -39,7 +39,7 @@ static void on_picc_selected(void *arg, esp_event_base_t base, int32_t event_id,
 
 void app_main()
 {
-    rc522_driver_i2c_create(&driver_config, &driver);
+    rc522_i2c_create(&driver_config, &driver);
     rc522_driver_install(driver);
 
     rc522_config_t config = {

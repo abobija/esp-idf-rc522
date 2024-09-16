@@ -1,11 +1,11 @@
 #include <string.h>
 #include "rc522_types_private.h"
 #include "rc522_driver_private.h"
-#include "rc522_driver_spi.h"
+#include "driver/rc522_spi.h"
 
 RC522_LOG_DEFINE_BASE();
 
-static esp_err_t rc522_driver_spi_install(rc522_driver_handle_t driver)
+static esp_err_t rc522_spi_install(rc522_driver_handle_t driver)
 {
     ESP_RETURN_ON_FALSE(driver != NULL, ESP_ERR_INVALID_ARG, TAG, "driver is null");
 
@@ -21,7 +21,7 @@ static esp_err_t rc522_driver_spi_install(rc522_driver_handle_t driver)
     return ESP_OK;
 }
 
-static esp_err_t rc522_driver_spi_send(rc522_driver_handle_t driver, uint8_t _address, uint8_t *buffer, uint8_t length)
+static esp_err_t rc522_spi_send(rc522_driver_handle_t driver, uint8_t _address, uint8_t *buffer, uint8_t length)
 {
     // ignore _address parameter since buffer[0] is address sent by library
 
@@ -42,8 +42,7 @@ static esp_err_t rc522_driver_spi_send(rc522_driver_handle_t driver, uint8_t _ad
     return ret;
 }
 
-static esp_err_t rc522_driver_spi_receive(
-    rc522_driver_handle_t driver, uint8_t address, uint8_t *buffer, uint8_t length)
+static esp_err_t rc522_spi_receive(rc522_driver_handle_t driver, uint8_t address, uint8_t *buffer, uint8_t length)
 {
     address <<= 1;
     address |= 0x80;
@@ -65,7 +64,7 @@ static esp_err_t rc522_driver_spi_receive(
     return ESP_OK;
 }
 
-static esp_err_t rc522_driver_spi_uninstall(rc522_driver_handle_t driver)
+static esp_err_t rc522_spi_uninstall(rc522_driver_handle_t driver)
 {
     ESP_RETURN_ON_FALSE(driver != NULL, ESP_ERR_INVALID_ARG, TAG, "driver is null");
 
@@ -79,19 +78,19 @@ static esp_err_t rc522_driver_spi_uninstall(rc522_driver_handle_t driver)
     return ESP_OK;
 }
 
-esp_err_t rc522_driver_spi_create(rc522_driver_config_t *config, rc522_driver_handle_t *driver)
+esp_err_t rc522_spi_create(rc522_driver_config_t *config, rc522_driver_handle_t *driver)
 {
     RC522_RETURN_ON_ERROR(rc522_driver_create(config, driver));
 
-    (*driver)->install = rc522_driver_spi_install;
-    (*driver)->send = rc522_driver_spi_send;
-    (*driver)->receive = rc522_driver_spi_receive;
-    (*driver)->uninstall = rc522_driver_spi_uninstall;
+    (*driver)->install = rc522_spi_install;
+    (*driver)->send = rc522_spi_send;
+    (*driver)->receive = rc522_spi_receive;
+    (*driver)->uninstall = rc522_spi_uninstall;
 
     return ESP_OK;
 }
 
-inline esp_err_t rc522_driver_spi_destroy(rc522_driver_handle_t driver)
+inline esp_err_t rc522_spi_destroy(rc522_driver_handle_t driver)
 {
     return rc522_driver_destroy(driver);
 }

@@ -2,8 +2,7 @@
 #include <esp_check.h>
 #include <string.h>
 #include "rc522.h"
-#include "rc522_driver_spi.h"
-#include "rc522_pcd.h"
+#include "driver/rc522_spi.h"
 #include "picc/rc522_mifare.h"
 
 static const char *TAG = "rc522-memory-dump-example";
@@ -118,7 +117,7 @@ static esp_err_t dump_memory(rc522_handle_t rc522, rc522_picc_t *picc, rc522_mif
 
     // Start from the highest sector
     for (int8_t sector = mifare.number_of_sectors - 1; sector >= 0; sector--) {
-        ret = rc522_mifare_iterate_sector_blocks(rc522, picc, sector, key, &dump_block);
+        ret = rc522_mifare_iterate_sector_blocks(rc522, picc, sector, key, dump_block);
 
         if (ret != ESP_OK) {
             ESP_LOGE(TAG, "sector iteration failed");
@@ -158,7 +157,7 @@ static void on_picc_selected(void *arg, esp_event_base_t base, int32_t event_id,
 
 void app_main()
 {
-    rc522_driver_spi_create(&driver_config, &driver);
+    rc522_spi_create(&driver_config, &driver);
     rc522_driver_install(driver);
 
     rc522_config_t config = {
