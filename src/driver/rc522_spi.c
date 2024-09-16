@@ -15,8 +15,9 @@ static esp_err_t rc522_spi_install(rc522_driver_handle_t driver)
             driver->config->spi.dma_chan));
     }
 
-    RC522_RETURN_ON_ERROR(
-        spi_bus_add_device(driver->config->spi.host_id, &driver->config->spi.dev_config, &driver->spi));
+    RC522_RETURN_ON_ERROR(spi_bus_add_device(driver->config->spi.host_id,
+        &driver->config->spi.dev_config,
+        (spi_device_handle_t *)(&driver->device)));
 
     return ESP_OK;
 }
@@ -31,7 +32,7 @@ static esp_err_t rc522_spi_send(rc522_driver_handle_t driver, uint8_t _address, 
     *address <<= 1;
     *address &= (~0x80);
 
-    esp_err_t ret = spi_device_polling_transmit(driver->spi,
+    esp_err_t ret = spi_device_polling_transmit((spi_device_handle_t)(driver->device),
         &(spi_transaction_t) {
             .length = 8 * length,
             .tx_buffer = buffer,
@@ -47,10 +48,10 @@ static esp_err_t rc522_spi_receive(rc522_driver_handle_t driver, uint8_t address
     address <<= 1;
     address |= 0x80;
 
-    RC522_RETURN_ON_ERROR(spi_device_acquire_bus(driver->spi, portMAX_DELAY));
+    RC522_RETURN_ON_ERROR(spi_device_acquire_bus((spi_device_handle_t)(driver->device), portMAX_DELAY));
 
     for (uint8_t i = 0; i < length; i++) {
-        RC522_RETURN_ON_ERROR(spi_device_polling_transmit(driver->spi,
+        RC522_RETURN_ON_ERROR(spi_device_polling_transmit((spi_device_handle_t)(driver->device),
             &(spi_transaction_t) {
                 .length = 8,
                 .tx_buffer = &address,
@@ -59,7 +60,7 @@ static esp_err_t rc522_spi_receive(rc522_driver_handle_t driver, uint8_t address
             }));
     }
 
-    spi_device_release_bus(driver->spi);
+    spi_device_release_bus((spi_device_handle_t)(driver->device));
 
     return ESP_OK;
 }
@@ -68,8 +69,8 @@ static esp_err_t rc522_spi_uninstall(rc522_driver_handle_t driver)
 {
     ESP_RETURN_ON_FALSE(driver != NULL, ESP_ERR_INVALID_ARG, TAG, "driver is null");
 
-    RC522_RETURN_ON_ERROR(spi_bus_remove_device(driver->spi));
-    driver->spi = NULL;
+    RC522_RETURN_ON_ERROR(spi_bus_remove_device((spi_device_handle_t)(driver->device)));
+    driver->device = NULL;
 
     if (driver->config->spi.bus_config) {
         RC522_RETURN_ON_ERROR(spi_bus_free(driver->config->spi.host_id));

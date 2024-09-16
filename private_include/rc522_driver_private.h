@@ -15,7 +15,7 @@ struct rc522_driver_handle
     rc522_driver_receive_handler_t receive;
     rc522_driver_uninstall_handler_t uninstall;
 
-    spi_device_handle_t spi;
+    void *device;
 };
 
 esp_err_t rc522_driver_create(rc522_driver_config_t *config, rc522_driver_handle_t *driver);

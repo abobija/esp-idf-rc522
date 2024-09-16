@@ -60,7 +60,7 @@ esp_err_t rc522_driver_destroy(rc522_driver_handle_t driver)
     driver->receive = NULL;
     driver->uninstall = NULL;
 
-    driver->spi = NULL;
+    driver->device = NULL;
 
     FREE(driver);
 
