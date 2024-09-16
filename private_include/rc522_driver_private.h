@@ -10,12 +10,11 @@ typedef esp_err_t (*rc522_driver_uninstall_handler_t)(rc522_driver_handle_t driv
 struct rc522_driver_handle
 {
     void *config;
+    void *device;
     rc522_driver_install_handler_t install;
     rc522_driver_send_handler_t send;
     rc522_driver_receive_handler_t receive;
     rc522_driver_uninstall_handler_t uninstall;
-
-    void *device;
 };
 
 esp_err_t rc522_driver_create(void *config, size_t config_size, rc522_driver_handle_t *driver);
