@@ -89,7 +89,7 @@ esp_err_t rc522_mifare_auth(rc522_handle_t rc522, rc522_picc_t *picc, rc522_mifa
     send_data[1] = block_addr;
     memcpy(send_data + 2, key->value, RC522_MIFARE_KEY_SIZE);
 
-    // Use the last uid bytes as specified in http://cache.nxp.com/documents/application_note/AN10927.pdf
+    // Use the last uid bytes
     // section 3.2.5 "MIFARE Classic Authentication".
     // The only missed case is the MF1Sxxxx shortcut activation,
     // but it requires cascade tag (CT) byte, that is not part of uid.
