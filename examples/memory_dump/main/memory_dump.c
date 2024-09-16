@@ -134,7 +134,7 @@ static void on_picc_selected(void *arg, esp_event_base_t base, int32_t event_id,
     ESP_LOG_BUFFER_HEX(TAG, picc->uid.value, picc->uid.length);
 
     if (rc522_mifare_type_is_classic_compatible(picc->type)) {
-        if (rc522_mifare_handle_as_transaction(rc522, picc, dump_memory) != ESP_OK) {
+        if (rc522_mifare_handle_as_transaction(dump_memory, rc522, picc) != ESP_OK) {
             ESP_LOGE(TAG, "memory dump failed");
         }
 

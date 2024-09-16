@@ -131,7 +131,7 @@ static void on_picc_selected(void *arg, esp_event_base_t base, int32_t event_id,
     ESP_LOGI(TAG, "PICC (type=%s, uid=%s, sak=%02x)", rc522_picc_type_name(picc->type), uid_str, picc->sak);
 
     if (rc522_mifare_type_is_classic_compatible(picc->type)) {
-        if (rc522_mifare_handle_as_transaction(rc522, picc, read_write) != ESP_OK) {
+        if (rc522_mifare_handle_as_transaction(read_write, rc522, picc) != ESP_OK) {
             ESP_LOGE(TAG, "read write failed");
         }
 

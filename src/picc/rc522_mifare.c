@@ -375,7 +375,7 @@ esp_err_t rc522_mifare_transactions_end(rc522_handle_t rc522, rc522_picc_t *picc
  * Ensures that communication with PICC is ended correctly by calling rc522_mifare_transactions_end
  */
 esp_err_t rc522_mifare_handle_as_transaction(
-    rc522_handle_t rc522, rc522_picc_t *picc, rc522_mifare_transaction_handler transaction_handler)
+    rc522_mifare_transaction_handler transaction_handler, rc522_handle_t rc522, rc522_picc_t *picc)
 {
     RC522_CHECK(rc522 == NULL);
     RC522_CHECK(picc == NULL);

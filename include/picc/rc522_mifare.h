@@ -101,7 +101,7 @@ esp_err_t rc522_mifare_parse_value_block(uint8_t *bytes, rc522_mifare_value_bloc
 esp_err_t rc522_mifare_transactions_end(rc522_handle_t rc522, rc522_picc_t *picc);
 
 esp_err_t rc522_mifare_handle_as_transaction(
-    rc522_handle_t rc522, rc522_picc_t *picc, rc522_mifare_transaction_handler transaction_handler);
+    rc522_mifare_transaction_handler transaction_handler, rc522_handle_t rc522, rc522_picc_t *picc);
 
 esp_err_t rc522_mifare_iterate_sector_blocks(rc522_handle_t rc522, rc522_picc_t *picc, uint8_t sector_index,
     rc522_mifare_key_t *key, rc522_mifare_sector_block_iterator iterator);
