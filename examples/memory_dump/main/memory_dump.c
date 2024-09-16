@@ -104,28 +104,25 @@ static esp_err_t dump_block(rc522_mifare_sector_block_t *block)
     return ESP_OK;
 }
 
-static esp_err_t dump_memory(rc522_handle_t rc522, rc522_picc_t *picc, rc522_mifare_key_t *key)
+static esp_err_t dump_memory(rc522_handle_t rc522, rc522_picc_t *picc)
 {
+    rc522_mifare_key_t key = {
+        .value = RC522_MIFARE_DEFAULT_KEY_VALUE,
+    };
+
     rc522_mifare_t mifare;
     ESP_RETURN_ON_ERROR(rc522_mifare_info(picc, &mifare), TAG, "");
 
     rc522_mifare_dump_header();
 
-    esp_err_t ret = ESP_OK;
-
     // Start from the highest sector
     for (int8_t sector = mifare.number_of_sectors - 1; sector >= 0; sector--) {
-        ret = rc522_mifare_iterate_sector_blocks(rc522, picc, sector, key, dump_block);
-
-        if (ret != ESP_OK) {
-            ESP_LOGE(TAG, "sector iteration failed");
-            break;
-        }
+        ESP_RETURN_ON_ERROR(rc522_mifare_iterate_sector_blocks(rc522, picc, sector, &key, dump_block),
+            TAG,
+            "sector iteration failed");
     }
 
-    ESP_RETURN_ON_ERROR(rc522_mifare_transactions_end(rc522, picc), TAG, "");
-
-    return ret;
+    return ESP_OK;
 }
 
 static void on_picc_selected(void *arg, esp_event_base_t base, int32_t event_id, void *data)
@@ -137,12 +134,7 @@ static void on_picc_selected(void *arg, esp_event_base_t base, int32_t event_id,
     ESP_LOG_BUFFER_HEX(TAG, picc->uid.value, picc->uid.length);
 
     if (rc522_mifare_type_is_classic_compatible(picc->type)) {
-        if (dump_memory(rc522,
-                picc,
-                &(rc522_mifare_key_t) {
-                    .value = RC522_MIFARE_DEFAULT_KEY_VALUE,
-                })
-            != ESP_OK) {
+        if (rc522_mifare_handle_as_transaction(rc522, picc, dump_memory) != ESP_OK) {
             ESP_LOGE(TAG, "memory dump failed");
         }
 
