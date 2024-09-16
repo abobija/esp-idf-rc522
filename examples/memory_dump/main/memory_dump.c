@@ -149,7 +149,7 @@ static void on_picc_selected(void *arg, esp_event_base_t base, int32_t event_id,
         return;
     }
 
-    ESP_LOGW(TAG, "Memory dump not implemented for PICC of type %02x", picc->type);
+    ESP_LOGW(TAG, "PICC of type %02x not supported by this example", picc->type);
 
     return;
 }
