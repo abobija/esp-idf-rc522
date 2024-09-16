@@ -121,14 +121,14 @@ static esp_err_t read_write(rc522_handle_t rc522, rc522_picc_t *picc)
     return ESP_OK;
 }
 
-static void on_picc_selected(void *arg, esp_event_base_t base, int32_t event_id, void *data)
+static void on_picc_active(void *arg, esp_event_base_t base, int32_t event_id, void *data)
 {
     rc522_picc_t *picc = (rc522_picc_t *)data;
 
     char uid_str[RC522_PICC_UID_STR_BUFFER_SIZE];
     rc522_picc_uid_to_str(&picc->uid, uid_str);
 
-    ESP_LOGI(TAG, "PICC (type=%s, uid=%s, sak=%02x)", rc522_picc_type_name(picc->type), uid_str, picc->sak);
+    ESP_LOGI(TAG, "PICC (type=%s, uid=%s, sak=%02x) detected", rc522_picc_type_name(picc->type), uid_str, picc->sak);
 
     if (rc522_mifare_type_is_classic_compatible(picc->type)) {
         if (rc522_mifare_handle_as_transaction(read_write, rc522, picc) != ESP_OK) {
@@ -155,6 +155,6 @@ void app_main()
     };
 
     rc522_create(&config, &rc522);
-    rc522_register_events(rc522, RC522_EVENT_PICC_SELECTED, on_picc_selected, NULL);
+    rc522_register_events(rc522, RC522_EVENT_PICC_ACTIVE, on_picc_active, NULL);
     rc522_start(rc522);
 }

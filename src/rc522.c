@@ -204,7 +204,7 @@ void rc522_task(void *arg)
         rc522_picc_find(rc522, &picc);
 
         if (picc.is_present && rc522_picc_fetch(rc522, &picc) == ESP_OK) {
-            rc522_dispatch_event(rc522, RC522_EVENT_PICC_SELECTED, &picc, sizeof(picc));
+            rc522_dispatch_event(rc522, RC522_EVENT_PICC_ACTIVE, &picc, sizeof(picc));
         }
 
         rc522_delay_ms(rc522->config->scan_interval_ms);

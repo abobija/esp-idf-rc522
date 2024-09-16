@@ -31,7 +31,12 @@ typedef enum
 {
     RC522_EVENT_ANY = ESP_EVENT_ANY_ID,
     RC522_EVENT_NONE,
-    RC522_EVENT_PICC_SELECTED, /*<! PICC is detected in the field of the PCD (UID is available) */
+
+    /**
+     * Card is detected. UID is available.
+     * PICC is in the field of the PCD and its listens to any higher level message.
+     */
+    RC522_EVENT_PICC_ACTIVE,
 } rc522_event_t;
 
 #ifdef __cplusplus
