@@ -213,7 +213,7 @@ esp_err_t rc522_mifare_write(
 
 static esp_err_t rc522_mifare_number_of_sectors(rc522_picc_type_t type, uint8_t *result)
 {
-    ESP_RETURN_ON_FALSE(rc522_mifare_type_is_classic_compatible(type), ESP_ERR_INVALID_ARG, TAG, "invalid type");
+    RC522_CHECK(rc522_mifare_type_is_classic_compatible(type) == false);
 
     switch (type) {
         case RC522_PICC_TYPE_MIFARE_MINI:

@@ -6,28 +6,41 @@ RC522_LOG_DEFINE_BASE();
 
 inline esp_err_t rc522_driver_install(rc522_driver_handle_t driver)
 {
+    RC522_CHECK(driver == NULL);
+
     return driver->install(driver);
 }
 
 inline esp_err_t rc522_driver_send(rc522_driver_handle_t driver, uint8_t address, uint8_t *buffer, uint8_t length)
 {
+    RC522_CHECK(driver == NULL);
+    RC522_CHECK(buffer == NULL);
+    RC522_CHECK(length < 1);
+
     return driver->send(driver, address, buffer, length);
 }
 
 inline esp_err_t rc522_driver_receive(rc522_driver_handle_t driver, uint8_t address, uint8_t *buffer, uint8_t length)
 {
+    RC522_CHECK(driver == NULL);
+    RC522_CHECK(buffer == NULL);
+    RC522_CHECK(length < 1);
+
     return driver->receive(driver, address, buffer, length);
 }
 
 inline esp_err_t rc522_driver_uninstall(rc522_driver_handle_t driver)
 {
+    RC522_CHECK(driver == NULL);
+
     return driver->uninstall(driver);
 }
 
 esp_err_t rc522_driver_create(void *config, size_t config_size, rc522_driver_handle_t *driver)
 {
-    ESP_RETURN_ON_FALSE(config != NULL, ESP_ERR_INVALID_ARG, TAG, "config is null");
-    ESP_RETURN_ON_FALSE(driver != NULL, ESP_ERR_INVALID_ARG, TAG, "driver is null");
+    RC522_CHECK(config == NULL);
+    RC522_CHECK(config_size == 0);
+    RC522_CHECK(driver == NULL);
 
     esp_err_t ret = ESP_OK;
 
@@ -51,7 +64,7 @@ exit:
 
 esp_err_t rc522_driver_destroy(rc522_driver_handle_t driver)
 {
-    ESP_RETURN_ON_FALSE(driver != NULL, ESP_ERR_INVALID_ARG, TAG, "driver is null");
+    RC522_CHECK(driver == NULL);
 
     if (driver->config) {
         free(driver->config);

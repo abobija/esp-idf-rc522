@@ -9,10 +9,16 @@
 
 RC522_LOG_DEFINE_BASE();
 
+// TODO: Refactor this mess, use structs
 esp_err_t rc522_picc_comm(rc522_handle_t rc522, rc522_pcd_command_t command, uint8_t wait_irq, uint8_t *send_data,
     uint8_t send_data_len, uint8_t *back_data, uint8_t *back_data_len, uint8_t *valid_bits, uint8_t rx_align,
     bool check_crc)
 {
+    RC522_CHECK(rc522 == NULL);
+    RC522_CHECK(wait_irq == 0x00);
+    RC522_CHECK(send_data == NULL);
+    RC522_CHECK(send_data_len < 1);
+
     if (RC522_LOG_LEVEL >= ESP_LOG_DEBUG) {
         RC522_LOGD("transceive (rx_align=0x%02x, check_crc=%d)", rx_align, check_crc);
         char debug_buffer[64];
@@ -155,8 +161,8 @@ esp_err_t rc522_picc_comm(rc522_handle_t rc522, rc522_pcd_command_t command, uin
     return ESP_OK;
 }
 
-esp_err_t rc522_picc_transceive(rc522_handle_t rc522, uint8_t *send_data, uint8_t send_data_len, uint8_t *back_data,
-    uint8_t *back_data_len, uint8_t *valid_bits, uint8_t rx_align, bool check_crc)
+inline esp_err_t rc522_picc_transceive(rc522_handle_t rc522, uint8_t *send_data, uint8_t send_data_len,
+    uint8_t *back_data, uint8_t *back_data_len, uint8_t *valid_bits, uint8_t rx_align, bool check_crc)
 {
     uint8_t wait_irq = 0x30; // RxIRq and IdleIRq
 
@@ -208,7 +214,8 @@ inline static esp_err_t rc522_picc_reqa(rc522_handle_t rc522, uint8_t *atqa_buff
  */
 esp_err_t rc522_picc_find(rc522_handle_t rc522, rc522_picc_t *picc)
 {
-    ESP_RETURN_ON_FALSE(picc != NULL, ESP_ERR_INVALID_ARG, TAG, "picc is null");
+    RC522_CHECK(rc522 == NULL);
+    RC522_CHECK(picc == NULL);
 
     uint8_t atqa_buffer[2];
     uint8_t atqa_buffer_size = sizeof(atqa_buffer);
@@ -542,7 +549,7 @@ char *rc522_picc_type_name(rc522_picc_type_t type)
     }
 }
 
-esp_err_t rc522_picc_uid_to_str(rc522_picc_uid_t *uid, char *buffer)
+esp_err_t rc522_picc_uid_to_str(rc522_picc_uid_t *uid, char buffer[RC522_PICC_UID_STR_BUFFER_SIZE])
 {
     RC522_CHECK(uid == NULL);
     RC522_CHECK(buffer == NULL);
@@ -565,7 +572,8 @@ esp_err_t rc522_picc_uid_to_str(rc522_picc_uid_t *uid, char *buffer)
  */
 esp_err_t rc522_picc_activate(rc522_handle_t rc522, rc522_picc_t *picc)
 {
-    ESP_RETURN_ON_FALSE(picc != NULL, ESP_ERR_INVALID_ARG, TAG, "picc is null");
+    RC522_CHECK(rc522 == NULL);
+    RC522_CHECK(picc == NULL);
 
     RC522_RETURN_ON_ERROR(rc522_picc_select(rc522, picc, 0));
 
@@ -577,6 +585,9 @@ esp_err_t rc522_picc_activate(rc522_handle_t rc522, rc522_picc_t *picc)
 
 esp_err_t rc522_picc_halta(rc522_handle_t rc522, rc522_picc_t *picc)
 {
+    RC522_CHECK(rc522 == NULL);
+    RC522_CHECK(picc == NULL);
+
     uint8_t buffer[4];
 
     // Build command buffer

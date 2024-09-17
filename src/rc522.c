@@ -55,20 +55,24 @@ static esp_err_t rc522_clone_config(rc522_config_t *config, rc522_config_t **res
 esp_err_t rc522_register_events(
     rc522_handle_t rc522, rc522_event_t event, esp_event_handler_t event_handler, void *event_handler_arg)
 {
-    ESP_RETURN_ON_FALSE(rc522 != NULL, ESP_ERR_INVALID_ARG, TAG, "rc522 is null");
+    RC522_CHECK(rc522 == NULL);
+    RC522_CHECK(event_handler == NULL);
 
     return esp_event_handler_register_with(rc522->event_handle, RC522_EVENTS, event, event_handler, event_handler_arg);
 }
 
 esp_err_t rc522_unregister_events(rc522_handle_t rc522, rc522_event_t event, esp_event_handler_t event_handler)
 {
-    ESP_RETURN_ON_FALSE(rc522 != NULL, ESP_ERR_INVALID_ARG, TAG, "rc522 is null");
+    RC522_CHECK(rc522 == NULL);
+    RC522_CHECK(event_handler == NULL);
 
     return esp_event_handler_unregister_with(rc522->event_handle, RC522_EVENTS, event, event_handler);
 }
 
 esp_err_t rc522_start(rc522_handle_t rc522)
 {
+    RC522_CHECK(rc522 == NULL);
+
     ESP_RETURN_ON_FALSE(rc522 != NULL, ESP_ERR_INVALID_ARG, TAG, "rc522 is null");
     ESP_RETURN_ON_FALSE(rc522_is_able_to_start(rc522),
         ESP_ERR_INVALID_STATE,
@@ -105,7 +109,7 @@ esp_err_t rc522_start(rc522_handle_t rc522)
 
 esp_err_t rc522_pause(rc522_handle_t rc522)
 {
-    ESP_RETURN_ON_FALSE(rc522 != NULL, ESP_ERR_INVALID_ARG, TAG, "rc522 is null");
+    RC522_CHECK(rc522 == NULL);
 
     ESP_RETURN_ON_FALSE(rc522->state == RC522_STATE_SCANNING,
         ESP_ERR_INVALID_STATE,
@@ -128,8 +132,8 @@ inline static void rc522_request_task_exit(rc522_handle_t rc522)
 
 esp_err_t rc522_create(rc522_config_t *config, rc522_handle_t *out_rc522)
 {
-    ESP_RETURN_ON_FALSE(config != NULL, ESP_ERR_INVALID_ARG, TAG, "config is null");
-    ESP_RETURN_ON_FALSE(out_rc522 != NULL, ESP_ERR_INVALID_ARG, TAG, "out_rc522 is null");
+    RC522_CHECK(config == NULL);
+    RC522_CHECK(out_rc522 == NULL);
 
     rc522_handle_t rc522 = calloc(1, sizeof(struct rc522));
     ESP_RETURN_ON_FALSE(rc522 != NULL, ESP_ERR_NO_MEM, TAG, "nomem");
@@ -174,7 +178,8 @@ _return:
 
 esp_err_t rc522_destroy(rc522_handle_t rc522)
 {
-    ESP_RETURN_ON_FALSE(rc522 != NULL, ESP_ERR_INVALID_ARG, TAG, "rc522 is null");
+    RC522_CHECK(rc522 == NULL);
+
     ESP_RETURN_ON_FALSE(xTaskGetCurrentTaskHandle() != rc522->task_handle,
         ESP_ERR_INVALID_STATE,
         TAG,

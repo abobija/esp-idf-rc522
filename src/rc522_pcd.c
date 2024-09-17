@@ -19,6 +19,11 @@ RC522_LOG_DEFINE_BASE();
  */
 esp_err_t rc522_pcd_calculate_crc(rc522_handle_t rc522, uint8_t *data, uint8_t n, uint8_t *buffer)
 {
+    RC522_CHECK(rc522 == NULL);
+    RC522_CHECK(data == NULL);
+    RC522_CHECK(n < 1);
+    RC522_CHECK(buffer == NULL);
+
     RC522_RETURN_ON_ERROR(rc522_pcd_stop_active_command(rc522));
     RC522_RETURN_ON_ERROR(rc522_pcd_clear_bits(rc522, RC522_PCD_DIV_INT_REQ_REG, RC522_PCD_CRC_IRQ_BIT));
     RC522_RETURN_ON_ERROR(rc522_pcd_fifo_flush(rc522));
@@ -123,6 +128,8 @@ static esp_err_t rc522_pcd_set_timer_reload_value(rc522_handle_t rc522, uint16_t
 
 esp_err_t rc522_pcd_init(rc522_handle_t rc522)
 {
+    RC522_CHECK(rc522 == NULL);
+
     // TODO: Implement hard reset via RST pin
     //       and ability to choose between hard and soft reset
 
@@ -162,12 +169,14 @@ esp_err_t rc522_pcd_init(rc522_handle_t rc522)
 
 esp_err_t rc522_pcd_firmware(rc522_handle_t rc522, rc522_pcd_firmware_t *fw)
 {
-    ESP_RETURN_ON_FALSE(fw != NULL, ESP_ERR_INVALID_ARG, TAG, "fw is null");
+    RC522_CHECK(rc522 == NULL);
+    RC522_CHECK(fw == NULL);
 
     uint8_t value;
     RC522_RETURN_ON_ERROR(rc522_pcd_read(rc522, RC522_PCD_VERSION_REG, &value));
 
     *fw = (rc522_pcd_firmware_t)value;
+
     return ESP_OK;
 }
 
@@ -226,6 +235,8 @@ inline esp_err_t rc522_pcd_stop_crypto1(rc522_handle_t rc522)
 
 esp_err_t rc522_pcd_rw_test(rc522_handle_t rc522)
 {
+    RC522_CHECK(rc522 == NULL);
+
     uint8_t tmp;
 
     ESP_RETURN_ON_ERROR(rc522_pcd_read(rc522, RC522_PCD_FIFO_LEVEL_REG, &tmp), TAG, "Cannot read FIFO length");
@@ -319,6 +330,9 @@ inline esp_err_t rc522_pcd_clear_bits(rc522_handle_t rc522, rc522_pcd_register_t
 
 esp_err_t rc522_pcd_write_map(rc522_handle_t rc522, const uint8_t map[][2], uint8_t map_length)
 {
+    RC522_CHECK(rc522 == NULL);
+    RC522_CHECK(map_length < 1);
+
     for (uint8_t i = 0; i < map_length; i++) {
         const rc522_pcd_register_t address = (rc522_pcd_register_t)map[i][0];
         const uint8_t value = map[i][1];

@@ -41,7 +41,7 @@ typedef struct
 
 char *rc522_picc_type_name(rc522_picc_type_t type);
 
-esp_err_t rc522_picc_uid_to_str(rc522_picc_uid_t *uid, char *buffer);
+esp_err_t rc522_picc_uid_to_str(rc522_picc_uid_t *uid, char buffer[RC522_PICC_UID_STR_BUFFER_SIZE]);
 
 #ifdef __cplusplus
 }
