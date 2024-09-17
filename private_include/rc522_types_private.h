@@ -65,12 +65,6 @@ struct rc522
     rc522_picc_t activated_picc;
 };
 
-#define FREE(ptr)                                                                                                      \
-    if ((ptr) != NULL) {                                                                                               \
-        free(ptr);                                                                                                     \
-        (ptr) = NULL;                                                                                                  \
-    }
-
 #ifdef __cplusplus
 }
 #endif

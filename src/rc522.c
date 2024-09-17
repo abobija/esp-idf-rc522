@@ -182,8 +182,12 @@ esp_err_t rc522_destroy(rc522_handle_t rc522)
         rc522->event_handle = NULL;
     }
 
-    FREE(rc522->config);
-    FREE(rc522);
+    if (rc522->config) {
+        free(rc522->config);
+        rc522->config = NULL;
+    }
+
+    free(rc522);
 
     return err;
 }

@@ -53,7 +53,10 @@ esp_err_t rc522_driver_destroy(rc522_driver_handle_t driver)
 {
     ESP_RETURN_ON_FALSE(driver != NULL, ESP_ERR_INVALID_ARG, TAG, "driver is null");
 
-    FREE(driver->config);
+    if (driver->config) {
+        free(driver->config);
+        driver->config = NULL;
+    }
 
     driver->install = NULL;
     driver->send = NULL;
@@ -62,7 +65,7 @@ esp_err_t rc522_driver_destroy(rc522_driver_handle_t driver)
 
     driver->device = NULL;
 
-    FREE(driver);
+    free(driver);
 
     return ESP_OK;
 }
