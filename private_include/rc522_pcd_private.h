@@ -8,7 +8,7 @@ extern "C" {
 
 #define RC522_PCD_MOD_WIDTH_RESET_VALUE (0x26)
 #define RC522_PCD_TX_MODE_RESET_VALUE   (0x00)
-#define RC522_PCD_RX_MODE_RESET_VALUE   (RC522_RX_NO_ERR)
+#define RC522_PCD_RX_MODE_RESET_VALUE   (RC522_RX_NO_ERR_BIT)
 
 typedef enum
 {
@@ -17,14 +17,14 @@ typedef enum
 
     // Communication Interrupt Enable Register.
     // Control bits to enable and disable the passing of interrupt requests
-    RC522_PCD_COMM_INT_EN_REG = 0x02,
+    RC522_PCD_COM_INT_EN_REG = 0x02,
 
     // Diverted Interrupt Enable Register.
     // Control bits to enable and disable the passing of interrupt requests
     RC522_PCD_DIV_INT_EN_REG = 0x03,
 
     // Communication Interrupt request bits
-    RC522_PCD_COMM_INT_REQ_REG = 0x04,
+    RC522_PCD_COM_INT_REQ_REG = 0x04,
 
     // Diverted Interrupt request bits
     RC522_PCD_DIV_INT_REQ_REG = 0x05,
@@ -92,6 +92,18 @@ typedef enum
     // Defines the data rate during reception
     RC522_PCD_RX_MODE_REG = 0x13,
 } rc522_pcd_register_t;
+
+/**
+ * Bits of RC522_PCD_COM_INT_REQ_REG register
+ */
+typedef enum
+{
+    /**
+     * 1 - indicates that the marked bits in the ComIrqReg register are set
+     * 0 - indicates that the marked bits in the ComIrqReg register are cleared
+     */
+    RC522_PCD_SET_1_BIT = BIT7,
+} rc522_comm_int_req_reg_bit_t;
 
 /**
  * Bits of RC522_PCD_COMMAND_REG register
@@ -250,7 +262,7 @@ typedef enum
 } rc522_pcd_crc_preset_value_t;
 
 /**
- * Bits of RC522_PCD_COMM_INT_REQ_REG
+ * Bits of RC522_PCD_COM_INT_REQ_REG
  */
 typedef enum
 {
@@ -318,7 +330,7 @@ typedef enum
      * An invalid received data stream (less than 4 bits received) will
      * be ignored and the receiver remains active
      */
-    RC522_RX_NO_ERR = BIT3,
+    RC522_RX_NO_ERR_BIT = BIT3,
 } rc522_pcd_rx_mode_reg_bit_t;
 
 typedef enum
@@ -342,6 +354,8 @@ esp_err_t rc522_pcd_firmware(rc522_handle_t rc522, rc522_pcd_firmware_t *result)
 char *rc522_pcd_firmware_name(rc522_pcd_firmware_t firmware);
 
 esp_err_t rc522_pcd_stop_active_command(rc522_handle_t rc522);
+
+esp_err_t rc522_pcd_clear_all_com_interrupts(rc522_handle_t rc522);
 
 esp_err_t rc522_pcd_fifo_write(rc522_handle_t rc522, uint8_t *data, uint8_t data_length);
 

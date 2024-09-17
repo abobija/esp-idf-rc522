@@ -31,8 +31,7 @@ esp_err_t rc522_picc_comm(rc522_handle_t rc522, rc522_pcd_command_t command, uin
     uint8_t bit_framing = (rx_align << 4) + tx_last_bits;
 
     RC522_RETURN_ON_ERROR(rc522_pcd_stop_active_command(rc522));
-    RC522_RETURN_ON_ERROR(
-        rc522_pcd_write(rc522, RC522_PCD_COMM_INT_REQ_REG, 0x7F)); // Clear all seven interrupt request bits
+    RC522_RETURN_ON_ERROR(rc522_pcd_clear_all_com_interrupts(rc522));
     RC522_RETURN_ON_ERROR(rc522_pcd_fifo_flush(rc522));
     RC522_RETURN_ON_ERROR(rc522_pcd_fifo_write(rc522, send_data, send_data_len));
     RC522_RETURN_ON_ERROR(rc522_pcd_write(rc522, RC522_PCD_BIT_FRAMING_REG, bit_framing)); // Bit adjustments
@@ -55,7 +54,7 @@ esp_err_t rc522_picc_comm(rc522_handle_t rc522, rc522_pcd_command_t command, uin
     uint8_t irq;
 
     do {
-        RC522_RETURN_ON_ERROR(rc522_pcd_read(rc522, RC522_PCD_COMM_INT_REQ_REG, &irq));
+        RC522_RETURN_ON_ERROR(rc522_pcd_read(rc522, RC522_PCD_COM_INT_REQ_REG, &irq));
 
         if (irq & wait_irq) { // One of the interrupts that signal success has been set.
             completed = true;

@@ -203,6 +203,11 @@ inline esp_err_t rc522_pcd_stop_active_command(rc522_handle_t rc522)
     return rc522_pcd_write(rc522, RC522_PCD_COMMAND_REG, RC522_PCD_IDLE_CMD);
 }
 
+inline esp_err_t rc522_pcd_clear_all_com_interrupts(rc522_handle_t rc522)
+{
+    return rc522_pcd_write(rc522, RC522_PCD_COM_INT_REQ_REG, (uint8_t)(~RC522_PCD_SET_1_BIT));
+}
+
 inline esp_err_t rc522_pcd_fifo_write(rc522_handle_t rc522, uint8_t *data, uint8_t data_length)
 {
     return rc522_pcd_write_n(rc522, RC522_PCD_FIFO_DATA_REG, data_length, data);
