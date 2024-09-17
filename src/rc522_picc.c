@@ -223,6 +223,9 @@ esp_err_t rc522_picc_find(rc522_handle_t rc522, rc522_picc_t *picc)
 
     picc->is_present = (ret == ESP_OK || ret == ESP_ERR_RC522_COLLISION);
 
+    // TODO: Assign ATQA to picc, but first check if picc_reqa returns
+    //       correct ATQA
+
     return ret;
 }
 
