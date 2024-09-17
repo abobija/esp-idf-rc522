@@ -79,7 +79,7 @@ esp_err_t rc522_picc_comm(rc522_handle_t rc522, rc522_pcd_command_t command, uin
     uint8_t error_reg_value;
     RC522_RETURN_ON_ERROR(rc522_pcd_read(rc522, RC522_PCD_ERROR_REG, &error_reg_value));
 
-    if (error_reg_value & 0x13) { // BufferOvfl ParityErr ProtocolErr
+    if (error_reg_value & (RC522_PCD_BUFFER_OVFL_BIT | RC522_PCD_PARITY_ERR_BIT | RC522_PCD_PROTOCOL_ERR_BIT)) {
         return ESP_FAIL;
     }
 
@@ -124,8 +124,7 @@ esp_err_t rc522_picc_comm(rc522_handle_t rc522, rc522_pcd_command_t command, uin
         }
     }
 
-    // Tell about collisions
-    if (error_reg_value & 0x08) { // CollErr
+    if (error_reg_value & RC522_PCD_COLL_ERR_BIT) {
         return ESP_ERR_RC522_COLLISION;
     }
 
@@ -169,11 +168,9 @@ esp_err_t rc522_picc_comm(rc522_handle_t rc522, rc522_pcd_command_t command, uin
 inline esp_err_t rc522_picc_transceive(rc522_handle_t rc522, uint8_t *send_data, uint8_t send_data_len,
     uint8_t *back_data, uint8_t *back_data_len, uint8_t *valid_bits, uint8_t rx_align, bool check_crc)
 {
-    uint8_t wait_irq = 0x30; // RxIRq and IdleIRq
-
     return rc522_picc_comm(rc522,
         RC522_PCD_TRANSCEIVE_CMD,
-        wait_irq,
+        RC522_PCD_RX_IRQ_BIT | RC522_PCD_IDLE_IRQ_BIT,
         send_data,
         send_data_len,
         back_data,
@@ -192,8 +189,7 @@ static esp_err_t rc522_picc_reqa_or_wupa(
         return ESP_ERR_NO_MEM;
     }
 
-    // ValuesAfterColl=1 => Bits received after collision are cleared.
-    RC522_RETURN_ON_ERROR(rc522_pcd_clear_bits(rc522, RC522_PCD_COLL_REG, 0x80));
+    RC522_RETURN_ON_ERROR(rc522_pcd_clear_bits(rc522, RC522_PCD_COLL_REG, RC522_PCD_VALUES_AFTER_COLL_BIT));
 
     // For REQA and WUPA we need the short frame format - transmit only 7 bits of the last (and only)
     // byte. TxLastBits = BitFramingReg[2..0]
@@ -287,8 +283,7 @@ static esp_err_t rc522_picc_select(rc522_handle_t rc522, rc522_picc_t *picc, uin
     //						3			uid6	uid7	uid8	uid9
 
     // Prepare MFRC522
-    // ValuesAfterColl=1 => Bits received after collision are cleared.
-    RC522_RETURN_ON_ERROR(rc522_pcd_clear_bits(rc522, RC522_PCD_COLL_REG, 0x80));
+    RC522_RETURN_ON_ERROR(rc522_pcd_clear_bits(rc522, RC522_PCD_COLL_REG, RC522_PCD_VALUES_AFTER_COLL_BIT));
 
     // Repeat Cascade Level loop until we have a complete UID.
     uid_complete = false;
@@ -415,7 +410,7 @@ static esp_err_t rc522_picc_select(rc522_handle_t rc522, rc522_picc_t *picc, uin
                 uint8_t value_of_coll_reg;
                 rc522_pcd_read(rc522, RC522_PCD_COLL_REG, &value_of_coll_reg);
 
-                if (value_of_coll_reg & 0x20) { // CollPosNotValid
+                if (value_of_coll_reg & RC522_PCD_COLL_POS_NOT_VALID_BIT) {
                     // Without a valid collision position we cannot continue
                     return ESP_ERR_RC522_COLLISION;
                 }

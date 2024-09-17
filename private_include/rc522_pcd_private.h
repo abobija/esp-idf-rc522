@@ -8,7 +8,7 @@ extern "C" {
 
 #define RC522_PCD_MOD_WIDTH_RESET_VALUE (0x26)
 #define RC522_PCD_TX_MODE_RESET_VALUE   (0x00)
-#define RC522_PCD_RX_MODE_RESET_VALUE   (RC522_RX_NO_ERR_BIT)
+#define RC522_PCD_RX_MODE_RESET_VALUE   (RC522_PCD_RX_NO_ERR_BIT)
 
 typedef enum
 {
@@ -93,48 +93,151 @@ typedef enum
     RC522_PCD_RX_MODE_REG = 0x13,
 } rc522_pcd_register_t;
 
-/**
- * Bits of RC522_PCD_COM_INT_REQ_REG register
- */
-typedef enum
+enum // RC522_PCD_COLL_REG
+{
+    /**
+     * all received bits will be cleared after a collision
+     * only used during bitwise anticollision at 106 kBd,
+     * otherwise it is set to logic 1
+     */
+    RC522_PCD_VALUES_AFTER_COLL_BIT = BIT7,
+
+    /**
+     * no collision detected or the position of the collision is
+     * out of the range of CollPos[4:0]
+     */
+    RC522_PCD_COLL_POS_NOT_VALID_BIT = BIT5,
+};
+
+enum // RC522_PCD_ERROR_REG
+{
+    /**
+     *  data is written into the FIFO buffer by the host during the MFAuthent
+     * command or if data is written into the FIFO buffer by the host during the
+     * time between sending the last bit on the RF interface and receiving the
+     * last bit on the RF interface
+     */
+    RC522_PCD_WR_ERR_BIT = BIT6,
+
+    /**
+     * internal temperature sensor detects overheating, in which case the
+     * antenna drivers are automatically switched off
+     */
+    RC522_PCD_TEMP_ERR_BIT = BIT5,
+
+    /**
+     * the host or a MFRC522’s internal state machine (e.g. receiver) tries to
+     * write data to the FIFO buffer even though it is already full
+     */
+    RC522_PCD_BUFFER_OVFL_BIT = BIT4,
+
+    /**
+     * a bit-collision is detected
+     * cleared automatically at receiver start-up phase
+     * only valid during the bitwise anticollision at 106 kBd
+     * always set to logic 0 during communication protocols at 212 kBd,
+     * 424 kBd and 848 kBd
+     */
+    RC522_PCD_COLL_ERR_BIT = BIT3,
+
+    /**
+     * the RxModeReg register’s RxCRCEn bit is set and the CRC calculation fails
+     * automatically cleared to logic 0 during receiver start-up phase
+     */
+    RC522_PCD_CRC_ERR_BIT = BIT2,
+
+    /**
+     * parity check failed
+     * automatically cleared during receiver start-up phase
+     * only valid for ISO/IEC 14443 A/MIFARE communication at 106 kBd
+     */
+    RC522_PCD_PARITY_ERR_BIT = BIT1,
+
+    /**
+     *  set to logic 1 if the SOF is incorrect
+     * automatically cleared during receiver start-up phase
+     * bit is only valid for 106 kBd
+     * during the MFAuthent command, the ProtocolErr bit is set to logic 1 if the
+     * number of bytes received in one data stream is incorrect
+     */
+    RC522_PCD_PROTOCOL_ERR_BIT = BIT0,
+};
+
+enum // RC522_PCD_COM_INT_REQ_REG
 {
     /**
      * 1 - indicates that the marked bits in the ComIrqReg register are set
      * 0 - indicates that the marked bits in the ComIrqReg register are cleared
      */
     RC522_PCD_SET_1_BIT = BIT7,
-} rc522_comm_int_req_reg_bit_t;
 
-/**
- * Bits of RC522_PCD_COMMAND_REG register
- */
-typedef enum
+    /**
+     * set immediately after the last bit of the transmitted data was sent out
+     */
+    RC522_PCD_TX_IRQ_BIT = BIT6,
+
+    /**
+     * receiver has detected the end of a valid data stream
+     * if the RxModeReg register’s RxNoErr bit is set to logic 1, the RxIRq bit is
+     * only set to logic 1 when data bytes are available in the FIFO
+     */
+    RC522_PCD_RX_IRQ_BIT = BIT5,
+
+    /**
+     * If a command terminates, for example, when the CommandReg changes
+     * its value from any command to the Idle command (see Table 149 on page 70)
+     * if an unknown command is started, the CommandReg register
+     * Command[3:0] value changes to the idle state and the IdleIRq bit is set
+     * The microcontroller starting the Idle command does not set the IdleIRq bit
+     */
+    RC522_PCD_IDLE_IRQ_BIT = BIT4,
+
+    /**
+     * the Status1Reg register’s HiAlert bit is set
+     * in opposition to the HiAlert bit, the HiAlertIRq bit stores this event and
+     * can only be reset as indicated by the Set1 bit in this register
+     */
+    RC522_PCD_HI_ALERT_IRQ_BIT = BIT3,
+
+    /**
+     * Status1Reg register’s LoAlert bit is set
+     * in opposition to the LoAlert bit, the LoAlertIRq bit stores this event and
+     * can only be reset as indicated by the Set1 bit in this register
+     */
+    RC522_PCD_LO_ALERT_IRQ_BIT = BIT2,
+
+    /**
+     * any error bit in the ErrorReg register is set
+     */
+    RC522_PCD_ERR_IRQ_BIT = BIT1,
+
+    /**
+     * the timer decrements the timer value in register TCounterValReg to zero
+     */
+    RC522_PCD_TIMER_IRQ_BIT = BIT0,
+};
+
+enum // RC522_PCD_COMMAND_REG
 {
     // Soft power-down mode entered
     RC522_PCD_POWER_DOWN_BIT = BIT4,
-} rc522_pcd_command_reg_bit_t;
+};
 
-/**
- * Bits of RC522_PCD_TX_CONTROL_REG register
- */
-typedef enum
+enum // RC522_PCD_TX_CONTROL_REG
 {
     // Output signal on pin TX2 delivers the 13.56 MHz energy carrier modulated by the transmission data
     RC522_PCD_TX2_RF_EN_BIT = BIT1,
 
     // Output signal on pin TX1 delivers the 13.56 MHz energy carrier modulated by the transmission data
     RC522_PCD_TX1_RF_EN_BIT = BIT0,
-} rc522_pcd_tx_control_reg_bit_t;
+};
 
-/**
- * Bits of RC522_PCD_RF_CFG_REG register
- */
-typedef enum
+enum // RC522_PCD_RF_CFG_REG
 {
     RC522_PCD_RX_GAIN_2_BIT = BIT6,
     RC522_PCD_RX_GAIN_1_BIT = BIT5,
     RC522_PCD_RX_GAIN_0_BIT = BIT4,
-} rc522_pcd_rf_cfg_reg_bit_t;
+};
 
 /**
  * Receiver (antenna) gain
@@ -200,10 +303,7 @@ typedef enum
     RC522_PCD_SOFT_RESET_CMD = 0b1111,
 } rc522_pcd_command_t;
 
-/**
- * Bits of RC522_PCD_TIMER_MODE_REG register
- */
-typedef enum
+enum // RC522_PCD_TIMER_MODE_REG
 {
     /**
      * When 1:
@@ -220,23 +320,17 @@ typedef enum
      * - Indicates that the timer is not influenced by the protocol
      */
     RC522_PCD_T_AUTO_BIT = BIT7,
-} rc522_pcd_timer_mode_reg_bit_t;
+};
 
-/**
- * Bits of RC522_PCD_TX_ASK_REG register
- */
-typedef enum
+enum // RC522_PCD_TX_ASK_REG
 {
     /**
      * Forces a 100 % ASK modulation independent of the ModGsPReg register setting
      */
     RC522_PCD_FORCE_100_ASK_BIT = BIT6,
-} rc522_pcd_tx_ask_reg_bit_t;
+};
 
-/**
- * Bits of RC522_PCD_MODE_REG register
- */
-typedef enum
+enum // RC522_PCD_MODE_REG
 {
     // Transmitter can only be started if an RF field is generated
     RC522_PCD_TX_WAIT_RF_BIT = BIT5,
@@ -251,7 +345,7 @@ typedef enum
 
     RC522_PCD_CRC_PRESET_1_BIT = BIT1,
     RC522_PCD_CRC_PRESET_0_BIT = BIT0,
-} rc522_pcd_mode_reg_bit_t;
+};
 
 typedef enum
 {
@@ -261,28 +355,13 @@ typedef enum
     RC522_PCD_CRC_PRESET_FFFFH = (RC522_PCD_CRC_PRESET_1_BIT | RC522_PCD_CRC_PRESET_0_BIT), /* FFFFh */
 } rc522_pcd_crc_preset_value_t;
 
-/**
- * Bits of RC522_PCD_COM_INT_REQ_REG
- */
-typedef enum
-{
-    // The timer decrements the timer value in register TCounterValReg to zero
-    RC522_PCD_TIMER_IRQ_BIT = BIT0,
-} rc522_pcd_comm_int_req_reg_bit_t;
-
-/**
- * Bits of RC522_PCD_DIV_INT_REQ_REG register
- */
-typedef enum
+enum // RC522_PCD_DIV_INT_REQ_REG
 {
     // The CalcCRC command is active and all data is processed (CRC calculation is done)
     RC522_PCD_CRC_IRQ_BIT = BIT2,
-} rc522_pcd_div_int_req_reg_bit_t;
+};
 
-/**
- * Bits of RC522_PCD_FIFO_LEVEL_REG register
- */
-typedef enum
+enum // RC522_PCD_FIFO_LEVEL_REG
 {
     /**
      * Immediately clears the internal FIFO buffer’s read and write pointer
@@ -291,24 +370,18 @@ typedef enum
      * Reading this bit always returns 0
      */
     RC522_PCD_FLUSH_BUFFER_BIT = BIT7,
-} rc522_pcd_fifo_level_reg_bit_t;
+};
 
-/**
- * Bits of RC522_PCD_BIT_FRAMING_REG register
- */
-typedef enum
+enum // RC522_PCD_BIT_FRAMING_REG
 {
     /**
      * Starts the transmission of data
      * Only valid in combination with the Transceive command
      */
     RC522_PCD_START_SEND_BIT = BIT7,
-} rc522_pcd_bit_framing_reg_bit_t;
+};
 
-/**
- * Bits of RC522_PCD_STATUS_2_REG register
- */
-typedef enum
+enum // RC522_PCD_STATUS_2_REG
 {
     /**
      * Indicates that the MIFARE Crypto1 unit is switched on and
@@ -319,19 +392,16 @@ typedef enum
      * This bit is cleared by software.
      */
     RC522_PCD_MK_CRYPTO1_ON_BIT = BIT3,
-} rc522_pcd_status_2_reg_bit_t;
+};
 
-/**
- * Bits of RC522_PCD_RX_MODE_REG register
- */
-typedef enum
+enum // RC522_PCD_RX_MODE_REG
 {
     /**
      * An invalid received data stream (less than 4 bits received) will
      * be ignored and the receiver remains active
      */
-    RC522_RX_NO_ERR_BIT = BIT3,
-} rc522_pcd_rx_mode_reg_bit_t;
+    RC522_PCD_RX_NO_ERR_BIT = BIT3,
+};
 
 typedef enum
 {
