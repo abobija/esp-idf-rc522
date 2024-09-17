@@ -14,6 +14,13 @@ extern "C" {
 
 #define RC522_LOG_TAG "rc522"
 
+#define RC522_DEFAULT_TASK_THROTTLING_MS            (125)
+#define RC522_TASK_THROTTLING_MIN_MS                (50)
+#define RC522_DEFAULT_TASK_STACK_SIZE               (4 * 1024)
+#define RC522_DEFAULT_TASK_PRIORITY                 (3)
+#define RC522_DEFAULT_PICC_VALID_ACTIVE_DURATION_MS (500)
+#define RC522_PICC_VALID_ACTIVE_DURATION_MIN_MS     (300)
+
 #define RC522_TASK_STOPPED_BIT (BIT0)
 
 #define RC522_LOG_LEVEL esp_log_level_get(RC522_LOG_TAG)
