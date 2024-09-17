@@ -238,6 +238,8 @@ esp_err_t rc522_picc_find(rc522_handle_t rc522, rc522_picc_t *picc)
 
 static esp_err_t rc522_picc_select(rc522_handle_t rc522, rc522_picc_t *picc, uint8_t valid_bits)
 {
+    RC522_CHECK(valid_bits > 80);
+
     bool uid_complete;
     bool select_done;
     bool use_cascade_tag;
@@ -278,10 +280,6 @@ static esp_err_t rc522_picc_select(rc522_handle_t rc522, rc522_picc_t *picc, uin
     //		10 bytes		1			CT		uid0	uid1	uid2
     //						2			CT		uid3	uid4	uid5
     //						3			uid6	uid7	uid8	uid9
-
-    // Sanity checks
-    const uint8_t valid_bits_max = 80;
-    ESP_RETURN_ON_FALSE(valid_bits <= valid_bits_max, ESP_ERR_INVALID_ARG, TAG, "valid_bits > %d", valid_bits_max);
 
     // Prepare MFRC522
     // ValuesAfterColl=1 => Bits received after collision are cleared.
@@ -578,7 +576,7 @@ esp_err_t rc522_picc_activate(rc522_handle_t rc522, rc522_picc_t *picc)
     esp_err_t ret = rc522_picc_select(rc522, picc, 0);
 
     if (ret != ESP_OK) {
-        if (RC522_LOG_LEVEL >= ESP_LOG_DEBUG) {
+        if (ret != ESP_ERR_TIMEOUT || RC522_LOG_LEVEL >= ESP_LOG_DEBUG) {
             RC522_LOGE("select fail: %04x", ret);
         }
 
