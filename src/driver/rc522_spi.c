@@ -7,7 +7,7 @@ RC522_LOG_DEFINE_BASE();
 
 static esp_err_t rc522_spi_install(rc522_driver_handle_t driver)
 {
-    ESP_RETURN_ON_FALSE(driver != NULL, ESP_ERR_INVALID_ARG, TAG, "driver is null");
+    RC522_CHECK(driver == NULL);
 
     rc522_spi_config_t *conf = (rc522_spi_config_t *)(driver->config);
 
@@ -70,7 +70,7 @@ static esp_err_t rc522_spi_receive(rc522_driver_handle_t driver, uint8_t address
 
 static esp_err_t rc522_spi_uninstall(rc522_driver_handle_t driver)
 {
-    ESP_RETURN_ON_FALSE(driver != NULL, ESP_ERR_INVALID_ARG, TAG, "driver is null");
+    RC522_CHECK(driver == NULL);
 
     RC522_RETURN_ON_ERROR(spi_bus_remove_device((spi_device_handle_t)(driver->device)));
     driver->device = NULL;
@@ -86,6 +86,9 @@ static esp_err_t rc522_spi_uninstall(rc522_driver_handle_t driver)
 
 esp_err_t rc522_spi_create(rc522_spi_config_t *config, rc522_driver_handle_t *driver)
 {
+    RC522_CHECK(config == NULL);
+    RC522_CHECK(driver == NULL);
+
     RC522_RETURN_ON_ERROR(rc522_driver_create(config, sizeof(rc522_spi_config_t), driver));
 
     (*driver)->install = rc522_spi_install;
@@ -94,9 +97,4 @@ esp_err_t rc522_spi_create(rc522_spi_config_t *config, rc522_driver_handle_t *dr
     (*driver)->uninstall = rc522_spi_uninstall;
 
     return ESP_OK;
-}
-
-inline esp_err_t rc522_spi_destroy(rc522_driver_handle_t driver)
-{
-    return rc522_driver_destroy(driver);
 }

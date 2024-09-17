@@ -7,7 +7,7 @@ RC522_LOG_DEFINE_BASE();
 
 static esp_err_t rc522_i2c_install(rc522_driver_handle_t driver)
 {
-    ESP_RETURN_ON_FALSE(driver != NULL, ESP_ERR_INVALID_ARG, TAG, "driver is null");
+    RC522_CHECK(driver == NULL);
 
     rc522_i2c_config_t *conf = (rc522_i2c_config_t *)(driver->config);
 
@@ -57,7 +57,7 @@ static esp_err_t rc522_i2c_receive(rc522_driver_handle_t driver, uint8_t address
 
 static esp_err_t rc522_i2c_uninstall(rc522_driver_handle_t driver)
 {
-    ESP_RETURN_ON_FALSE(driver != NULL, ESP_ERR_INVALID_ARG, TAG, "driver is null");
+    RC522_CHECK(driver == NULL);
 
     rc522_i2c_config_t *conf = (rc522_i2c_config_t *)(driver->config);
 
@@ -68,6 +68,9 @@ static esp_err_t rc522_i2c_uninstall(rc522_driver_handle_t driver)
 
 esp_err_t rc522_i2c_create(rc522_i2c_config_t *config, rc522_driver_handle_t *driver)
 {
+    RC522_CHECK(config == NULL);
+    RC522_CHECK(driver == NULL);
+
     RC522_RETURN_ON_ERROR(rc522_driver_create(config, sizeof(rc522_i2c_config_t), driver));
 
     (*driver)->install = rc522_i2c_install;
@@ -76,9 +79,4 @@ esp_err_t rc522_i2c_create(rc522_i2c_config_t *config, rc522_driver_handle_t *dr
     (*driver)->uninstall = rc522_i2c_uninstall;
 
     return ESP_OK;
-}
-
-inline esp_err_t rc522_i2c_destroy(rc522_driver_handle_t driver)
-{
-    return rc522_driver_destroy(driver);
 }
