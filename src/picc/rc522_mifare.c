@@ -12,7 +12,7 @@ RC522_LOG_DEFINE_BASE();
  * Use PCD_MFAuthent to authenticate access to a sector, then use these commands to read/write/modify the blocks on
  * the sector.
  */
-typedef enum
+enum
 {
     /**
      * Perform authentication with Key A
@@ -53,7 +53,7 @@ typedef enum
      * Writes the contents of the internal data register to a block
      */
     RC522_MIFARE_TRANSFER_CMD = 0xB0,
-} rc522_mifare_command_t;
+};
 
 /**
  * Checks if PICC type is compatible with MIFARE Classic protocol
@@ -84,8 +84,6 @@ esp_err_t rc522_mifare_auth(rc522_handle_t rc522, rc522_picc_t *picc, uint8_t bl
             return ESP_ERR_INVALID_ARG;
     }
 
-    uint8_t wait_irq = 0x10; // IdleIRq
-
     // Build command buffer
     uint8_t send_data[12];
     send_data[0] = auth_cmd;
@@ -101,7 +99,7 @@ esp_err_t rc522_mifare_auth(rc522_handle_t rc522, rc522_picc_t *picc, uint8_t bl
     // Start the authentication.
     return rc522_picc_comm(rc522,
         RC522_PCD_MF_AUTH_CMD,
-        wait_irq,
+        RC522_PCD_IDLE_IRQ_BIT,
         send_data,
         sizeof(send_data),
         NULL,
@@ -156,13 +154,12 @@ static esp_err_t rc522_mifare_transceive(
     send_length += 2;
 
     // Transceive the data, store the reply in cmdBuffer[]
-    uint8_t wait_irq = 0x30; // RxIRq and IdleIRq
     uint8_t cmd_buffer_size = sizeof(cmd_buffer);
     uint8_t valid_bits = 0;
 
     esp_err_t ret = rc522_picc_comm(rc522,
         RC522_PCD_TRANSCEIVE_CMD,
-        wait_irq,
+        RC522_PCD_RX_IRQ_BIT | RC522_PCD_IDLE_IRQ_BIT,
         cmd_buffer,
         send_length,
         cmd_buffer,
@@ -181,7 +178,7 @@ static esp_err_t rc522_mifare_transceive(
 
     // The PICC must reply with a 4 bit ACK
     if (cmd_buffer_size != 1 || valid_bits != 4) {
-        return ESP_FAIL;
+        return ESP_FAIL; // TODO: use custom err
     }
 
     if (cmd_buffer[0] != RC522_MIFARE_ACK) {
@@ -229,7 +226,7 @@ static esp_err_t rc522_mifare_number_of_sectors(rc522_picc_type_t type, uint8_t 
             *result = 40;
             return ESP_OK;
         default:
-            return ESP_FAIL;
+            return ESP_FAIL; // TODO: use custom err
     }
 }
 

@@ -97,7 +97,7 @@ esp_err_t rc522_start(rc522_handle_t rc522)
     if (fw == 0x00 || fw == 0xFF) {
         RC522_LOGE("Communication failure, is the MFRC522 properly connected?");
 
-        return ESP_FAIL;
+        return ESP_FAIL; // TODO: use custom err
     }
 
     rc522->state = RC522_STATE_SCANNING;

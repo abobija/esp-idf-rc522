@@ -80,7 +80,7 @@ esp_err_t rc522_picc_comm(rc522_handle_t rc522, rc522_pcd_command_t command, uin
     RC522_RETURN_ON_ERROR(rc522_pcd_read(rc522, RC522_PCD_ERROR_REG, &error_reg_value));
 
     if (error_reg_value & (RC522_PCD_BUFFER_OVFL_BIT | RC522_PCD_PARITY_ERR_BIT | RC522_PCD_PROTOCOL_ERR_BIT)) {
-        return ESP_FAIL;
+        return ESP_FAIL; // TODO: use custom err
     }
 
     uint8_t fifo_level;
@@ -131,7 +131,7 @@ esp_err_t rc522_picc_comm(rc522_handle_t rc522, rc522_pcd_command_t command, uin
     // Perform CRC_A validation if requested.
     if (check_crc && back_data && back_data_len) {
         if (*back_data_len == 1 && _valid_bits == 4) {
-            return ESP_FAIL;
+            return ESP_FAIL; // TODO: use custom err
         }
         // We need at least the CRC_A value and all 8 bits of the last byte must be received.
         if (*back_data_len < 2 || _valid_bits != 0) {
@@ -199,7 +199,7 @@ static esp_err_t rc522_picc_reqa_or_wupa(
         rc522_picc_transceive(rc522, &picc_cmd, 1, atqa_buffer, atqa_buffer_size, &valid_bits, 0, false));
 
     if (*atqa_buffer_size != 2 || valid_bits != 0) { // ATQA must be exactly 16 bits.
-        return ESP_FAIL;
+        return ESP_FAIL;                             // TODO: use custom err
     }
 
     return ESP_OK;
@@ -315,7 +315,7 @@ static esp_err_t rc522_picc_select(rc522_handle_t rc522, rc522_picc_t *picc, uin
                 break;
 
             default:
-                return ESP_FAIL;
+                return ESP_FAIL; // TODO: use custom err
                 break;
         }
 
@@ -420,7 +420,7 @@ static esp_err_t rc522_picc_select(rc522_handle_t rc522, rc522_picc_t *picc, uin
                     collision_pos = 32;
                 }
                 if (collision_pos <= current_level_known_bits) { // No progress - should not happen
-                    return ESP_FAIL;
+                    return ESP_FAIL;                             // TODO: use custom err
                 }
                 // Choose the PICC with the bit set.
                 current_level_known_bits = collision_pos;
@@ -461,7 +461,7 @@ static esp_err_t rc522_picc_select(rc522_handle_t rc522, rc522_picc_t *picc, uin
 
         // Check response SAK (Select Acknowledge)
         if (response_length != 3 || tx_last_bits != 0) { // SAK must be exactly 24 bits (1 byte + CRC_A).
-            return ESP_FAIL;
+            return ESP_FAIL;                             // TODO: use custom err
         }
         // Verify CRC_A - do our own calculation and store the control in buffer[2..3] - those bytes are not needed
         // anymore.
@@ -617,7 +617,7 @@ esp_err_t rc522_picc_halta(rc522_handle_t rc522, rc522_picc_t *picc)
 
     if (ret == ESP_OK) {
         // That is ironically NOT ok in this case ;-)
-        return ESP_FAIL;
+        return ESP_FAIL; // TODO: use custom err
     }
 
     return ret;
