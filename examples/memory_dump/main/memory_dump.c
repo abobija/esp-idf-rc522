@@ -31,44 +31,32 @@ static rc522_spi_config_t driver_config = {
     },
 };
 
-#define COLUMN_SECTOR_WIDTH (6)
-#define COLUMN_BLOCK_WIDTH  (7)
-
-#define DUMP(format, ...) esp_log_write(ESP_LOG_INFO, TAG, format, ##__VA_ARGS__)
-
 static rc522_driver_handle_t driver;
 static rc522_handle_t rc522;
 
-static void rc522_mifare_dump_header()
-{
-    DUMP("%*s%*s                 Bytes                 AccessBits\n",
-        COLUMN_SECTOR_WIDTH,
-        "Sector",
-        COLUMN_BLOCK_WIDTH,
-        "Block");
+#define DUMP(format, ...) esp_log_write(ESP_LOG_INFO, TAG, format, ##__VA_ARGS__)
 
-    DUMP("%*s%*s   0 1 2 3  4 5 6 7  8 9  11 12    15    c1 c2 c3\n",
-        COLUMN_SECTOR_WIDTH,
-        " ",
-        COLUMN_BLOCK_WIDTH,
-        " ");
+static void dump_header()
+{
+    DUMP("Sector  Block                 Bytes                 AccessBits\n");
+    DUMP("                0 1 2 3  4 5 6 7  8 9  11 12    15    c1 c2 c3\n");
 }
 
 static esp_err_t dump_block(rc522_mifare_sector_block_t *block)
 {
     // Sector number only on first line
     if (block->type == RC522_MIFARE_BLOCK_TRAILER) {
-        DUMP("%*d", COLUMN_SECTOR_WIDTH, block->sector_index);
+        DUMP("%*d", 6, block->sector_index);
     }
     else {
-        DUMP("%*s", COLUMN_SECTOR_WIDTH, " ");
+        DUMP("%*s", 6, "");
     }
 
     // Block address
-    DUMP("%*d", COLUMN_BLOCK_WIDTH, block->address);
-    DUMP("  ");
+    DUMP("  %*d", 5, block->address);
 
     // Data
+    DUMP("  ");
     for (uint8_t i = 0; i < 16; i++) {
         DUMP("%02x", block->bytes[i]);
 
@@ -80,18 +68,34 @@ static esp_err_t dump_block(rc522_mifare_sector_block_t *block)
     // Access bits
     DUMP("    %d  %d  %d", block->access_bits.c1, block->access_bits.c2, block->access_bits.c3);
 
+    // String representation (if it's data block)
+    if (block->type == RC522_MIFARE_BLOCK_DATA) {
+        DUMP("  |");
+
+        for (uint8_t i = 0; i < 16; i++) {
+            if (block->bytes[i] >= 32 && block->bytes[i] <= 126) { // standard ascii codes
+                DUMP(LOG_COLOR(LOG_COLOR_GREEN) "%c" LOG_RESET_COLOR, block->bytes[i]);
+            }
+            else {
+                DUMP("%c", '.');
+            }
+        }
+
+        DUMP("|");
+    }
+
     // Value (if it's value block)
-    if (block->type == RC522_MIFARE_BLOCK_VALUE) {
-        DUMP(" (val=%ld (0x%04lx), adr=0x%02x)", block->value->value, block->value->value, block->value->address);
+    else if (block->type == RC522_MIFARE_BLOCK_VALUE) {
+        DUMP("  (val=%ld (0x%04lx), adr=0x%02x)", block->value->value, block->value->value, block->value->address);
     }
 
     // Errors and warnings
     if (block->access_bits_err == RC522_ERR_MIFARE_ACCESS_BITS_INTEGRITY_VIOLATION) {
-        DUMP(" AB_VIOL");
+        DUMP("  ABITS_ERR");
     }
 
     if (block->value_err == RC522_ERR_MIFARE_VALUE_BLOCK_INTEGRITY_VIOLATION) {
-        DUMP(" VB_VIOL");
+        DUMP("  VAL_ERR");
     }
 
     // Termination
@@ -109,7 +113,7 @@ static esp_err_t dump_memory(rc522_handle_t rc522, rc522_picc_t *picc)
     rc522_mifare_t mifare;
     ESP_RETURN_ON_ERROR(rc522_mifare_info(picc, &mifare), TAG, "");
 
-    rc522_mifare_dump_header();
+    dump_header();
 
     // Start from the highest sector
     for (int8_t sector = mifare.number_of_sectors - 1; sector >= 0; sector--) {
