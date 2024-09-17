@@ -279,7 +279,7 @@ static esp_err_t rc522_mifare_check_sector_trailer_write(uint8_t block_address)
         ESP_LOGE(TAG, "If you know what you are doing, please use menuconfig to enable this option.");
         ESP_LOGE(TAG, "");
 
-        return ESP_ERR_NOT_ALLOWED;
+        return ESP_FAIL;
     }
 #endif
 
