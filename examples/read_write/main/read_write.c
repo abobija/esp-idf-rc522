@@ -62,7 +62,7 @@ static esp_err_t read_write(rc522_handle_t rc522, rc522_picc_t *picc)
         return ESP_ERR_INVALID_ARG;
     }
 
-    ESP_RETURN_ON_ERROR(rc522_mifare_autha(rc522, picc, block_address, &key), TAG, "auth fail");
+    ESP_RETURN_ON_ERROR(rc522_mifare_auth(rc522, picc, block_address, &key), TAG, "auth fail");
 
     uint8_t read_buffer[RC522_MIFARE_BLOCK_SIZE];
     uint8_t write_buffer[RC522_MIFARE_BLOCK_SIZE];

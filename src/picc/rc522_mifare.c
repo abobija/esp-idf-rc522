@@ -64,8 +64,7 @@ bool rc522_mifare_type_is_classic_compatible(rc522_picc_type_t type)
            || type == RC522_PICC_TYPE_MIFARE_4K;
 }
 
-static esp_err_t rc522_mifare_auth(rc522_handle_t rc522, rc522_picc_t *picc, rc522_mifare_key_type_t key_type,
-    uint8_t block_addr, rc522_mifare_key_t *key)
+esp_err_t rc522_mifare_auth(rc522_handle_t rc522, rc522_picc_t *picc, uint8_t block_addr, rc522_mifare_key_t *key)
 {
     RC522_CHECK(rc522 == NULL);
     RC522_CHECK(picc == NULL);
@@ -73,7 +72,7 @@ static esp_err_t rc522_mifare_auth(rc522_handle_t rc522, rc522_picc_t *picc, rc5
 
     uint8_t auth_cmd;
 
-    switch (key_type) {
+    switch (key->type) {
         case RC522_MIFARE_KEY_A:
             auth_cmd = RC522_MIFARE_AUTH_KEY_A_CMD;
             break;
@@ -110,18 +109,6 @@ static esp_err_t rc522_mifare_auth(rc522_handle_t rc522, rc522_picc_t *picc, rc5
         NULL,
         0,
         false);
-}
-
-inline esp_err_t rc522_mifare_autha(
-    rc522_handle_t rc522, rc522_picc_t *picc, uint8_t block_addr, rc522_mifare_key_t *key)
-{
-    return rc522_mifare_auth(rc522, picc, RC522_MIFARE_KEY_A, block_addr, key);
-}
-
-inline esp_err_t rc522_mifare_authb(
-    rc522_handle_t rc522, rc522_picc_t *picc, uint8_t block_addr, rc522_mifare_key_t *key)
-{
-    return rc522_mifare_auth(rc522, picc, RC522_MIFARE_KEY_B, block_addr, key);
 }
 
 esp_err_t rc522_mifare_read(
@@ -292,7 +279,7 @@ static esp_err_t rc522_mifare_sector_info(uint8_t sector_index, rc522_mifare_sec
  * | [8]  | C33  | C32  | C31  | C30  | C23  | C22  | C21  | C20  |
  *
  *
- * Resulting access bits:
+ * Resulting groups:
  *
  * [3] Access bits for the sector trailer, block 3 (for sectors 0-31) or block 15 (for sectors 32-39)
  * [2] Access bits for block 2 (for sectors 0-31) or blocks 10-14 (for sectors 32-39)
@@ -306,7 +293,7 @@ static esp_err_t rc522_mifare_sector_info(uint8_t sector_index, rc522_mifare_sec
  * | 0 | 0 | 0 | 0 | 0 | C1 | C2 | C3 |
  *
  */
-static esp_err_t rc522_mifare_parse_access_bits(uint8_t *trailer_bytes, /** Sector trailer block data */
+static esp_err_t rc522_mifare_parse_access_bits_into_groups(uint8_t *trailer_bytes, /** Sector trailer block data */
     uint8_t access_bits[4] /* Pointer to 4 bytes array */)
 {
     RC522_CHECK(trailer_bytes == NULL);
@@ -331,12 +318,22 @@ static esp_err_t rc522_mifare_parse_access_bits(uint8_t *trailer_bytes, /** Sect
     return ESP_OK;
 }
 
+static esp_err_t rc522_mifare_access_bits_group_to_bits(uint8_t access_bits_group, rc522_mifare_access_bits_t *out_bits)
+{
+    out_bits->group = access_bits_group;
+    out_bits->c1 = (access_bits_group >> 2) & 1;
+    out_bits->c2 = (access_bits_group >> 1) & 1;
+    out_bits->c3 = (access_bits_group >> 0) & 1;
+
+    return ESP_OK;
+}
+
 /**
  * Checks if block is Value block based on access bits
  */
-inline static bool rc522_mifare_block_is_value(uint8_t access_bits)
+inline static bool rc522_mifare_block_is_value(uint8_t access_bits_group)
 {
-    return access_bits == 0b110 || access_bits == 0b001;
+    return access_bits_group == 0b110 || access_bits_group == 0b001;
 }
 
 static esp_err_t rc522_mifare_parse_value_block(
@@ -403,13 +400,13 @@ esp_err_t rc522_mifare_iterate_sector_blocks(rc522_handle_t rc522, rc522_picc_t 
     esp_err_t ret = ESP_OK;
 
     rc522_mifare_sector_t sector;
-    ESP_RETURN_ON_ERROR(rc522_mifare_sector_info(sector_index, &sector), TAG, "");
+    RC522_RETURN_ON_ERROR(rc522_mifare_sector_info(sector_index, &sector));
 
     // Establish encrypted communications before reading the first block
-    ESP_RETURN_ON_ERROR(rc522_mifare_autha(rc522, picc, sector.block_0_address, key), TAG, "auth failed");
+    RC522_RETURN_ON_ERROR(rc522_mifare_auth(rc522, picc, sector.block_0_address, key));
 
     int8_t trailer_block_offset = sector.number_of_blocks - 1;
-    uint8_t access_bits[4];
+    uint8_t access_bit_groups[4];
 
     for (int8_t block_offset = trailer_block_offset; block_offset >= 0; block_offset--) {
         rc522_mifare_sector_block_t block;
@@ -422,10 +419,10 @@ esp_err_t rc522_mifare_iterate_sector_blocks(rc522_handle_t rc522, rc522_picc_t 
             block.type = RC522_MIFARE_BLOCK_TRAILER;
         }
 
-        ESP_RETURN_ON_ERROR(rc522_mifare_read(rc522, picc, block.address, block.bytes), TAG, "read failed");
+        RC522_RETURN_ON_ERROR(rc522_mifare_read(rc522, picc, block.address, block.bytes));
 
         if (block.type == RC522_MIFARE_BLOCK_TRAILER) {
-            block.access_bits_err = rc522_mifare_parse_access_bits(block.bytes, access_bits);
+            block.access_bits_err = rc522_mifare_parse_access_bits_into_groups(block.bytes, access_bit_groups);
         }
 
         uint8_t group = block_offset;
@@ -437,12 +434,12 @@ esp_err_t rc522_mifare_iterate_sector_blocks(rc522_handle_t rc522, rc522_picc_t 
         }
 
         if (is_first_in_group) {
-            block.access_bits = access_bits[group];
+            RC522_RETURN_ON_ERROR(rc522_mifare_access_bits_group_to_bits(access_bit_groups[group], &block.access_bits));
         }
 
         if (block.type != RC522_MIFARE_BLOCK_TRAILER) {
-            block.type =
-                rc522_mifare_block_is_value(block.access_bits) ? RC522_MIFARE_BLOCK_VALUE : RC522_MIFARE_BLOCK_DATA;
+            block.type = rc522_mifare_block_is_value(access_bit_groups[group]) ? RC522_MIFARE_BLOCK_VALUE
+                                                                               : RC522_MIFARE_BLOCK_DATA;
         }
 
         if (block.type == RC522_MIFARE_BLOCK_VALUE) {

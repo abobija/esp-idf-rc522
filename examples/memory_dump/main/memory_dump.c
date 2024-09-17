@@ -56,10 +56,6 @@ static void rc522_mifare_dump_header()
 
 static esp_err_t dump_block(rc522_mifare_sector_block_t *block)
 {
-    uint8_t c1 = (block->access_bits >> 2) & 1;
-    uint8_t c2 = (block->access_bits >> 1) & 1;
-    uint8_t c3 = (block->access_bits >> 0) & 1;
-
     // Sector number only on first line
     if (block->type == RC522_MIFARE_BLOCK_TRAILER) {
         DUMP("%*d", COLUMN_SECTOR_WIDTH, block->sector_index);
@@ -82,7 +78,7 @@ static esp_err_t dump_block(rc522_mifare_sector_block_t *block)
     }
 
     // Access bits
-    DUMP("    %d  %d  %d", c1, c2, c3);
+    DUMP("    %d  %d  %d", block->access_bits.c1, block->access_bits.c2, block->access_bits.c3);
 
     // Value (if it's value block)
     if (block->type == RC522_MIFARE_BLOCK_VALUE) {

@@ -28,12 +28,13 @@ typedef struct
 
 typedef enum
 {
-    RC522_MIFARE_KEY_A,
+    RC522_MIFARE_KEY_A = 0,
     RC522_MIFARE_KEY_B,
 } rc522_mifare_key_type_t;
 
 typedef struct
 {
+    rc522_mifare_key_type_t type;
     uint8_t value[RC522_MIFARE_KEY_SIZE];
 } rc522_mifare_key_t;
 
@@ -54,6 +55,14 @@ typedef enum
 
 typedef struct
 {
+    uint8_t group;
+    uint8_t c1 :1;
+    uint8_t c2 :1;
+    uint8_t c3 :1;
+} rc522_mifare_access_bits_t;
+
+typedef struct
+{
     int32_t value;
     uint8_t address;
 } rc522_mifare_value_block_t;
@@ -64,7 +73,7 @@ typedef struct
     uint8_t address;
     uint8_t bytes[RC522_MIFARE_BLOCK_SIZE];
     rc522_mifare_block_type_t type;
-    uint8_t access_bits;
+    rc522_mifare_access_bits_t access_bits;
     esp_err_t access_bits_err;
     rc522_mifare_value_block_t *value;
     esp_err_t value_err;
@@ -77,9 +86,7 @@ bool rc522_mifare_type_is_classic_compatible(rc522_picc_type_t type);
 
 esp_err_t rc522_mifare_info(rc522_picc_t *picc, rc522_mifare_t *mifare);
 
-esp_err_t rc522_mifare_autha(rc522_handle_t rc522, rc522_picc_t *picc, uint8_t block_addr, rc522_mifare_key_t *key);
-
-esp_err_t rc522_mifare_authb(rc522_handle_t rc522, rc522_picc_t *picc, uint8_t block_addr, rc522_mifare_key_t *key);
+esp_err_t rc522_mifare_auth(rc522_handle_t rc522, rc522_picc_t *picc, uint8_t block_addr, rc522_mifare_key_t *key);
 
 esp_err_t rc522_mifare_read(
     rc522_handle_t rc522, rc522_picc_t *picc, uint8_t block_addr, uint8_t buffer[RC522_MIFARE_BLOCK_SIZE]);
