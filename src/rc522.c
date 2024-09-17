@@ -5,6 +5,7 @@
 #include <sys/time.h>
 #include <freertos/FreeRTOS.h>
 #include <freertos/task.h>
+#include <freertos/event_groups.h>
 
 #include "rc522_pcd_private.h"
 #include "rc522_picc_private.h"
@@ -49,49 +50,6 @@ static esp_err_t rc522_clone_config(rc522_config_t *config, rc522_config_t **res
     *result = config_clone;
 
     return ESP_OK;
-}
-
-esp_err_t rc522_create(rc522_config_t *config, rc522_handle_t *out_rc522)
-{
-    ESP_RETURN_ON_FALSE(config != NULL, ESP_ERR_INVALID_ARG, TAG, "config is null");
-    ESP_RETURN_ON_FALSE(out_rc522 != NULL, ESP_ERR_INVALID_ARG, TAG, "out_rc522 is null");
-
-    rc522_handle_t rc522 = calloc(1, sizeof(struct rc522));
-    ESP_RETURN_ON_FALSE(rc522 != NULL, ESP_ERR_NO_MEM, TAG, "No memory");
-
-    esp_err_t ret = ESP_OK;
-
-    ESP_GOTO_ON_ERROR(rc522_clone_config(config, &(rc522->config)), _error, TAG, "Failed to clone config");
-
-    esp_event_loop_args_t event_args = {
-        .queue_size = 1,
-        .task_name = NULL, // no task will be created
-    };
-
-    ESP_GOTO_ON_ERROR(esp_event_loop_create(&event_args, &rc522->event_handle),
-        _error,
-        TAG,
-        "Failed to create event loop");
-
-    BaseType_t task_create_result = xTaskCreate(rc522_task,
-        "rc522_polling_task",
-        rc522->config->task_stack_size,
-        rc522,
-        rc522->config->task_priority,
-        &rc522->task_handle);
-
-    ESP_GOTO_ON_FALSE(task_create_result == pdTRUE, ESP_FAIL, _error, TAG, "Failed to create task");
-
-    goto _success;
-_error:
-    rc522_destroy(rc522);
-    rc522 = NULL;
-    goto _return;
-_success:
-    rc522->state = RC522_STATE_CREATED;
-    *out_rc522 = rc522;
-_return:
-    return ret;
 }
 
 esp_err_t rc522_register_events(
@@ -160,6 +118,60 @@ esp_err_t rc522_pause(rc522_handle_t rc522)
     return ESP_OK;
 }
 
+/**
+ * Exit and delete the task
+ */
+inline static void rc522_request_task_exit(rc522_handle_t rc522)
+{
+    rc522->exit_requested = true; // task will delete itself
+}
+
+esp_err_t rc522_create(rc522_config_t *config, rc522_handle_t *out_rc522)
+{
+    ESP_RETURN_ON_FALSE(config != NULL, ESP_ERR_INVALID_ARG, TAG, "config is null");
+    ESP_RETURN_ON_FALSE(out_rc522 != NULL, ESP_ERR_INVALID_ARG, TAG, "out_rc522 is null");
+
+    rc522_handle_t rc522 = calloc(1, sizeof(struct rc522));
+    ESP_RETURN_ON_FALSE(rc522 != NULL, ESP_ERR_NO_MEM, TAG, "No memory");
+
+    esp_err_t ret = ESP_OK;
+
+    ESP_GOTO_ON_ERROR(rc522_clone_config(config, &(rc522->config)), _error, TAG, "clone config failed");
+
+    esp_event_loop_args_t event_args = {
+        .queue_size = 1,
+        .task_name = NULL, // no task will be created
+    };
+
+    rc522->bits = xEventGroupCreate();
+    ESP_GOTO_ON_FALSE(rc522->bits != NULL, ESP_ERR_NO_MEM, _error, TAG, "nomem");
+
+    ESP_GOTO_ON_ERROR(esp_event_loop_create(&event_args, &rc522->event_handle),
+        _error,
+        TAG,
+        "Failed to create event loop");
+
+    BaseType_t task_create_result = xTaskCreate(rc522_task,
+        "rc522_polling_task",
+        rc522->config->task_stack_size,
+        rc522,
+        rc522->config->task_priority,
+        &rc522->task_handle);
+
+    ESP_GOTO_ON_FALSE(task_create_result == pdTRUE, ESP_FAIL, _error, TAG, "task create failed");
+
+    goto _success;
+_error:
+    rc522_destroy(rc522);
+    rc522 = NULL;
+    goto _return;
+_success:
+    rc522->state = RC522_STATE_CREATED;
+    *out_rc522 = rc522;
+_return:
+    return ret;
+}
+
 esp_err_t rc522_destroy(rc522_handle_t rc522)
 {
     ESP_RETURN_ON_FALSE(rc522 != NULL, ESP_ERR_INVALID_ARG, TAG, "rc522 is null");
@@ -168,11 +180,13 @@ esp_err_t rc522_destroy(rc522_handle_t rc522)
         TAG,
         "Cannot destroy from event handler");
 
-    rc522->exit_requested = true; //  task will delete itself
+    rc522_request_task_exit(rc522);
 
-    // TODO: Wait for task to exit
-
-    esp_err_t err = ESP_OK;
+    if (rc522->bits) {
+        xEventGroupWaitBits(rc522->bits, RC522_TASK_STOPPED_BIT, pdFALSE, pdTRUE, portMAX_DELAY);
+        vEventGroupDelete(rc522->bits);
+        rc522->bits = NULL;
+    }
 
     if (rc522->event_handle) {
         if (esp_event_loop_delete(rc522->event_handle) != ESP_OK) {
@@ -189,7 +203,7 @@ esp_err_t rc522_destroy(rc522_handle_t rc522)
 
     free(rc522);
 
-    return err;
+    return ESP_OK;
 }
 
 static esp_err_t rc522_dispatch_event(rc522_handle_t rc522, rc522_event_t event, const void *data, size_t data_size)
@@ -203,6 +217,8 @@ void rc522_task(void *arg)
 {
     rc522_handle_t rc522 = (rc522_handle_t)arg;
     uint8_t not_present_counter = 0;
+
+    xEventGroupClearBits(rc522->bits, RC522_TASK_STOPPED_BIT);
 
     while (!rc522->exit_requested) {
         if (rc522->state != RC522_STATE_SCANNING) {
@@ -275,5 +291,7 @@ void rc522_task(void *arg)
         rc522_delay_ms(rc522->config->task_throttling_ms);
     }
 
+    xEventGroupSetBits(rc522->bits, RC522_TASK_STOPPED_BIT);
+    RC522_LOGI("Task exited");
     vTaskDelete(NULL); // self-delete
 }

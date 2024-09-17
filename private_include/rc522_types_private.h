@@ -2,6 +2,9 @@
 
 #include <esp_log.h>
 #include <esp_check.h>
+#include <esp_bit_defs.h>
+#include <freertos/FreeRTOS.h>
+#include <freertos/event_groups.h>
 #include "rc522_types.h"
 #include "rc522_picc.h"
 
@@ -11,9 +14,31 @@ extern "C" {
 
 #define RC522_LOG_TAG "rc522"
 
-#define RC522_LOG_DEFINE_BASE() static const char *TAG = RC522_LOG_TAG
+#define RC522_TASK_STOPPED_BIT (BIT0)
 
 #define RC522_LOG_LEVEL esp_log_level_get(RC522_LOG_TAG)
+
+typedef enum
+{
+    RC522_STATE_UNDEFINED = 0,
+    RC522_STATE_CREATED,
+    RC522_STATE_SCANNING, /*<! Scanning for nearby PICCs */
+    RC522_STATE_PAUSED,
+} rc522_state_t;
+
+struct rc522
+{
+    rc522_config_t *config;               /*<! Configuration */
+    bool exit_requested;                  /*<! Indicates whether polling task exit is requested */
+    TaskHandle_t task_handle;             /*<! Handle of task */
+    esp_event_loop_handle_t event_handle; /*<! Handle of event loop */
+    rc522_state_t state;                  /*<! Current state */
+    bool is_picc_activated;
+    rc522_picc_t activated_picc;
+    EventGroupHandle_t bits;
+};
+
+#define RC522_LOG_DEFINE_BASE() static const char *TAG = RC522_LOG_TAG
 
 #define RC522_LOG(esp_log_foo, format, ...) esp_log_foo(TAG, "%s(%d): " format, __FUNCTION__, __LINE__, ##__VA_ARGS__)
 #define RC522_LOGE(format, ...)             RC522_LOG(ESP_LOGE, format, ##__VA_ARGS__)
@@ -45,25 +70,6 @@ extern "C" {
         }                                                                                                              \
     }                                                                                                                  \
     while (0)
-
-typedef enum
-{
-    RC522_STATE_UNDEFINED = 0,
-    RC522_STATE_CREATED,
-    RC522_STATE_SCANNING, /*<! Scanning for nearby PICCs */
-    RC522_STATE_PAUSED,
-} rc522_state_t;
-
-struct rc522
-{
-    rc522_config_t *config;               /*<! Configuration */
-    bool exit_requested;                  /*<! Indicates whether polling task exit is requested */
-    TaskHandle_t task_handle;             /*<! Handle of task */
-    esp_event_loop_handle_t event_handle; /*<! Handle of event loop */
-    rc522_state_t state;                  /*<! Current state */
-    bool is_picc_activated;
-    rc522_picc_t activated_picc;
-};
 
 #ifdef __cplusplus
 }
