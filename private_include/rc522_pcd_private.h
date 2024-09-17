@@ -8,7 +8,7 @@ extern "C" {
 
 #define RC522_PCD_MOD_WIDTH_RESET_VALUE (0x26)
 #define RC522_PCD_TX_MODE_RESET_VALUE   (0x00)
-#define RC522_PCD_RX_MODE_RESET_VALUE   (0x00)
+#define RC522_PCD_RX_MODE_RESET_VALUE   (RC522_RX_NO_ERR)
 
 typedef enum
 {
@@ -188,6 +188,9 @@ typedef enum
     RC522_PCD_SOFT_RESET_CMD = 0b1111,
 } rc522_pcd_command_t;
 
+/**
+ * Bits of RC522_PCD_TIMER_MODE_REG register
+ */
 typedef enum
 {
     /**
@@ -218,6 +221,9 @@ typedef enum
     RC522_PCD_FORCE_100_ASK_BIT = BIT6,
 } rc522_pcd_tx_ask_reg_bit_t;
 
+/**
+ * Bits of RC522_PCD_MODE_REG register
+ */
 typedef enum
 {
     // Transmitter can only be started if an RF field is generated
@@ -302,6 +308,18 @@ typedef enum
      */
     RC522_PCD_MK_CRYPTO1_ON_BIT = BIT3,
 } rc522_pcd_status_2_reg_bit_t;
+
+/**
+ * Bits of RC522_PCD_RX_MODE_REG register
+ */
+typedef enum
+{
+    /**
+     * An invalid received data stream (less than 4 bits received) will
+     * be ignored and the receiver remains active
+     */
+    RC522_RX_NO_ERR = BIT3,
+} rc522_pcd_rx_mode_reg_bit_t;
 
 typedef enum
 {

@@ -52,9 +52,9 @@ esp_err_t rc522_picc_comm(rc522_handle_t rc522, rc522_pcd_command_t command, uin
     // ~36ms, then consider the command as timed out.
     const uint32_t deadline = rc522_millis() + 36;
     bool completed = false;
+    uint8_t irq;
 
     do {
-        uint8_t irq;
         RC522_RETURN_ON_ERROR(rc522_pcd_read(rc522, RC522_PCD_COMM_INT_REQ_REG, &irq));
 
         if (irq & wait_irq) { // One of the interrupts that signal success has been set.
@@ -84,21 +84,27 @@ esp_err_t rc522_picc_comm(rc522_handle_t rc522, rc522_pcd_command_t command, uin
         return ESP_FAIL;
     }
 
+    uint8_t fifo_level;
+    RC522_RETURN_ON_ERROR(rc522_pcd_read(rc522, RC522_PCD_FIFO_LEVEL_REG, &fifo_level));
+
+    if (fifo_level < 1) {
+        RC522_LOGW("unexpectedly, fifo is empty (irq=0x%02x)", irq);
+    }
+
     uint8_t _valid_bits = 0;
 
     // If the caller wants data back, get it from the MFRC522.
     if (back_data && back_data_len) {
-        uint8_t length;
-        RC522_RETURN_ON_ERROR(rc522_pcd_read(rc522, RC522_PCD_FIFO_LEVEL_REG, &length));
+        if (fifo_level > *back_data_len) {
+            RC522_LOGW("buffer no space");
 
-        if (length > *back_data_len) {
             return ESP_ERR_NO_MEM;
         }
 
-        *back_data_len = length; // Number of bytes returned
+        *back_data_len = fifo_level; // Number of bytes returned
 
         uint8_t b0_orig = back_data[0];
-        RC522_RETURN_ON_ERROR(rc522_pcd_fifo_read(rc522, back_data, length));
+        RC522_RETURN_ON_ERROR(rc522_pcd_fifo_read(rc522, back_data, fifo_level));
 
         if (rx_align) { // Only update bit positions rxAlign..7 in values[0]
             RC522_LOGD("rx_align=0x%02x, applying mask", rx_align);
@@ -390,6 +396,8 @@ static esp_err_t rc522_picc_select(rc522_handle_t rc522, rc522_picc_t *picc, uin
 
             // RxAlign = BitFramingReg[6..4]. TxLastBits = BitFramingReg[2..0]
             RC522_RETURN_ON_ERROR(rc522_pcd_write(rc522, RC522_PCD_BIT_FRAMING_REG, (rx_align << 4) + tx_last_bits));
+
+            // RC522_LOGW("--------- buffer_used=%d, response_length=%d", buffer_used, response_length);
 
             // Transmit the buffer and receive the response.
             ret = rc522_picc_transceive(rc522,
