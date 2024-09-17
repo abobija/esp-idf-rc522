@@ -391,8 +391,6 @@ static esp_err_t rc522_picc_select(rc522_handle_t rc522, rc522_picc_t *picc, uin
             // RxAlign = BitFramingReg[6..4]. TxLastBits = BitFramingReg[2..0]
             RC522_RETURN_ON_ERROR(rc522_pcd_write(rc522, RC522_PCD_BIT_FRAMING_REG, (rx_align << 4) + tx_last_bits));
 
-            // RC522_LOGW("--------- buffer_used=%d, response_length=%d", buffer_used, response_length);
-
             // Transmit the buffer and receive the response.
             ret = rc522_picc_transceive(rc522,
                 buffer,
