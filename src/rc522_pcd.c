@@ -271,20 +271,9 @@ esp_err_t rc522_pcd_write_n(rc522_handle_t rc522, rc522_pcd_register_t addr, uin
         RC522_LOGV("\t[0x%02x] <= 0x%02x", addr, *data);
     }
 
-    uint8_t *buffer = NULL;
+    RC522_RETURN_ON_ERROR(rc522_driver_send(rc522->config->driver, addr, data, n));
 
-    // TODO: Find a way to send address + data without memory allocation
-    buffer = (uint8_t *)malloc(n + 1);
-    ESP_RETURN_ON_FALSE(buffer != NULL, ESP_ERR_NO_MEM, TAG, "No memory");
-
-    buffer[0] = addr;
-    memcpy(buffer + 1, data, n);
-
-    esp_err_t ret = rc522_driver_send(rc522->config->driver, addr, buffer, n + 1);
-
-    FREE(buffer);
-
-    return ret;
+    return ESP_OK;
 }
 
 inline esp_err_t rc522_pcd_write(rc522_handle_t rc522, rc522_pcd_register_t addr, uint8_t val)

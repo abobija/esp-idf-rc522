@@ -20,16 +20,21 @@ static esp_err_t rc522_i2c_install(rc522_driver_handle_t driver)
     return ESP_OK;
 }
 
-static esp_err_t rc522_i2c_send(rc522_driver_handle_t driver, uint8_t _address, uint8_t *buffer, uint8_t length)
+static esp_err_t rc522_i2c_send(rc522_driver_handle_t driver, uint8_t address, uint8_t *buffer, uint8_t length)
 {
-    // ignore _address parameter since buffer[0] is address sent by library
+    // FIXME: Find a way to send [address + buffer]
+    //        without need for second buffer
+    uint8_t buffer2[64];
+
+    buffer2[0] = address;
+    memcpy(buffer2 + 1, buffer, length);
 
     rc522_i2c_config_t *conf = (rc522_i2c_config_t *)(driver->config);
 
     RC522_RETURN_ON_ERROR(i2c_master_write_to_device(conf->port,
         conf->device_address,
-        buffer,
-        length,
+        buffer2,
+        (length + 1),
         pdMS_TO_TICKS(conf->rw_timeout_ms)));
 
     return ESP_OK;

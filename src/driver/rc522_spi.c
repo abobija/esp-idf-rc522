@@ -24,23 +24,23 @@ static esp_err_t rc522_spi_install(rc522_driver_handle_t driver)
     return ESP_OK;
 }
 
-static esp_err_t rc522_spi_send(rc522_driver_handle_t driver, uint8_t _address, uint8_t *buffer, uint8_t length)
+static esp_err_t rc522_spi_send(rc522_driver_handle_t driver, uint8_t address, uint8_t *buffer, uint8_t length)
 {
-    // ignore _address parameter since buffer[0] is address sent by library
+    address <<= 1;
+    address &= (~0x80);
 
-    uint8_t *address = (buffer + 0);
-    uint8_t address_origin = *address;
+    // FIXME: Find a way to send [address + buffer]
+    //        without need for second buffer
+    uint8_t buffer2[64];
 
-    *address <<= 1;
-    *address &= (~0x80);
+    buffer2[0] = address;
+    memcpy(buffer2 + 1, buffer, length);
 
     esp_err_t ret = spi_device_polling_transmit((spi_device_handle_t)(driver->device),
         &(spi_transaction_t) {
-            .length = 8 * length,
-            .tx_buffer = buffer,
+            .length = 8 * (length + 1),
+            .tx_buffer = buffer2,
         });
-
-    *address = address_origin;
 
     return ret;
 }
