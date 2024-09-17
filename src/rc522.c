@@ -297,6 +297,6 @@ void rc522_task(void *arg)
     }
 
     xEventGroupSetBits(rc522->bits, RC522_TASK_STOPPED_BIT);
-    RC522_LOGI("Task exited");
+    ESP_LOGI(TAG, "Task exited");
     vTaskDelete(NULL); // self-delete
 }

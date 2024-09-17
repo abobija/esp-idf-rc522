@@ -259,11 +259,17 @@ static esp_err_t rc522_mifare_check_sector_trailer_write(uint8_t block_address)
     RC522_RETURN_ON_ERROR(rc522_mifare_sector_info(sector_index, &sector));
 
     if (block_address == sector.trailer_block_address) {
+        ESP_LOGE(TAG, "");
         ESP_LOGE(TAG,
             "The block at address %d that you are trying to update is a Sector Trailer block.",
             block_address);
-        ESP_LOGE(TAG, "Writing to Sector Trailer blocks is prevented by default in the component configuration.");
-        ESP_LOGE(TAG, "Please use menuconfig to enable this option.");
+        ESP_LOGE(TAG, "");
+        ESP_LOGE(TAG, "Writing to Sector Trailer blocks is prevented by default in the component configuration");
+        ESP_LOGE(TAG, "to protect inexperienced users from accidentally overwriting keys");
+        ESP_LOGE(TAG, "or writing incorrect access bits, which could make the sector unusable.");
+        ESP_LOGE(TAG, "");
+        ESP_LOGE(TAG, "If you know what you are doing, please use menuconfig to enable this option.");
+        ESP_LOGE(TAG, "");
 
         return ESP_ERR_NOT_ALLOWED;
     }
