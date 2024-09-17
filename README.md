@@ -47,9 +47,10 @@ Pin layout is configurable by the user. Check `#define`s of [basic example](exam
 
 ## Terms
 
-ISO/IEC 14443 uses the following terms for components:
-  - `PCD`: Proximity Coupling Device (the card reader - MFRC522)
-  - `PICC`: Proximity Integrated Circuit Card (rfid card)
+| Term | Description |
+| ---- | ----------- |
+| PCD  | Proximity Coupling Device (the card reader). In our case this is MFRC522 module |
+| PICC | Proximity Integrated Circuit Card (e.g: rfid card, tag, ...) |
 
 ## Additional resources
 
