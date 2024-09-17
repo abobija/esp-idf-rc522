@@ -32,10 +32,10 @@ esp_err_t rc522_driver_create(void *config, size_t config_size, rc522_driver_han
     esp_err_t ret = ESP_OK;
 
     rc522_driver_handle_t _driver = calloc(1, sizeof(struct rc522_driver_handle));
-    ESP_RETURN_ON_FALSE(_driver != NULL, ESP_ERR_NO_MEM, TAG, "no mem");
+    ESP_RETURN_ON_FALSE(_driver != NULL, ESP_ERR_NO_MEM, TAG, "nomem");
 
     _driver->config = calloc(1, config_size);
-    ESP_GOTO_ON_FALSE(_driver->config != NULL, ESP_ERR_NO_MEM, error, TAG, "no mem");
+    ESP_GOTO_ON_FALSE(_driver->config != NULL, ESP_ERR_NO_MEM, error, TAG, "nomem");
 
     memcpy(_driver->config, config, config_size);
 

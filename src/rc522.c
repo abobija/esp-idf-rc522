@@ -25,7 +25,7 @@ inline bool rc522_is_able_to_start(rc522_handle_t rc522)
 static esp_err_t rc522_clone_config(rc522_config_t *config, rc522_config_t **result)
 {
     rc522_config_t *config_clone = calloc(1, sizeof(rc522_config_t));
-    ESP_RETURN_ON_FALSE(config_clone != NULL, ESP_ERR_NO_MEM, TAG, "No memory");
+    ESP_RETURN_ON_FALSE(config_clone != NULL, ESP_ERR_NO_MEM, TAG, "nomem");
 
     memcpy(config_clone, config, sizeof(rc522_config_t));
 
@@ -132,7 +132,7 @@ esp_err_t rc522_create(rc522_config_t *config, rc522_handle_t *out_rc522)
     ESP_RETURN_ON_FALSE(out_rc522 != NULL, ESP_ERR_INVALID_ARG, TAG, "out_rc522 is null");
 
     rc522_handle_t rc522 = calloc(1, sizeof(struct rc522));
-    ESP_RETURN_ON_FALSE(rc522 != NULL, ESP_ERR_NO_MEM, TAG, "No memory");
+    ESP_RETURN_ON_FALSE(rc522 != NULL, ESP_ERR_NO_MEM, TAG, "nomem");
 
     esp_err_t ret = ESP_OK;
 
