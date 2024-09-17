@@ -64,19 +64,7 @@ bool rc522_mifare_type_is_classic_compatible(rc522_picc_type_t type)
            || type == RC522_PICC_TYPE_MIFARE_4K;
 }
 
-inline esp_err_t rc522_mifare_autha(
-    rc522_handle_t rc522, rc522_picc_t *picc, uint8_t block_addr, rc522_mifare_key_t *key)
-{
-    return rc522_mifare_auth(rc522, picc, RC522_MIFARE_KEY_A, block_addr, key);
-}
-
-inline esp_err_t rc522_mifare_authb(
-    rc522_handle_t rc522, rc522_picc_t *picc, uint8_t block_addr, rc522_mifare_key_t *key)
-{
-    return rc522_mifare_auth(rc522, picc, RC522_MIFARE_KEY_B, block_addr, key);
-}
-
-esp_err_t rc522_mifare_auth(rc522_handle_t rc522, rc522_picc_t *picc, rc522_mifare_key_type_t key_type,
+static esp_err_t rc522_mifare_auth(rc522_handle_t rc522, rc522_picc_t *picc, rc522_mifare_key_type_t key_type,
     uint8_t block_addr, rc522_mifare_key_t *key)
 {
     RC522_CHECK(rc522 == NULL);
@@ -122,6 +110,18 @@ esp_err_t rc522_mifare_auth(rc522_handle_t rc522, rc522_picc_t *picc, rc522_mifa
         NULL,
         0,
         false);
+}
+
+inline esp_err_t rc522_mifare_autha(
+    rc522_handle_t rc522, rc522_picc_t *picc, uint8_t block_addr, rc522_mifare_key_t *key)
+{
+    return rc522_mifare_auth(rc522, picc, RC522_MIFARE_KEY_A, block_addr, key);
+}
+
+inline esp_err_t rc522_mifare_authb(
+    rc522_handle_t rc522, rc522_picc_t *picc, uint8_t block_addr, rc522_mifare_key_t *key)
+{
+    return rc522_mifare_auth(rc522, picc, RC522_MIFARE_KEY_B, block_addr, key);
 }
 
 esp_err_t rc522_mifare_read(
@@ -256,7 +256,7 @@ esp_err_t rc522_mifare_info(rc522_picc_t *picc, rc522_mifare_t *mifare)
     return ESP_OK;
 }
 
-esp_err_t rc522_mifare_sector_info(uint8_t sector_index, rc522_mifare_sector_t *result)
+static esp_err_t rc522_mifare_sector_info(uint8_t sector_index, rc522_mifare_sector_t *result)
 {
     RC522_CHECK(sector_index > RC522_MIFARE_MAX_SECTOR_INDEX);
     RC522_CHECK(result == NULL);
@@ -306,7 +306,7 @@ esp_err_t rc522_mifare_sector_info(uint8_t sector_index, rc522_mifare_sector_t *
  * | 0 | 0 | 0 | 0 | 0 | C1 | C2 | C3 |
  *
  */
-esp_err_t rc522_mifare_parse_access_bits(uint8_t *trailer_bytes, /** Sector trailer block data */
+static esp_err_t rc522_mifare_parse_access_bits(uint8_t *trailer_bytes, /** Sector trailer block data */
     uint8_t access_bits[4] /* Pointer to 4 bytes array */)
 {
     RC522_CHECK(trailer_bytes == NULL);
@@ -334,12 +334,13 @@ esp_err_t rc522_mifare_parse_access_bits(uint8_t *trailer_bytes, /** Sector trai
 /**
  * Checks if block is Value block based on access bits
  */
-inline bool rc522_mifare_block_is_value(uint8_t access_bits)
+inline static bool rc522_mifare_block_is_value(uint8_t access_bits)
 {
     return access_bits == 0b110 || access_bits == 0b001;
 }
 
-esp_err_t rc522_mifare_parse_value_block(uint8_t *bytes, /** Value block data */ rc522_mifare_value_block_t *block)
+static esp_err_t rc522_mifare_parse_value_block(
+    uint8_t *bytes, /** Value block data */ rc522_mifare_value_block_t *block)
 {
     RC522_CHECK(bytes == NULL);
     RC522_CHECK(block == NULL);

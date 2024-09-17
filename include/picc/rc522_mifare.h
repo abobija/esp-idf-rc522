@@ -77,11 +77,6 @@ bool rc522_mifare_type_is_classic_compatible(rc522_picc_type_t type);
 
 esp_err_t rc522_mifare_info(rc522_picc_t *picc, rc522_mifare_t *mifare);
 
-esp_err_t rc522_mifare_sector_info(uint8_t sector_index, rc522_mifare_sector_t *result);
-
-esp_err_t rc522_mifare_auth(rc522_handle_t rc522, rc522_picc_t *picc, rc522_mifare_key_type_t key_type,
-    uint8_t block_addr, rc522_mifare_key_t *key);
-
 esp_err_t rc522_mifare_autha(rc522_handle_t rc522, rc522_picc_t *picc, uint8_t block_addr, rc522_mifare_key_t *key);
 
 esp_err_t rc522_mifare_authb(rc522_handle_t rc522, rc522_picc_t *picc, uint8_t block_addr, rc522_mifare_key_t *key);
@@ -91,12 +86,6 @@ esp_err_t rc522_mifare_read(
 
 esp_err_t rc522_mifare_write(
     rc522_handle_t rc522, rc522_picc_t *picc, uint8_t block_addr, uint8_t buffer[RC522_MIFARE_BLOCK_SIZE]);
-
-esp_err_t rc522_mifare_parse_access_bits(uint8_t *trailer_bytes, uint8_t access_bits[4]);
-
-bool rc522_mifare_block_is_value(uint8_t access_bits);
-
-esp_err_t rc522_mifare_parse_value_block(uint8_t *bytes, rc522_mifare_value_block_t *block);
 
 esp_err_t rc522_mifare_transactions_end(rc522_handle_t rc522, rc522_picc_t *picc);
 
