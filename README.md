@@ -2,7 +2,7 @@
 
 [![Component Registry](https://components.espressif.com/components/abobija/rc522/badge.svg)](https://components.espressif.com/components/abobija/rc522)
 
-This repository contains ESP-IDF library (component) for communication with MIFARE cards using MFRC522 reader.
+This repository contains ESP-IDF library (component) for communication with RFID cards using MFRC522 reader.
 
 ## Installation
 
