@@ -188,29 +188,10 @@ static esp_err_t rc522_mifare_transceive(
     return ret;
 }
 
-esp_err_t rc522_mifare_write(
-    rc522_handle_t rc522, rc522_picc_t *picc, uint8_t block_addr, uint8_t buffer[RC522_MIFARE_BLOCK_SIZE])
-{
-    RC522_CHECK(rc522 == NULL);
-    RC522_CHECK(picc == NULL);
-    RC522_CHECK(buffer == NULL);
-
-    // Step 1: Tell the PICC we want to write to block blockAddr.
-    uint8_t cmd_buffer[] = { RC522_MIFARE_WRITE_CMD, block_addr };
-    RC522_RETURN_ON_ERROR(
-        rc522_mifare_transceive(rc522, cmd_buffer, 2, false)); // Adds CRC_A and checks that the response is MF_ACK.
-
-    RC522_RETURN_ON_ERROR(rc522_mifare_transceive(rc522,
-        buffer,
-        RC522_MIFARE_BLOCK_SIZE,
-        false)); // Adds CRC_A and checks that the response is MF_ACK.
-
-    return ESP_OK;
-}
-
 static esp_err_t rc522_mifare_number_of_sectors(rc522_picc_type_t type, uint8_t *result)
 {
     RC522_CHECK(rc522_mifare_type_is_classic_compatible(type) == false);
+    RC522_CHECK(result == NULL);
 
     switch (type) {
         case RC522_PICC_TYPE_MIFARE_MINI:
@@ -226,18 +207,18 @@ static esp_err_t rc522_mifare_number_of_sectors(rc522_picc_type_t type, uint8_t 
             *result = 40;
             return ESP_OK;
         default:
-            return ESP_FAIL; // TODO: use custom err
+            return ESP_FAIL;
     }
 }
 
-esp_err_t rc522_mifare_info(rc522_picc_t *picc, rc522_mifare_t *mifare)
+inline static uint8_t rc522_mifare_sector_index_by_block_address(uint8_t block_address)
 {
-    RC522_CHECK(picc == NULL);
-    RC522_CHECK(mifare == NULL);
-
-    RC522_RETURN_ON_ERROR(rc522_mifare_number_of_sectors(picc->type, &mifare->number_of_sectors));
-
-    return ESP_OK;
+    if (block_address < 128) {
+        return block_address / 4;
+    }
+    else {
+        return 32 + ((block_address - 128) / 16);
+    }
 }
 
 static esp_err_t rc522_mifare_sector_info(uint8_t sector_index, rc522_mifare_sector_t *result)
@@ -250,19 +231,77 @@ static esp_err_t rc522_mifare_sector_info(uint8_t sector_index, rc522_mifare_sec
     // Determine position and size of sector.
     if (result->index < 32) { // Sectors 0..31 has 4 blocks each
         result->number_of_blocks = 4;
-        result->block_0_address = result->index * result->number_of_blocks;
+        result->block_0_address = result->index * 4;
+        result->trailer_block_address = result->block_0_address + 3;
 
         return ESP_OK;
     }
 
     if (result->index < 40) { // Sectors 32-39 has 16 blocks each
         result->number_of_blocks = 16;
-        result->block_0_address = 128 + (result->index - 32) * result->number_of_blocks;
+        result->block_0_address = 128 + (result->index - 32) * 16;
+        result->trailer_block_address = result->block_0_address + 15;
 
         return ESP_OK;
     }
 
     return ESP_FAIL;
+}
+
+/**
+ * Returns ESP_OK if writing to Sector Trailer block is allowed
+ */
+static esp_err_t rc522_mifare_check_sector_trailer_write(uint8_t block_address)
+{
+#ifdef CONFIG_RC522_PREVENT_SECTOR_TRAILER_WRITE
+    uint8_t sector_index = rc522_mifare_sector_index_by_block_address(block_address);
+    rc522_mifare_sector_t sector;
+    RC522_RETURN_ON_ERROR(rc522_mifare_sector_info(sector_index, &sector));
+
+    if (block_address == sector.trailer_block_address) {
+        ESP_LOGE(TAG,
+            "The block at address %d that you are trying to update is a Sector Trailer block.",
+            block_address);
+        ESP_LOGE(TAG, "Writing to Sector Trailer blocks is prevented by default in the component configuration.");
+        ESP_LOGE(TAG, "Please use menuconfig to enable this option.");
+
+        return ESP_ERR_NOT_ALLOWED;
+    }
+#endif
+
+    return ESP_OK;
+}
+
+esp_err_t rc522_mifare_write(
+    rc522_handle_t rc522, rc522_picc_t *picc, uint8_t block_addr, uint8_t buffer[RC522_MIFARE_BLOCK_SIZE])
+{
+    RC522_CHECK(rc522 == NULL);
+    RC522_CHECK(picc == NULL);
+    RC522_CHECK(!rc522_mifare_type_is_classic_compatible(picc->type));
+    RC522_CHECK(buffer == NULL);
+    RC522_CHECK(rc522_mifare_check_sector_trailer_write(block_addr) != ESP_OK);
+
+    // Step 1: Tell the PICC we want to write to block blockAddr.
+    uint8_t cmd_buffer[] = { RC522_MIFARE_WRITE_CMD, block_addr };
+    RC522_RETURN_ON_ERROR(
+        rc522_mifare_transceive(rc522, cmd_buffer, 2, false)); // Adds CRC_A and checks that the response is MF_ACK.
+
+    RC522_RETURN_ON_ERROR(rc522_mifare_transceive(rc522,
+        buffer,
+        RC522_MIFARE_BLOCK_SIZE,
+        false)); // Adds CRC_A and checks that the response is MF_ACK.
+
+    return ESP_OK;
+}
+
+esp_err_t rc522_mifare_info(rc522_picc_t *picc, rc522_mifare_t *mifare)
+{
+    RC522_CHECK(picc == NULL);
+    RC522_CHECK(mifare == NULL);
+
+    RC522_RETURN_ON_ERROR(rc522_mifare_number_of_sectors(picc->type, &mifare->number_of_sectors));
+
+    return ESP_OK;
 }
 
 /**

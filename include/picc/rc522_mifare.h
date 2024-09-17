@@ -43,6 +43,7 @@ typedef struct
     uint8_t index;            // Zero-based index of Sector
     uint8_t number_of_blocks; // Total number of blocks inside of Sector
     uint8_t block_0_address;  // Zero-based index of the first Block inside of MIFARE memory
+    uint8_t trailer_block_address;
 } rc522_mifare_sector_t;
 
 typedef enum
