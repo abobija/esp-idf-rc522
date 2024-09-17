@@ -136,11 +136,11 @@ esp_err_t rc522_pcd_init(rc522_handle_t rc522)
     RC522_RETURN_ON_ERROR(rc522_pcd_soft_reset(rc522, 150));
 
     // Reset baud rates
-    RC522_RETURN_ON_ERROR(rc522_pcd_write(rc522, RC522_PCD_TX_MODE_REG, RC522_PCD_TX_MODE_RESET_VALUE));
-    RC522_RETURN_ON_ERROR(rc522_pcd_write(rc522, RC522_PCD_RX_MODE_REG, RC522_PCD_RX_MODE_RESET_VALUE));
+    RC522_RETURN_ON_ERROR(rc522_pcd_write(rc522, RC522_PCD_TX_MODE_REG, RC522_PCD_TX_MODE_REG_RESET_VALUE));
+    RC522_RETURN_ON_ERROR(rc522_pcd_write(rc522, RC522_PCD_RX_MODE_REG, RC522_PCD_RX_MODE_REG_RESET_VALUE));
 
     // Reset modulation width
-    RC522_RETURN_ON_ERROR(rc522_pcd_write(rc522, RC522_PCD_MOD_WIDTH_REG, RC522_PCD_MOD_WIDTH_RESET_VALUE));
+    RC522_RETURN_ON_ERROR(rc522_pcd_write(rc522, RC522_PCD_MOD_WIDTH_REG, RC522_PCD_MOD_WIDTH_REG_RESET_VALUE));
 
     // When communicating with a PICC we need a timeout if something goes wrong.
     // f_timer = 13.56 MHz / (2*TPreScaler+1) where TPreScaler = [TPrescaler_Hi:TPrescaler_Lo].

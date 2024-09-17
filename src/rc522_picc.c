@@ -222,10 +222,10 @@ esp_err_t rc522_picc_find(rc522_handle_t rc522, rc522_picc_t *picc)
     uint8_t atqa_buffer_size = sizeof(atqa_buffer);
 
     // Reset baud rates
-    RC522_RETURN_ON_ERROR(rc522_pcd_write(rc522, RC522_PCD_TX_MODE_REG, RC522_PCD_TX_MODE_RESET_VALUE));
-    RC522_RETURN_ON_ERROR(rc522_pcd_write(rc522, RC522_PCD_RX_MODE_REG, RC522_PCD_RX_MODE_RESET_VALUE));
+    RC522_RETURN_ON_ERROR(rc522_pcd_write(rc522, RC522_PCD_TX_MODE_REG, RC522_PCD_TX_MODE_REG_RESET_VALUE));
+    RC522_RETURN_ON_ERROR(rc522_pcd_write(rc522, RC522_PCD_RX_MODE_REG, RC522_PCD_RX_MODE_REG_RESET_VALUE));
     // Reset ModWidthReg
-    RC522_RETURN_ON_ERROR(rc522_pcd_write(rc522, RC522_PCD_MOD_WIDTH_REG, RC522_PCD_MOD_WIDTH_RESET_VALUE));
+    RC522_RETURN_ON_ERROR(rc522_pcd_write(rc522, RC522_PCD_MOD_WIDTH_REG, RC522_PCD_MOD_WIDTH_REG_RESET_VALUE));
 
     esp_err_t ret = rc522_picc_reqa(rc522, atqa_buffer, &atqa_buffer_size);
 
