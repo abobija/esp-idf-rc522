@@ -575,7 +575,15 @@ esp_err_t rc522_picc_activate(rc522_handle_t rc522, rc522_picc_t *picc)
     RC522_CHECK(rc522 == NULL);
     RC522_CHECK(picc == NULL);
 
-    RC522_RETURN_ON_ERROR(rc522_picc_select(rc522, picc, 0));
+    esp_err_t ret = rc522_picc_select(rc522, picc, 0);
+
+    if (ret != ESP_OK) {
+        if (RC522_LOG_LEVEL >= ESP_LOG_DEBUG) {
+            RC522_LOGE("select fail: %04x", ret);
+        }
+
+        return ret;
+    }
 
     picc->type = rc522_picc_type(picc->sak);
     picc->activated_at_ms = rc522_millis();
