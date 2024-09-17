@@ -56,7 +56,7 @@ Pin layout is configurable by the user. Check `#define`s of [basic example](exam
 
 | Title | Description |
 | ----- | ----------- |
-| [ISO/IEC 14443](https://en.wikipedia.org/wiki/ISO/IEC_14443) | Identification cards -- Contactless integrated circuit cards |
+| [ISO/IEC 14443](https://en.wikipedia.org/wiki/ISO/IEC_14443) | Identification cards - Contactless integrated circuit cards |
 | [ISO/IEC 14443-2](http://www.emutag.com/iso/14443-2.pdf) | Radio frequency power and signal interface |
 | [ISO/IEC 14443-3](http://www.emutag.com/iso/14443-3.pdf) | Initialization and anticollision |
 | [ISO/IEC 14443-4](http://www.emutag.com/iso/14443-4.pdf) | Transmission protocol |
