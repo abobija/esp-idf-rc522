@@ -2,7 +2,7 @@
 
 [![Component Registry](https://components.espressif.com/components/abobija/rc522/badge.svg)](https://components.espressif.com/components/abobija/rc522)
 
-This repository contains ESP-IDF library (component) for communication with RFID cards using MFRC522 reader.
+This repository contains [ESP-IDF](https://github.com/espressif/esp-idf) library (component) for communication with RFID cards using [MFRC522](https://www.nxp.com/docs/en/data-sheet/MFRC522.pdf) reader.
 
 ## Installation
 
@@ -14,11 +14,11 @@ idf.py add-dependency "abobija/rc522"
 
 ## Support
 
-- ESP-IDF version: ^5
-- Communication protocols: SPI and I2C
-- Cards: MIFARE 1K, MIFARE 4K and MIFARE Mini
-- Card memory operations:
-    - Read and Write ([example](examples/read_write))
+- ESP-IDF version: `^5`
+- Communication protocols: `SPI` and `I2C`
+- Cards: `MIFARE 1K`, `MIFARE 4K` and `MIFARE Mini`
+- Card operations:
+    - Read and write to memory blocks ([example](examples/read_write))
 
 ## Run example
 
@@ -39,7 +39,7 @@ idf.py build flash monitor
 ```
 
 > [!NOTE]
-> Basic example uses SPI communication. Find defined GPIO configuration in [basic.c](examples/basic/main/basic.c) file.
+> [`basic`](examples/basic) example uses SPI communication. Find defined GPIO configuration in [basic.c](examples/basic/main/basic.c) file.
 
 ## Pin Layout
 
