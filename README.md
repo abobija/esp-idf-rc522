@@ -39,17 +39,17 @@ idf.py build flash monitor
 ```
 
 > [!NOTE]
-> Basic example uses SPI communication. Find defined GPIO configuration in [basic.c](examples/basic/main/basic.c) file, while RST pin should be connected to 3.3V.
+> Basic example uses SPI communication. Find defined GPIO configuration in [basic.c](examples/basic/main/basic.c) file.
 
 ## Pin Layout
 
-Pin layout is configurable by the user. Check `#define`s of [basic example](examples/basic/main/basic.c) to see how GPIOs are configured.
+Pin layout is configurable by the user. Check `#define`s of [basic example](examples/basic/main/basic.c) to see how GPIOs are configured. Library currently does not use RST pin so connect it to the 3.3V.
 
 ## Terms
 
 ISO/IEC 14443 uses the following terms for components:
-  - `PCD`: proximity coupling device (the card reader)
-  - `PICC`: proximity integrated circuit card
+  - `PCD`: Proximity Coupling Device (the card reader - MFRC522)
+  - `PICC`: Proximity Integrated Circuit Card (rfid card)
 
 ## Additional resources
 
