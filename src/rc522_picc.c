@@ -198,7 +198,7 @@ static esp_err_t rc522_picc_reqa_or_wupa(
     return ESP_OK;
 }
 
-static esp_err_t rc522_picc_reqa(rc522_handle_t rc522, uint8_t *atqa_buffer, uint8_t *atqa_buffer_size)
+inline static esp_err_t rc522_picc_reqa(rc522_handle_t rc522, uint8_t *atqa_buffer, uint8_t *atqa_buffer_size)
 {
     return rc522_picc_reqa_or_wupa(rc522, RC522_PICC_CMD_REQA, atqa_buffer, atqa_buffer_size);
 }
