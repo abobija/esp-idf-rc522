@@ -14,6 +14,9 @@ static esp_err_t rc522_spi_install(rc522_driver_handle_t driver)
     if (conf->bus_config) {
         RC522_RETURN_ON_ERROR(spi_bus_initialize(conf->host_id, conf->bus_config, conf->dma_chan));
     }
+    else {
+        RC522_LOGD("Skips SPI bus initialization");
+    }
 
     RC522_RETURN_ON_ERROR(
         spi_bus_add_device(conf->host_id, &conf->dev_config, (spi_device_handle_t *)(&driver->device)));
@@ -47,7 +50,8 @@ static esp_err_t rc522_spi_receive(rc522_driver_handle_t driver, uint8_t address
     address <<= 1;
     address |= 0x80;
 
-    RC522_RETURN_ON_ERROR(spi_device_acquire_bus((spi_device_handle_t)(driver->device), portMAX_DELAY));
+    // TODO: Do transactions on higher level
+    // RC522_RETURN_ON_ERROR(spi_device_acquire_bus((spi_device_handle_t)(driver->device), portMAX_DELAY));
 
     for (uint8_t i = 0; i < length; i++) {
         RC522_RETURN_ON_ERROR(spi_device_polling_transmit((spi_device_handle_t)(driver->device),
@@ -59,7 +63,7 @@ static esp_err_t rc522_spi_receive(rc522_driver_handle_t driver, uint8_t address
             }));
     }
 
-    spi_device_release_bus((spi_device_handle_t)(driver->device));
+    // spi_device_release_bus((spi_device_handle_t)(driver->device));
 
     return ESP_OK;
 }
