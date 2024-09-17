@@ -55,6 +55,13 @@ enum
     RC522_MIFARE_TRANSFER_CMD = 0xB0,
 };
 
+typedef struct
+{
+    uint8_t index;            // Zero-based index of Sector
+    uint8_t number_of_blocks; // Total number of blocks inside of Sector
+    uint8_t block_0_address;  // Zero-based index of the first Block inside of MIFARE memory
+} rc522_mifare_sector_t;
+
 /**
  * Checks if PICC type is compatible with MIFARE Classic protocol
  */
@@ -232,7 +239,6 @@ static esp_err_t rc522_mifare_sector_info(uint8_t sector_index, rc522_mifare_sec
     if (result->index < 32) { // Sectors 0..31 has 4 blocks each
         result->number_of_blocks = 4;
         result->block_0_address = result->index * 4;
-        result->trailer_block_address = result->block_0_address + 3;
 
         return ESP_OK;
     }
@@ -240,7 +246,6 @@ static esp_err_t rc522_mifare_sector_info(uint8_t sector_index, rc522_mifare_sec
     if (result->index < 40) { // Sectors 32-39 has 16 blocks each
         result->number_of_blocks = 16;
         result->block_0_address = 128 + (result->index - 32) * 16;
-        result->trailer_block_address = result->block_0_address + 15;
 
         return ESP_OK;
     }
@@ -255,10 +260,13 @@ static esp_err_t rc522_mifare_check_sector_trailer_write(uint8_t block_address)
 {
 #ifdef CONFIG_RC522_PREVENT_SECTOR_TRAILER_WRITE
     uint8_t sector_index = rc522_mifare_sector_index_by_block_address(block_address);
+
     rc522_mifare_sector_t sector;
     RC522_RETURN_ON_ERROR(rc522_mifare_sector_info(sector_index, &sector));
 
-    if (block_address == sector.trailer_block_address) {
+    uint8_t trailer_address = sector.block_0_address + sector.number_of_blocks - 1;
+
+    if (block_address == trailer_address) {
         ESP_LOGE(TAG, "");
         ESP_LOGE(TAG,
             "The block at address %d that you are trying to update is a Sector Trailer block.",
