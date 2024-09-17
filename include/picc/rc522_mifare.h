@@ -51,6 +51,7 @@ typedef enum
     RC522_MIFARE_BLOCK_TRAILER,
     RC522_MIFARE_BLOCK_DATA,
     RC522_MIFARE_BLOCK_VALUE,
+    RC522_MIFARE_BLOCK_MANUFACTURER_DATA,
 } rc522_mifare_block_type_t;
 
 typedef struct

@@ -438,8 +438,15 @@ esp_err_t rc522_mifare_iterate_sector_blocks(rc522_handle_t rc522, rc522_picc_t 
         }
 
         if (block.type != RC522_MIFARE_BLOCK_TRAILER) {
-            block.type = rc522_mifare_block_is_value(access_bit_groups[group]) ? RC522_MIFARE_BLOCK_VALUE
-                                                                               : RC522_MIFARE_BLOCK_DATA;
+            if (block.address == 0x00) {
+                block.type = RC522_MIFARE_BLOCK_MANUFACTURER_DATA;
+            }
+            else if (rc522_mifare_block_is_value(access_bit_groups[group])) {
+                block.type = RC522_MIFARE_BLOCK_VALUE;
+            }
+            else {
+                block.type = RC522_MIFARE_BLOCK_DATA;
+            }
         }
 
         if (block.type == RC522_MIFARE_BLOCK_VALUE) {
