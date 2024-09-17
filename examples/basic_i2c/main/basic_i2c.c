@@ -26,7 +26,7 @@ static rc522_i2c_config_t driver_config = {
 static rc522_driver_handle_t driver;
 static rc522_handle_t rc522;
 
-static void on_picc_active(void *arg, esp_event_base_t base, int32_t event_id, void *data)
+static void on_picc_activated(void *arg, esp_event_base_t base, int32_t event_id, void *data)
 {
     rc522_picc_t *picc = (rc522_picc_t *)data;
 
@@ -46,6 +46,6 @@ void app_main()
     };
 
     rc522_create(&config, &rc522);
-    rc522_register_events(rc522, RC522_EVENT_PICC_ACTIVE, on_picc_active, NULL);
+    rc522_register_events(rc522, RC522_EVENT_PICC_ACTIVATED, on_picc_activated, NULL);
     rc522_start(rc522);
 }

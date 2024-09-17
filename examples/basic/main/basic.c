@@ -32,7 +32,7 @@ static rc522_spi_config_t driver_config = {
 static rc522_driver_handle_t driver;
 static rc522_handle_t rc522;
 
-static void on_picc_active(void *arg, esp_event_base_t base, int32_t event_id, void *data)
+static void on_picc_activated(void *arg, esp_event_base_t base, int32_t event_id, void *data)
 {
     rc522_picc_t *picc = (rc522_picc_t *)data;
 
@@ -40,6 +40,14 @@ static void on_picc_active(void *arg, esp_event_base_t base, int32_t event_id, v
     rc522_picc_uid_to_str(&picc->uid, uid_str);
 
     ESP_LOGI(TAG, "PICC (type=%s, uid=%s, sak=%02x) detected", rc522_picc_type_name(picc->type), uid_str, picc->sak);
+}
+
+static void on_picc_disappeared(void *arg, esp_event_base_t base, int32_t event_id, void *data)
+{
+    // the UID is available here in same way as
+    // in the `on_picc_activated` handler above
+
+    ESP_LOGW(TAG, "PICC has been moved away");
 }
 
 void app_main()
@@ -52,6 +60,7 @@ void app_main()
     };
 
     rc522_create(&config, &rc522);
-    rc522_register_events(rc522, RC522_EVENT_PICC_ACTIVE, on_picc_active, NULL);
+    rc522_register_events(rc522, RC522_EVENT_PICC_ACTIVATED, on_picc_activated, NULL);
+    rc522_register_events(rc522, RC522_EVENT_PICC_DISAPPEARED, on_picc_disappeared, NULL);
     rc522_start(rc522);
 }

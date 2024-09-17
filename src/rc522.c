@@ -23,19 +23,30 @@ inline bool rc522_is_able_to_start(rc522_handle_t rc522)
 
 static esp_err_t rc522_clone_config(rc522_config_t *config, rc522_config_t **result)
 {
-    rc522_config_t *_clone_config = calloc(1, sizeof(rc522_config_t));
-    ESP_RETURN_ON_FALSE(_clone_config != NULL, ESP_ERR_NO_MEM, TAG, "No memory");
+    rc522_config_t *config_clone = calloc(1, sizeof(rc522_config_t));
+    ESP_RETURN_ON_FALSE(config_clone != NULL, ESP_ERR_NO_MEM, TAG, "No memory");
 
-    memcpy(_clone_config, config, sizeof(rc522_config_t));
+    memcpy(config_clone, config, sizeof(rc522_config_t));
 
     // defaults
-    _clone_config->task_throttling_ms =
-        config->task_throttling_ms < 50 ? RC522_DEFAULT_TASK_THROTTLING_MS : config->task_throttling_ms;
-    _clone_config->task_stack_size =
-        config->task_stack_size == 0 ? RC522_DEFAULT_TASK_STACK_SIZE : config->task_stack_size;
-    _clone_config->task_priority = config->task_priority == 0 ? RC522_DEFAULT_TASK_PRIORITY : config->task_priority;
+    if (config_clone->task_throttling_ms < RC522_TASK_THROTTLING_MIN_MS) {
+        config_clone->task_throttling_ms = RC522_DEFAULT_TASK_THROTTLING_MS;
+    }
 
-    *result = _clone_config;
+    if (config_clone->task_stack_size == 0) {
+        config_clone->task_stack_size = RC522_DEFAULT_TASK_STACK_SIZE;
+    }
+
+    if (config_clone->task_priority == 0) {
+        config_clone->task_priority = RC522_DEFAULT_TASK_PRIORITY;
+    }
+
+    if (config_clone->picc_valid_active_duration_ms < RC522_PICC_VALID_ACTIVE_DURATION_MIN_MS) {
+        config_clone->picc_valid_active_duration_ms = RC522_DEFAULT_PICC_VALID_ACTIVE_DURATION_MS;
+    }
+    // ~defaults
+
+    *result = config_clone;
 
     return ESP_OK;
 }
@@ -187,6 +198,7 @@ static esp_err_t rc522_dispatch_event(rc522_handle_t rc522, rc522_event_t event,
 void rc522_task(void *arg)
 {
     rc522_handle_t rc522 = (rc522_handle_t)arg;
+    uint8_t not_present_counter = 0;
 
     while (!rc522->exit_requested) {
         if (rc522->state != RC522_STATE_SCANNING) {
@@ -195,21 +207,64 @@ void rc522_task(void *arg)
             continue;
         }
 
-        // TODO: Save activated PICC and on next poll check
-        //       if it is the same PICC in order to avoid
-        //       unnecessary PICC activation and event
-        //       dispatching. In the picc type there
-        //       is activation timestamp, so we can
-        //       use that for expiration check.
-
         rc522_picc_t picc;
         memset(&picc, 0, sizeof(picc));
 
         rc522_picc_find(rc522, &picc);
 
-        if (picc.is_present && rc522_picc_activate(rc522, &picc) == ESP_OK) {
-            if (rc522_dispatch_event(rc522, RC522_EVENT_PICC_ACTIVE, &picc, sizeof(picc)) != ESP_OK) {
-                RC522_LOGW("event dispatch failed");
+        // FIXME: picc.is_present will be false even if card
+        //        is still on the reader, and on next iteration
+        //        it will be true. for now i will use counter
+        //        as workaround but this need to be investigated
+        //        if picc_find is able to figure out if card
+        //        is still there or not
+
+        if (!picc.is_present) {
+            if (++not_present_counter > 1) {
+                not_present_counter = 0;
+
+                RC522_LOGD("picc not present");
+
+                if (rc522->is_picc_activated) {
+                    if (rc522_dispatch_event(rc522,
+                            RC522_EVENT_PICC_DISAPPEARED,
+                            &rc522->activated_picc,
+                            sizeof(rc522_picc_t))
+                        != ESP_OK) {
+                        RC522_LOGW("event dispatch failed");
+                    }
+                }
+
+                rc522->is_picc_activated = false;
+                memset(&rc522->activated_picc, 0x00, sizeof(rc522_picc_t));
+            }
+        }
+        else if (rc522_picc_activate(rc522, &picc) == ESP_OK) {
+            not_present_counter = 0;
+
+            uint32_t active_duration = rc522_millis() - rc522->activated_picc.activated_at_ms;
+            bool expired = active_duration >= rc522->config->picc_valid_active_duration_ms;
+            bool is_first_activation = !rc522->is_picc_activated || expired;
+
+            RC522_LOGD("activated=%d, at=%ld, duration=%ld, expired=%d, is_first_activation=%d",
+                rc522->is_picc_activated,
+                rc522->activated_picc.activated_at_ms,
+                active_duration,
+                expired,
+                is_first_activation);
+
+            rc522->is_picc_activated = true;
+            memcpy(&rc522->activated_picc, &picc, sizeof(rc522_picc_t));
+
+            if (is_first_activation) {
+                if (rc522_dispatch_event(rc522, RC522_EVENT_PICC_ACTIVATED, &picc, sizeof(rc522_picc_t)) != ESP_OK) {
+                    RC522_LOGW("event dispatch failed");
+                }
+            }
+            else {
+                // TODO: dispatch reactivated event?
+                //       if we fix FIXME above, maybe there
+                //       will not be need for such event
             }
         }
 

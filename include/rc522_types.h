@@ -9,9 +9,12 @@
 extern "C" {
 #endif
 
-#define RC522_DEFAULT_TASK_THROTTLING_MS (125)
-#define RC522_DEFAULT_TASK_STACK_SIZE    (4 * 1024)
-#define RC522_DEFAULT_TASK_PRIORITY      (3)
+#define RC522_DEFAULT_TASK_THROTTLING_MS            (125)
+#define RC522_TASK_THROTTLING_MIN_MS                (50)
+#define RC522_DEFAULT_TASK_STACK_SIZE               (4 * 1024)
+#define RC522_DEFAULT_TASK_PRIORITY                 (3)
+#define RC522_DEFAULT_PICC_VALID_ACTIVE_DURATION_MS (500)
+#define RC522_PICC_VALID_ACTIVE_DURATION_MIN_MS     (300)
 
 #define ESP_ERR_RC522_BASE      (0xF522)
 #define ESP_ERR_RC522_COLLISION (ESP_ERR_RC522_BASE + 1)
@@ -25,6 +28,7 @@ typedef struct
     uint16_t task_throttling_ms; /*<! Delay (in milliseconds) between polls */
     size_t task_stack_size;      /*<! Stack size of rc522 task */
     uint8_t task_priority;       /*<! Priority of rc522 task */
+    uint16_t picc_valid_active_duration_ms;
 } rc522_config_t;
 
 typedef enum
@@ -36,7 +40,12 @@ typedef enum
      * Card is detected. UID is available.
      * PICC is in the field of the PCD and its listens to any higher level message.
      */
-    RC522_EVENT_PICC_ACTIVE,
+    RC522_EVENT_PICC_ACTIVATED,
+
+    /**
+     * Card moved out of the PCD field
+     */
+    RC522_EVENT_PICC_DISAPPEARED,
 } rc522_event_t;
 
 #ifdef __cplusplus
