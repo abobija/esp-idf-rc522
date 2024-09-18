@@ -251,21 +251,11 @@ void rc522_task(void *arg)
         else if (rc522_picc_activate(rc522, &picc) == ESP_OK) {
             not_present_counter = 0;
 
-            uint32_t active_duration = rc522_millis() - rc522->activated_picc.activated_at_ms;
-            bool expired = active_duration >= RC522_PICC_VALID_ACTIVE_DURATION_MS;
-            bool is_first_activation = !rc522->is_picc_activated || expired;
-
-            RC522_LOGD("activated=%d, at=%" PRIu32 ", duration=%" PRIu32 ", expired=%d, is_first_activation=%d",
-                rc522->is_picc_activated,
-                rc522->activated_picc.activated_at_ms,
-                active_duration,
-                expired,
-                is_first_activation);
-
+            bool picc_was_activated = rc522->is_picc_activated;
             rc522->is_picc_activated = true;
             memcpy(&rc522->activated_picc, &picc, sizeof(rc522_picc_t));
 
-            if (is_first_activation) {
+            if (!picc_was_activated) {
                 if (rc522_dispatch_event(rc522, RC522_EVENT_PICC_ACTIVATED, &picc, sizeof(rc522_picc_t)) != ESP_OK) {
                     RC522_LOGW("event dispatch failed");
                 }
