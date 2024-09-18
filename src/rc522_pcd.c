@@ -170,6 +170,18 @@ esp_err_t rc522_pcd_init(rc522_handle_t rc522)
     RC522_RETURN_ON_ERROR(rc522_pcd_antenna_on(rc522));
     RC522_RETURN_ON_ERROR(rc522_pcd_set_antenna_gain(rc522, RC522_PCD_RX_GAIN_INIT_VALUE));
 
+    rc522_pcd_firmware_t fw;
+    ESP_RETURN_ON_ERROR(rc522_pcd_firmware(rc522, &fw), TAG, "read fw version failed");
+
+    // When 0x00 or 0xFF is returned, communication probably failed
+    if (fw == 0x00 || fw == 0xFF) {
+        RC522_LOGE("Communication failure, is the MFRC522 properly connected?");
+
+        return ESP_FAIL; // TODO: use custom err
+    }
+
+    ESP_LOGI(TAG, "PCD (fw=%s) initialized", rc522_pcd_firmware_name(fw));
+
     return ESP_OK;
 }
 
