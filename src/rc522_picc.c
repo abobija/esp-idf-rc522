@@ -83,11 +83,14 @@ esp_err_t rc522_picc_comm(rc522_handle_t rc522, rc522_pcd_command_t command, uin
         return ESP_FAIL; // TODO: use custom err
     }
 
-    uint8_t fifo_level;
-    RC522_RETURN_ON_ERROR(rc522_pcd_read(rc522, RC522_PCD_FIFO_LEVEL_REG, &fifo_level));
+    uint8_t fifo_level = 0;
 
-    if (fifo_level < 1) {
-        RC522_LOGW("unexpectedly, fifo is empty (irq=0x%02x)", irq);
+    if (irq & RC522_PCD_RX_IRQ_BIT) {
+        RC522_RETURN_ON_ERROR(rc522_pcd_read(rc522, RC522_PCD_FIFO_LEVEL_REG, &fifo_level));
+
+        if (fifo_level < 1) {
+            RC522_LOGW("unexpectedly, fifo is empty (irq=0x%02x)", irq);
+        }
     }
 
     uint8_t _valid_bits = 0;
