@@ -73,8 +73,8 @@ typedef struct
     esp_err_t value_err;
 } rc522_mifare_sector_block_t;
 
-typedef esp_err_t (*rc522_mifare_sector_block_iterator)(rc522_mifare_sector_block_t *block);
-typedef esp_err_t (*rc522_mifare_transaction_handler)(rc522_handle_t rc522, rc522_picc_t *picc);
+typedef esp_err_t (*rc522_mifare_sector_block_iterator_t)(rc522_mifare_sector_block_t *block);
+typedef esp_err_t (*rc522_mifare_transaction_handler_t)(rc522_handle_t rc522, rc522_picc_t *picc);
 
 bool rc522_mifare_type_is_classic_compatible(rc522_picc_type_t type);
 
@@ -91,10 +91,10 @@ esp_err_t rc522_mifare_write(
 esp_err_t rc522_mifare_transactions_end(rc522_handle_t rc522, rc522_picc_t *picc);
 
 esp_err_t rc522_mifare_handle_as_transaction(
-    rc522_mifare_transaction_handler transaction_handler, rc522_handle_t rc522, rc522_picc_t *picc);
+    rc522_mifare_transaction_handler_t transaction_handler, rc522_handle_t rc522, rc522_picc_t *picc);
 
 esp_err_t rc522_mifare_iterate_sector_blocks(rc522_handle_t rc522, rc522_picc_t *picc, uint8_t sector_index,
-    rc522_mifare_key_t *key, rc522_mifare_sector_block_iterator iterator);
+    rc522_mifare_key_t *key, rc522_mifare_sector_block_iterator_t iterator);
 
 #ifdef __cplusplus
 }
