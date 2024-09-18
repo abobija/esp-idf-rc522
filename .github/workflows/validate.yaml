@@ -46,10 +46,18 @@ jobs:
       - uses: actions/checkout@v4
         with:
           path: rc522
-          
+
       - name: Build
         uses: espressif/esp-idf-ci-action@v1
         with:
           path: rc522/examples/${{ matrix.example }}
           esp_idf_version: ${{ matrix.idf_ver }}
           target: ${{ matrix.idf_target }}
+
+      - name: "Run tests"
+        uses: espressif/esp-idf-ci-action@v1
+        with:
+          path: rc522/test
+          esp_idf_version: ${{ matrix.idf_ver }}
+          target: linux
+          command: idf.py --preview set-target linux build && ./build/test.elf

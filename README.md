@@ -12,15 +12,22 @@ To install latest version of this component to your project, run:
 idf.py add-dependency "abobija/rc522"
 ```
 
+## Terms
+
+| Term | Description |
+| ---- | ----------- |
+| PCD  | Proximity Coupling Device (the card reader). In our case this is MFRC522 module |
+| PICC | Proximity Integrated Circuit Card (e.g: rfid card, tag, ...) |
+
 ## Support
 
-- ESP-IDF version: `^5`
-- Communication protocols: `SPI` and `I2C`
 - Cards: `MIFARE 1K`, `MIFARE 4K` and `MIFARE Mini`
 - Card operations:
     - Read and write to memory blocks ([example](examples/read_write))
+- Communication protocols: `SPI` and `I2C`
+- ESP-IDF version: `^5`
 
-## Run example
+## Example
 
 > [!TIP]
 > To find more interesting examples (like [`memory_dump`](examples/memory_dump)), go to [examples](examples) folder.
@@ -45,12 +52,21 @@ idf.py build flash monitor
 
 Pin layout is configurable by the user. Check `#define`s of [basic example](examples/basic/main/basic.c) to see how GPIOs are configured. Library currently does not use RST pin so connect it to the 3.3V.
 
-## Terms
+## Unit testing
 
-| Term | Description |
-| ---- | ----------- |
-| PCD  | Proximity Coupling Device (the card reader). In our case this is MFRC522 module |
-| PICC | Proximity Integrated Circuit Card (e.g: rfid card, tag, ...) |
+To run unit tests, go to [`test`](test) directory and set target to `linux`:
+
+```bash
+cd test
+idf.py --preview set-target linux
+```
+
+Then build the project and run tests:
+
+```bash
+idf.py build && ./build/test.elf
+```
+
 
 ## Additional resources
 
