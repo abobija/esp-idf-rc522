@@ -27,6 +27,7 @@ typedef enum
 
     /**
      * Cascade Tag. Not really a command, but used during anti collision.
+     * TODO:        move it from here in that case
      */
     RC522_PICC_CMD_CT = 0x88,
 
