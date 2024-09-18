@@ -271,7 +271,7 @@ void rc522_task(void *arg)
             bool expired = active_duration >= rc522->config->picc_valid_active_duration_ms;
             bool is_first_activation = !rc522->is_picc_activated || expired;
 
-            RC522_LOGD("activated=%d, at=%ld, duration=%ld, expired=%d, is_first_activation=%d",
+            RC522_LOGD("activated=%d, at=%" PRIu32 ", duration=%" PRIu32 ", expired=%d, is_first_activation=%d",
                 rc522->is_picc_activated,
                 rc522->activated_picc.activated_at_ms,
                 active_duration,
