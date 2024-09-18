@@ -21,7 +21,6 @@ typedef struct
     uint16_t task_throttling_ms; /*<! Delay (in milliseconds) between polls */
     size_t task_stack_size;      /*<! Stack size of rc522 task */
     uint8_t task_priority;       /*<! Priority of rc522 task */
-    uint16_t picc_valid_active_duration_ms;
 } rc522_config_t;
 
 typedef enum

@@ -41,10 +41,6 @@ static esp_err_t rc522_clone_config(rc522_config_t *config, rc522_config_t **res
     if (config_clone->task_priority == 0) {
         config_clone->task_priority = RC522_TASK_PRIORITY_DEFAULT;
     }
-
-    if (config_clone->picc_valid_active_duration_ms < RC522_PICC_VALID_ACTIVE_DURATION_MS_MIN) {
-        config_clone->picc_valid_active_duration_ms = RC522_PICC_VALID_ACTIVE_DURATION_MS_DEFAULT;
-    }
     // ~defaults
 
     *result = config_clone;
@@ -256,7 +252,7 @@ void rc522_task(void *arg)
             not_present_counter = 0;
 
             uint32_t active_duration = rc522_millis() - rc522->activated_picc.activated_at_ms;
-            bool expired = active_duration >= rc522->config->picc_valid_active_duration_ms;
+            bool expired = active_duration >= RC522_PICC_VALID_ACTIVE_DURATION_MS;
             bool is_first_activation = !rc522->is_picc_activated || expired;
 
             RC522_LOGD("activated=%d, at=%" PRIu32 ", duration=%" PRIu32 ", expired=%d, is_first_activation=%d",
