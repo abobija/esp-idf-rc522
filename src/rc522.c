@@ -219,16 +219,16 @@ void rc522_task(void *arg)
         rc522_picc_t picc;
         memset(&picc, 0, sizeof(picc));
 
-        rc522_picc_find(rc522, &picc);
-
-        // FIXME: picc.is_present will be false even if card
+        // FIXME: will return error even if card
         //        is still on the reader, and on next iteration
-        //        it will be true. for now i will use counter
+        //        it will be ESP_OK. for now i will use counter
         //        as workaround but this need to be investigated
         //        if picc_find is able to figure out if card
         //        is still there or not
 
-        if (!picc.is_present) {
+        esp_err_t ret = rc522_picc_reqa(rc522, &picc.atqa);
+
+        if (ret != ESP_OK) {
             if (++not_present_counter >= 2) {
                 not_present_counter = 0;
 

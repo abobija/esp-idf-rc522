@@ -38,7 +38,6 @@ struct rc522
     TaskHandle_t task_handle;             /*<! Handle of task */
     esp_event_loop_handle_t event_handle; /*<! Handle of event loop */
     rc522_state_t state;                  /*<! Current state */
-    bool is_picc_activated;
     rc522_picc_t activated_picc;
     EventGroupHandle_t bits;
 };

@@ -32,7 +32,7 @@ typedef enum
 
 typedef struct
 {
-    bool is_present;
+    uint16_t atqa;
     rc522_picc_uid_t uid;
     uint8_t sak;
     rc522_picc_type_t type;

@@ -184,13 +184,13 @@ inline esp_err_t rc522_picc_transceive(rc522_handle_t rc522, uint8_t *send_data,
 }
 
 static esp_err_t rc522_picc_reqa_or_wupa(
-    rc522_handle_t rc522, uint8_t picc_cmd, uint8_t *atqa_buffer, uint8_t *atqa_buffer_size)
+    rc522_handle_t rc522, uint8_t picc_cmd, uint8_t *atqa_buffer, uint8_t atqa_buffer_size)
 {
-    uint8_t valid_bits;
+    RC522_CHECK(rc522 == NULL);
+    RC522_CHECK(atqa_buffer == NULL);
+    RC522_CHECK(atqa_buffer_size < 2);
 
-    if (atqa_buffer == NULL || *atqa_buffer_size < 2) { // The ATQA response is 2 bytes long.
-        return ESP_ERR_NO_MEM;
-    }
+    uint8_t valid_bits;
 
     RC522_RETURN_ON_ERROR(rc522_pcd_clear_bits(rc522, RC522_PCD_COLL_REG, RC522_PCD_VALUES_AFTER_COLL_BIT));
 
@@ -199,45 +199,30 @@ static esp_err_t rc522_picc_reqa_or_wupa(
     valid_bits = 7;
 
     RC522_RETURN_ON_ERROR_SILENTLY(
-        rc522_picc_transceive(rc522, &picc_cmd, 1, atqa_buffer, atqa_buffer_size, &valid_bits, 0, false));
+        rc522_picc_transceive(rc522, &picc_cmd, 1, atqa_buffer, &atqa_buffer_size, &valid_bits, 0, false));
 
-    if (*atqa_buffer_size != 2 || valid_bits != 0) { // ATQA must be exactly 16 bits.
-        return ESP_FAIL;                             // TODO: use custom err
+    RC522_LOGD("ATQA: %02x %02x", atqa_buffer[0], atqa_buffer[1]);
+
+    if (atqa_buffer_size != 2 || valid_bits != 0) { // ATQA must be exactly 16 bits.
+        return ESP_ERR_RC522_INVALID_ATQA;
     }
 
     return ESP_OK;
 }
 
-inline static esp_err_t rc522_picc_reqa(rc522_handle_t rc522, uint8_t *atqa_buffer, uint8_t *atqa_buffer_size)
-{
-    return rc522_picc_reqa_or_wupa(rc522, RC522_PICC_CMD_REQA, atqa_buffer, atqa_buffer_size);
-}
-
-/**
- * Check if PICC is in the PCD field by sending REQA
- */
-esp_err_t rc522_picc_find(rc522_handle_t rc522, rc522_picc_t *picc)
+esp_err_t rc522_picc_reqa(rc522_handle_t rc522, uint16_t *out_atqa)
 {
     RC522_CHECK(rc522 == NULL);
-    RC522_CHECK(picc == NULL);
+    RC522_CHECK(out_atqa == NULL);
+
+    RC522_LOGD("REQA");
 
     uint8_t atqa_buffer[2];
-    uint8_t atqa_buffer_size = sizeof(atqa_buffer);
+    RC522_RETURN_ON_ERROR(rc522_picc_reqa_or_wupa(rc522, RC522_PICC_CMD_REQA, atqa_buffer, sizeof(atqa_buffer)));
 
-    // Reset baud rates
-    RC522_RETURN_ON_ERROR(rc522_pcd_write(rc522, RC522_PCD_TX_MODE_REG, RC522_PCD_TX_MODE_REG_RESET_VALUE));
-    RC522_RETURN_ON_ERROR(rc522_pcd_write(rc522, RC522_PCD_RX_MODE_REG, RC522_PCD_RX_MODE_REG_RESET_VALUE));
-    // Reset ModWidthReg
-    RC522_RETURN_ON_ERROR(rc522_pcd_write(rc522, RC522_PCD_MOD_WIDTH_REG, RC522_PCD_MOD_WIDTH_REG_RESET_VALUE));
+    *out_atqa = (atqa_buffer[0] << 8) | atqa_buffer[1];
 
-    esp_err_t ret = rc522_picc_reqa(rc522, atqa_buffer, &atqa_buffer_size);
-
-    picc->is_present = (ret == ESP_OK || ret == ESP_ERR_RC522_COLLISION);
-
-    // TODO: Assign ATQA to picc, but first check if picc_reqa returns
-    //       correct ATQA
-
-    return ret;
+    return ESP_OK;
 }
 
 static esp_err_t rc522_picc_select(rc522_handle_t rc522, rc522_picc_t *picc, uint8_t valid_bits)

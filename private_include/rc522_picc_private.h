@@ -65,7 +65,7 @@ esp_err_t rc522_picc_comm(rc522_handle_t rc522, rc522_pcd_command_t command, uin
 esp_err_t rc522_picc_transceive(rc522_handle_t rc522, uint8_t *send_data, uint8_t send_data_len, uint8_t *back_data,
     uint8_t *back_data_len, uint8_t *valid_bits, uint8_t rx_align, bool check_crc);
 
-esp_err_t rc522_picc_find(rc522_handle_t rc522, rc522_picc_t *picc);
+esp_err_t rc522_picc_reqa(rc522_handle_t rc522, uint16_t *out_atqa);
 
 esp_err_t rc522_picc_activate(rc522_handle_t rc522, rc522_picc_t *picc);
 

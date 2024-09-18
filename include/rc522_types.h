@@ -9,9 +9,10 @@
 extern "C" {
 #endif
 
-#define ESP_ERR_RC522_BASE      (0xF522)
-#define ESP_ERR_RC522_COLLISION (ESP_ERR_RC522_BASE + 1)
-#define ESP_ERR_RC522_CRC_WRONG (ESP_ERR_RC522_BASE + 3)
+#define ESP_ERR_RC522_BASE         (0xF522)
+#define ESP_ERR_RC522_COLLISION    (ESP_ERR_RC522_BASE + 1)
+#define ESP_ERR_RC522_CRC_WRONG    (ESP_ERR_RC522_BASE + 3)
+#define ESP_ERR_RC522_INVALID_ATQA (ESP_ERR_RC522_BASE + 4)
 
 typedef struct rc522 *rc522_handle_t;
 
