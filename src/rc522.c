@@ -245,7 +245,7 @@ void rc522_task(void *arg)
         //        is still there or not
 
         if (!picc.is_present) {
-            if (++not_present_counter > 1) {
+            if (++not_present_counter >= 2) {
                 not_present_counter = 0;
 
                 RC522_LOGD("picc not present");
