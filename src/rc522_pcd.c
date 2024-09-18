@@ -126,6 +126,11 @@ static esp_err_t rc522_pcd_set_timer_reload_value(rc522_handle_t rc522, uint16_t
         2);
 }
 
+inline static esp_err_t rc522_pcd_set_antenna_gain(rc522_handle_t rc522, rc522_pcd_rx_gain_t gain)
+{
+    return rc522_pcd_set_bits(rc522, RC522_PCD_RF_CFG_REG, gain);
+}
+
 esp_err_t rc522_pcd_init(rc522_handle_t rc522)
 {
     RC522_CHECK(rc522 == NULL);
@@ -163,6 +168,7 @@ esp_err_t rc522_pcd_init(rc522_handle_t rc522)
 
     // Enable the antenna driver pins TX1 and TX2 (they were disabled by the reset)
     RC522_RETURN_ON_ERROR(rc522_pcd_antenna_on(rc522));
+    RC522_RETURN_ON_ERROR(rc522_pcd_set_antenna_gain(rc522, RC522_PCD_RX_GAIN_INIT_VALUE));
 
     return ESP_OK;
 }
