@@ -28,7 +28,7 @@ typedef enum
 {
     RC522_STATE_UNDEFINED = 0,
     RC522_STATE_CREATED,
-    RC522_STATE_SCANNING, /*<! Scanning for nearby PICCs */
+    RC522_STATE_POLLING, /*<! Scanning for nearby PICCs */
     RC522_STATE_PAUSED,
 } rc522_state_t;
 

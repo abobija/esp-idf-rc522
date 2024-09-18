@@ -19,7 +19,7 @@ ESP_EVENT_DEFINE_BASE(RC522_EVENTS);
 
 inline bool rc522_is_able_to_start(rc522_handle_t rc522)
 {
-    return rc522->state >= RC522_STATE_CREATED && rc522->state != RC522_STATE_SCANNING;
+    return rc522->state >= RC522_STATE_CREATED && rc522->state != RC522_STATE_POLLING;
 }
 
 static esp_err_t rc522_clone_config(rc522_config_t *config, rc522_config_t **result)
@@ -78,7 +78,7 @@ esp_err_t rc522_start(rc522_handle_t rc522)
 
     if (rc522->state == RC522_STATE_PAUSED) {
         // Scanning has been paused. No need for reinitialization. Just resume
-        rc522->state = RC522_STATE_SCANNING;
+        rc522->state = RC522_STATE_POLLING;
         return ESP_OK;
     }
 
@@ -86,7 +86,7 @@ esp_err_t rc522_start(rc522_handle_t rc522)
 
     ESP_RETURN_ON_ERROR(rc522_pcd_init(rc522), TAG, "Unable to init PCD");
 
-    rc522->state = RC522_STATE_SCANNING;
+    rc522->state = RC522_STATE_POLLING;
 
     return ESP_OK;
 }
@@ -95,7 +95,7 @@ esp_err_t rc522_pause(rc522_handle_t rc522)
 {
     RC522_CHECK(rc522 == NULL);
 
-    ESP_RETURN_ON_FALSE(rc522->state == RC522_STATE_SCANNING,
+    ESP_RETURN_ON_FALSE(rc522->state == RC522_STATE_POLLING,
         ESP_ERR_INVALID_STATE,
         TAG,
         "Invalid state (state=%d)",
@@ -210,7 +210,7 @@ void rc522_task(void *arg)
     xEventGroupClearBits(rc522->bits, RC522_TASK_STOPPED_BIT);
 
     while (!rc522->exit_requested) {
-        if (rc522->state != RC522_STATE_SCANNING) {
+        if (rc522->state != RC522_STATE_POLLING) {
             rc522_delay_ms(125);
 
             continue;
