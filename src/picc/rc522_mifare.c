@@ -230,7 +230,7 @@ inline static uint8_t rc522_mifare_sector_index_by_block_address(uint8_t block_a
 
 static esp_err_t rc522_mifare_sector_info(uint8_t sector_index, rc522_mifare_sector_t *result)
 {
-    RC522_CHECK(sector_index > RC522_MIFARE_MAX_SECTOR_INDEX);
+    RC522_CHECK(sector_index > RC522_MIFARE_SECTOR_INDEX_MAX);
     RC522_CHECK(result == NULL);
 
     result->index = sector_index;
@@ -443,7 +443,7 @@ esp_err_t rc522_mifare_iterate_sector_blocks(rc522_handle_t rc522, rc522_picc_t 
 {
     RC522_CHECK(rc522 == NULL);
     RC522_CHECK(picc == NULL);
-    RC522_CHECK(sector_index > RC522_MIFARE_MAX_SECTOR_INDEX);
+    RC522_CHECK(sector_index > RC522_MIFARE_SECTOR_INDEX_MAX);
     RC522_CHECK(key == NULL);
     RC522_CHECK(iterator == NULL);
 

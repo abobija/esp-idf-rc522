@@ -6,12 +6,12 @@
 extern "C" {
 #endif
 
-#define RC522_PICC_UID_MAX_SIZE        (10)
-#define RC522_PICC_UID_STR_BUFFER_SIZE (RC522_PICC_UID_MAX_SIZE * 3)
+#define RC522_PICC_UID_SIZE_MAX        (10)
+#define RC522_PICC_UID_STR_BUFFER_SIZE (RC522_PICC_UID_SIZE_MAX * 3)
 
 typedef struct
 {
-    uint8_t value[RC522_PICC_UID_MAX_SIZE];
+    uint8_t value[RC522_PICC_UID_SIZE_MAX];
     uint8_t length;
 } rc522_picc_uid_t;
 

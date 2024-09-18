@@ -30,20 +30,20 @@ static esp_err_t rc522_clone_config(rc522_config_t *config, rc522_config_t **res
     memcpy(config_clone, config, sizeof(rc522_config_t));
 
     // defaults
-    if (config_clone->task_throttling_ms < RC522_TASK_THROTTLING_MIN_MS) {
-        config_clone->task_throttling_ms = RC522_DEFAULT_TASK_THROTTLING_MS;
+    if (config_clone->task_throttling_ms < RC522_TASK_THROTTLING_MS_MIN) {
+        config_clone->task_throttling_ms = RC522_TASK_THROTTLING_MS_DEFAULT;
     }
 
     if (config_clone->task_stack_size == 0) {
-        config_clone->task_stack_size = RC522_DEFAULT_TASK_STACK_SIZE;
+        config_clone->task_stack_size = RC522_TASK_STACK_SIZE_DEFAULT;
     }
 
     if (config_clone->task_priority == 0) {
-        config_clone->task_priority = RC522_DEFAULT_TASK_PRIORITY;
+        config_clone->task_priority = RC522_TASK_PRIORITY_DEFAULT;
     }
 
-    if (config_clone->picc_valid_active_duration_ms < RC522_PICC_VALID_ACTIVE_DURATION_MIN_MS) {
-        config_clone->picc_valid_active_duration_ms = RC522_DEFAULT_PICC_VALID_ACTIVE_DURATION_MS;
+    if (config_clone->picc_valid_active_duration_ms < RC522_PICC_VALID_ACTIVE_DURATION_MS_MIN) {
+        config_clone->picc_valid_active_duration_ms = RC522_PICC_VALID_ACTIVE_DURATION_MS_DEFAULT;
     }
     // ~defaults
 

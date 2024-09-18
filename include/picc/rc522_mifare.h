@@ -12,11 +12,11 @@ extern "C" {
 #define RC522_ERR_MIFARE_VALUE_BLOCK_INTEGRITY_VIOLATION (RC522_ERR_MIFARE_BASE + 2)
 #define RC522_ERR_MIFARE_NACK                            (RC522_ERR_MIFARE_BASE + 3)
 
-#define RC522_MIFARE_MAX_SECTOR_INDEX (39) // No MIFARE Classic has more than 40 sectors
+#define RC522_MIFARE_SECTOR_INDEX_MAX (39) // No MIFARE Classic has more than 40 sectors
 #define RC522_MIFARE_BLOCK_SIZE       (16)
 #define RC522_MIFARE_ACK              (0x0A) // The MIFARE Classic uses a 4 bit ACK/NAK. Any other value than 0xA is NAK.
 #define RC522_MIFARE_KEY_SIZE         (6)
-#define RC522_MIFARE_DEFAULT_KEY_VALUE                                                                                 \
+#define RC522_MIFARE_KEY_VALUE_DEFAULT                                                                                 \
     {                                                                                                                  \
         0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF                                                                             \
     }

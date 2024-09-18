@@ -50,7 +50,7 @@ static esp_err_t read_write(rc522_handle_t rc522, rc522_picc_t *picc)
     const char *data_to_write = "rfid is dope";
     const uint8_t block_address = 4;
     rc522_mifare_key_t key = {
-        .value = RC522_MIFARE_DEFAULT_KEY_VALUE,
+        .value = RC522_MIFARE_KEY_VALUE_DEFAULT,
     };
 
     ESP_LOGI(TAG, "Writing data '%s' into the block %d", data_to_write, block_address);

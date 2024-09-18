@@ -107,7 +107,7 @@ static esp_err_t dump_block(rc522_mifare_sector_block_t *block)
 static esp_err_t dump_memory(rc522_handle_t rc522, rc522_picc_t *picc)
 {
     rc522_mifare_key_t key = {
-        .value = RC522_MIFARE_DEFAULT_KEY_VALUE,
+        .value = RC522_MIFARE_KEY_VALUE_DEFAULT,
     };
 
     rc522_mifare_t mifare;
