@@ -79,8 +79,14 @@ esp_err_t rc522_picc_comm(rc522_handle_t rc522, rc522_pcd_command_t command, uin
     uint8_t error_reg_value;
     RC522_RETURN_ON_ERROR(rc522_pcd_read(rc522, RC522_PCD_ERROR_REG, &error_reg_value));
 
-    if (error_reg_value & (RC522_PCD_BUFFER_OVFL_BIT | RC522_PCD_PARITY_ERR_BIT | RC522_PCD_PROTOCOL_ERR_BIT)) {
-        return ESP_FAIL; // TODO: use custom err
+    if (error_reg_value & RC522_PCD_BUFFER_OVFL_BIT) {
+        return ESP_ERR_RC522_PCD_FIFO_BUFFER_OVERFLOW;
+    }
+    else if (error_reg_value & RC522_PCD_PARITY_ERR_BIT) {
+        return ESP_ERR_RC522_PCD_PARITY_CHECK_FAILED;
+    }
+    else if (error_reg_value & RC522_PCD_PROTOCOL_ERR_BIT) {
+        return ESP_ERR_RC522_PCD_PROTOCOL_ERROR;
     }
 
     uint8_t fifo_level = 0;
@@ -96,7 +102,7 @@ esp_err_t rc522_picc_comm(rc522_handle_t rc522, rc522_pcd_command_t command, uin
     uint8_t _valid_bits = 0;
 
     // If the caller wants data back, get it from the MFRC522.
-    if (back_data && back_data_len) {
+    if (back_data && back_data_len && fifo_level > 0) {
         if (fifo_level > *back_data_len) {
             RC522_LOGW("buffer no space");
 
@@ -132,21 +138,18 @@ esp_err_t rc522_picc_comm(rc522_handle_t rc522, rc522_pcd_command_t command, uin
     }
 
     // Perform CRC_A validation if requested.
-    if (check_crc && back_data && back_data_len) {
-        if (*back_data_len == 1 && _valid_bits == 4) {
-            return ESP_FAIL; // TODO: use custom err
-        }
+    if (check_crc && back_data && back_data_len && fifo_level > 0) {
         // We need at least the CRC_A value and all 8 bits of the last byte must be received.
         if (*back_data_len < 2 || _valid_bits != 0) {
-            return ESP_ERR_RC522_CRC_WRONG;
+            RC522_LOGD("crc cannot be performed (len=%d, valid_bits=%d)", *back_data_len, _valid_bits);
+            return ESP_ERR_INVALID_ARG;
         }
+
         // Verify CRC_A - do our own calculation and store the control in controlBuffer.
-        uint8_t control_buffer[2];
+        uint8_t crc[2];
+        RC522_RETURN_ON_ERROR(rc522_pcd_calculate_crc(rc522, back_data, *back_data_len - 2, crc));
 
-        RC522_RETURN_ON_ERROR(rc522_pcd_calculate_crc(rc522, back_data, *back_data_len - 2, control_buffer));
-
-        if ((back_data[*back_data_len - 2] != control_buffer[0])
-            || (back_data[*back_data_len - 1] != control_buffer[1])) {
+        if ((back_data[*back_data_len - 2] != crc[0]) || (back_data[*back_data_len - 1] != crc[1])) {
             return ESP_ERR_RC522_CRC_WRONG;
         }
     }

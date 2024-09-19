@@ -229,11 +229,11 @@ void rc522_task(void *arg)
         if (rc522->picc.state == RC522_PICC_STATE_IDLE || rc522->picc.state == RC522_PICC_STATE_HALT) {
             rc522_picc_atqa_desc_t atqa;
 
-            if (rc522->picc.state == RC522_PICC_STATE_IDLE && rc522_picc_reqa(rc522, &atqa) != ESP_OK) {
+            if (rc522->picc.state == RC522_PICC_STATE_IDLE && ((ret = rc522_picc_reqa(rc522, &atqa)) != ESP_OK)) {
                 continue;
             }
 
-            if (rc522->picc.state == RC522_PICC_STATE_HALT && rc522_picc_wupa(rc522, &atqa) != ESP_OK) {
+            if (rc522->picc.state == RC522_PICC_STATE_HALT && ((ret = rc522_picc_wupa(rc522, &atqa)) != ESP_OK)) {
                 continue;
             }
 
@@ -246,10 +246,8 @@ void rc522_task(void *arg)
             rc522_picc_uid_t uid;
             uint8_t sak;
 
-            ret = rc522_picc_select(rc522, &uid, &sak, false);
-
-            if (ret != ESP_OK) {
-                RC522_LOGW("select failed: %04x", ret);
+            if ((ret = rc522_picc_select(rc522, &uid, &sak, false)) != ESP_OK) {
+                RC522_LOGW("select failed (err=%04x)", ret);
 
                 rc522->picc.state = RC522_PICC_STATE_IDLE;
                 continue;
@@ -262,8 +260,9 @@ void rc522_task(void *arg)
 
             picc_heartbeat_failure_at_ms = 0;
 
-            if (rc522_dispatch_event(rc522, RC522_EVENT_PICC_ACTIVATED, &rc522->picc, sizeof(rc522_picc_t)) != ESP_OK) {
-                RC522_LOGW("event dispatch failed");
+            if ((ret = rc522_dispatch_event(rc522, RC522_EVENT_PICC_ACTIVATED, &rc522->picc, sizeof(rc522_picc_t)))
+                != ESP_OK) {
+                RC522_LOGW("event dispatch failed (err=%04x)", ret);
             }
 
             continue;
@@ -274,16 +273,19 @@ void rc522_task(void *arg)
                 && ((rc522_millis() - picc_heartbeat_failure_at_ms) > picc_heartbeat_failure_threshold_ms)) {
                 rc522->picc.state = RC522_PICC_STATE_IDLE;
 
-                if (rc522_dispatch_event(rc522, RC522_EVENT_PICC_DISAPPEARED, &rc522->picc, sizeof(rc522_picc_t))
+                if ((ret = rc522_dispatch_event(rc522,
+                         RC522_EVENT_PICC_DISAPPEARED,
+                         &rc522->picc,
+                         sizeof(rc522_picc_t)))
                     != ESP_OK) {
-                    RC522_LOGW("event dispatch failed");
+                    RC522_LOGW("event dispatch failed (err=%04x)", ret);
                 }
 
                 picc_heartbeat_failure_at_ms = 0;
                 continue;
             }
 
-            if (rc522_picc_heartbeat(rc522, &rc522->picc, NULL, NULL) == ESP_OK) {
+            if ((ret = rc522_picc_heartbeat(rc522, &rc522->picc, NULL, NULL)) == ESP_OK) {
                 picc_heartbeat_failure_at_ms = 0;
             }
             else if (picc_heartbeat_failure_at_ms == 0) {
