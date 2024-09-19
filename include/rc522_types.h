@@ -16,6 +16,7 @@ extern "C" {
 #define ESP_ERR_RC522_INVALID_ATQA      (ESP_ERR_RC522_BASE + 4)
 #define ESP_ERR_RC522_RX_TIMEOUT        (ESP_ERR_RC522_BASE + 5)
 #define ESP_ERR_RC522_RX_TIMER_TIMEOUT  (ESP_ERR_RC522_BASE + 6)
+#define ESP_ERR_RC522_INVALID_SAK       (ESP_ERR_RC522_BASE + 7)
 
 typedef struct rc522 *rc522_handle_t;
 

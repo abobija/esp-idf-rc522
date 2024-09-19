@@ -373,7 +373,7 @@ esp_err_t rc522_picc_anticoll_and_select(rc522_handle_t rc522, rc522_picc_t *pic
         while (!select_done) {
             // Find out how many bits and bytes to send and receive.
             if (current_level_known_bits >= 32) { // All UID bits in this Cascade Level are known. This is a SELECT.
-                RC522_LOGD("SELECT");
+                RC522_LOGD("SELECT (CL=%d)", cascade_level);
 
                 // NVB - Number of Valid Bits: Seven whole bytes
                 buffer[1] = 0x70;
@@ -464,7 +464,7 @@ esp_err_t rc522_picc_anticoll_and_select(rc522_handle_t rc522, rc522_picc_t *pic
             }
         } // End of while (!selectDone)
 
-        RC522_LOGD("SELECT done");
+        RC522_LOGD("SELECT (CL=%d) done", cascade_level);
 
         // We do not check the CBB - it was constructed by us above.
 
@@ -478,7 +478,7 @@ esp_err_t rc522_picc_anticoll_and_select(rc522_handle_t rc522, rc522_picc_t *pic
         // Check response SAK (Select Acknowledge)
         if (response_length != 3 || tx_last_bits != 0) { // SAK must be exactly 24 bits (1 byte + CRC_A).
             RC522_LOGD("invalid sak");
-            return ESP_FAIL; // TODO: use custom err
+            return ESP_ERR_RC522_INVALID_SAK;
         }
         // Verify CRC_A - do our own calculation and store the control in buffer[2..3] - those bytes are not needed
         // anymore.
