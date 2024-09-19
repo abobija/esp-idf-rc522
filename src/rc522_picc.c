@@ -450,7 +450,7 @@ esp_err_t rc522_picc_select(rc522_handle_t rc522, rc522_picc_uid_t *out_uid, uin
 
                 if (value_of_coll_reg & RC522_PCD_COLL_POS_NOT_VALID_BIT) {
                     // Without a valid collision position we cannot continue
-                    return ESP_ERR_RC522_COLLISION_INVALID;
+                    return ESP_ERR_RC522_COLLISION_UNSOLVABLE;
                 }
 
                 uint8_t collision_pos = value_of_coll_reg & 0x1F; // Values 0-31, 0 means bit 32.
@@ -458,7 +458,7 @@ esp_err_t rc522_picc_select(rc522_handle_t rc522, rc522_picc_uid_t *out_uid, uin
                     collision_pos = 32;
                 }
                 if (collision_pos <= current_level_known_bits) { // No progress - should not happen
-                    return ESP_ERR_RC522_COLLISION_INVALID;
+                    return ESP_ERR_RC522_COLLISION_UNSOLVABLE;
                 }
                 // Choose the PICC with the bit set.
                 current_level_known_bits = collision_pos;
