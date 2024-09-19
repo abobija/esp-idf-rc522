@@ -264,7 +264,7 @@ void rc522_task(void *arg)
             ret = rc522_picc_select(rc522, &uid, &sak, false);
 
             if (ret != ESP_OK) {
-                RC522_LOGE("select failed: %04x", ret);
+                RC522_LOGW("select failed: %04x", ret);
 
                 rc522->picc.state = RC522_PICC_STATE_IDLE;
                 continue;
