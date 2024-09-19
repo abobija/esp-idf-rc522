@@ -240,31 +240,33 @@ void rc522_task(void *arg)
             rc522->picc.state = RC522_PICC_STATE_READY;
         }
 
-        if (rc522->picc.state == RC522_PICC_STATE_READY || rc522->picc.state == RC522_PICC_STATE_ACTIVE) {
+        if (rc522->picc.state == RC522_PICC_STATE_ACTIVE) {
             rc522_picc_uid_t uid;
             uint8_t sak;
 
-            ret = rc522_picc_anticoll_and_select(rc522, &uid, &sak);
+            if (rc522_picc_heartbeat(rc522, &rc522->picc, &uid, &sak) != ESP_OK) {
+                rc522->picc.state = RC522_PICC_STATE_IDLE;
+
+                if (rc522_dispatch_event(rc522, RC522_EVENT_PICC_DISAPPEARED, &rc522->picc, sizeof(rc522_picc_t))
+                    != ESP_OK) {
+                    RC522_LOGW("event dispatch failed");
+                }
+            }
+
+            // card is still in the field
+            continue;
+        }
+
+        if (rc522->picc.state == RC522_PICC_STATE_READY) {
+            rc522_picc_uid_t uid;
+            uint8_t sak;
+
+            ret = rc522_picc_select(rc522, &uid, &sak, false);
 
             if (ret != ESP_OK) {
                 RC522_LOGE("select failed: %04x", ret);
 
-                rc522_picc_state_t prev_state = rc522->picc.state;
                 rc522->picc.state = RC522_PICC_STATE_IDLE;
-
-                if (prev_state == RC522_PICC_STATE_ACTIVE) {
-                    if (rc522_dispatch_event(rc522, RC522_EVENT_PICC_DISAPPEARED, &rc522->picc, sizeof(rc522_picc_t))
-                        != ESP_OK) {
-                        RC522_LOGW("event dispatch failed");
-                    }
-                }
-
-                continue;
-            }
-
-            if (rc522->picc.state == RC522_PICC_STATE_ACTIVE) {
-                // cars is still in the field
-                // TODO: maybe to check if UID and SAK are still the same?
                 continue;
             }
 

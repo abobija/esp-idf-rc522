@@ -253,13 +253,13 @@ inline esp_err_t rc522_picc_wupa(rc522_handle_t rc522, rc522_picc_atqa_desc_t *o
 /**
  * Resolve collision and SELECT a PICC
  */
-esp_err_t rc522_picc_anticoll_and_select(rc522_handle_t rc522, rc522_picc_uid_t *out_uid, uint8_t *out_sak)
+esp_err_t rc522_picc_select(rc522_handle_t rc522, rc522_picc_uid_t *out_uid, uint8_t *out_sak, bool skip_anticoll)
 {
     RC522_CHECK(rc522 == NULL);
     RC522_CHECK(out_uid == NULL);
     RC522_CHECK(out_sak == NULL);
+    RC522_CHECK(skip_anticoll && out_uid->length < RC522_PICC_UID_SIZE_MIN);
 
-    uint8_t valid_bits = 0;
     bool uid_complete;
     bool select_done;
     bool use_cascade_tag;
@@ -278,7 +278,14 @@ esp_err_t rc522_picc_anticoll_and_select(rc522_handle_t rc522, rc522_picc_uid_t 
     uint8_t response_length;
 
     rc522_picc_uid_t uid;
-    memset(&uid, 0, sizeof(rc522_picc_uid_t));
+
+    if (skip_anticoll) {
+        memcpy(&uid, out_uid, sizeof(rc522_picc_uid_t));
+    }
+    else {
+        memset(&uid, 0, sizeof(rc522_picc_uid_t));
+    }
+
     uint8_t sak;
 
     // Description of buffer structure:
@@ -311,7 +318,7 @@ esp_err_t rc522_picc_anticoll_and_select(rc522_handle_t rc522, rc522_picc_uid_t 
     // Repeat Cascade Level loop until we have a complete UID.
     uid_complete = false;
     while (!uid_complete) {
-        RC522_LOGD("cascade_level=%d, valid_bits=%d, uid.length=%d", cascade_level, valid_bits, uid.length);
+        RC522_LOGD("cascade_level=%d, uid.length=%d", cascade_level, uid.length);
 
         // Set the Cascade Level in the SEL byte, find out if we need to use the Cascade Tag in byte 2.
         switch (cascade_level) {
@@ -320,7 +327,7 @@ esp_err_t rc522_picc_anticoll_and_select(rc522_handle_t rc522, rc522_picc_uid_t 
                 uid_index = 0;
 
                 // When we know that the UID has more than 4 bytes
-                use_cascade_tag = valid_bits && uid.length > 4;
+                use_cascade_tag = uid.length > 4;
                 break;
 
             case 2:
@@ -328,7 +335,7 @@ esp_err_t rc522_picc_anticoll_and_select(rc522_handle_t rc522, rc522_picc_uid_t 
                 uid_index = 3;
 
                 // When we know that the UID has more than 7 bytes
-                use_cascade_tag = valid_bits && uid.length > 7;
+                use_cascade_tag = uid.length > 7;
                 break;
 
             case 3:
@@ -342,12 +349,17 @@ esp_err_t rc522_picc_anticoll_and_select(rc522_handle_t rc522, rc522_picc_uid_t 
                 break;
         }
 
-        RC522_LOGD("uid_index=%d, use_cascade_tag=%d", uid_index, use_cascade_tag);
+        RC522_LOGD("cl=%d, uid_index=%d, use_cascade_tag=%d", cascade_level, uid_index, use_cascade_tag);
 
         // How many UID bits are known in this Cascade Level?
-        current_level_known_bits = valid_bits - (8 * uid_index);
-        if (current_level_known_bits < 0) {
-            current_level_known_bits = 0;
+        if (skip_anticoll) {
+            current_level_known_bits = (4 * 8);
+        }
+        else {
+            current_level_known_bits = (8 * uid_index);
+            if (current_level_known_bits < 0) {
+                current_level_known_bits = 0;
+            }
         }
         // Copy the known bits from uid.uidByte[] to buffer[]
         index = 2; // destination index in buffer[]
@@ -378,7 +390,7 @@ esp_err_t rc522_picc_anticoll_and_select(rc522_handle_t rc522, rc522_picc_uid_t 
         while (!select_done) {
             // Find out how many bits and bytes to send and receive.
             if (current_level_known_bits >= 32) { // All UID bits in this Cascade Level are known. This is a SELECT.
-                RC522_LOGD("SELECT (CL=%d)", cascade_level);
+                RC522_LOGD("SELECT (cl=%d)", cascade_level);
 
                 // NVB - Number of Valid Bits: Seven whole bytes
                 buffer[1] = 0x70;
@@ -395,7 +407,7 @@ esp_err_t rc522_picc_anticoll_and_select(rc522_handle_t rc522, rc522_picc_uid_t 
                 response_length = 3;
             }
             else { // This is an ANTICOLLISION.
-                RC522_LOGD("ANTICOLLISION");
+                RC522_LOGD("ANTICOLLISION (cl=%d)", cascade_level);
 
                 tx_last_bits = current_level_known_bits % 8;
                 count = current_level_known_bits / 8;    // Number of whole bytes in the UID part.
@@ -426,6 +438,11 @@ esp_err_t rc522_picc_anticoll_and_select(rc522_handle_t rc522, rc522_picc_uid_t 
 
             if (ret == ESP_ERR_RC522_COLLISION) { // More than one PICC in the field => collision.
                 RC522_LOGD("collision detected");
+
+                if (skip_anticoll) {
+                    // If we are skipping anticoll, we should not have collisions
+                    return ret;
+                }
 
                 // CollReg[7..0] bits are: ValuesAfterColl reserved CollPosNotValid CollPos[4:0]
                 uint8_t value_of_coll_reg;
@@ -469,7 +486,7 @@ esp_err_t rc522_picc_anticoll_and_select(rc522_handle_t rc522, rc522_picc_uid_t 
             }
         } // End of while (!selectDone)
 
-        RC522_LOGD("SELECT (CL=%d) done", cascade_level);
+        RC522_LOGD("SELECT (cl=%d) done", cascade_level);
 
         // We do not check the CBB - it was constructed by us above.
 
@@ -509,6 +526,63 @@ esp_err_t rc522_picc_anticoll_and_select(rc522_handle_t rc522, rc522_picc_uid_t 
 
     // Set correct uid.size
     uid.length = 3 * cascade_level + 1;
+
+    memcpy(out_uid, &uid, sizeof(rc522_picc_uid_t));
+    *out_sak = sak;
+
+    return ESP_OK;
+}
+
+/**
+ * Checks if PICC is still in the PCD field
+ */
+esp_err_t rc522_picc_heartbeat(rc522_handle_t rc522, rc522_picc_t *picc, rc522_picc_uid_t *out_uid, uint8_t *out_sak)
+{
+    RC522_CHECK(rc522 == NULL);
+    RC522_CHECK(picc == NULL);
+    RC522_CHECK(out_uid == NULL);
+    RC522_CHECK(out_sak == NULL);
+
+    esp_err_t ret = ESP_OK;
+    uint8_t retry = 5;
+
+    do {
+        rc522_picc_atqa_desc_t atqa;
+        ret = rc522_picc_reqa(rc522, &atqa);
+
+        if (ret == ESP_OK) {
+            break;
+        }
+
+        rc522_delay_ms(10);
+        taskYIELD();
+    }
+    while (--retry);
+
+    if (ret != ESP_OK) {
+        return ret;
+    }
+
+    rc522_picc_uid_t uid;
+    uint8_t sak;
+
+    memcpy(&uid, &picc->uid, sizeof(rc522_picc_t));
+
+    ret = rc522_picc_select(rc522, &uid, &sak, true);
+
+    if (ret != ESP_OK) {
+        return ret;
+    }
+
+    if (picc->sak != sak) {
+        return ESP_ERR_RC522_PICC_HEARTBEAT_CHANGES;
+    }
+
+    for (uint8_t i = 0; i < uid.length; i++) {
+        if (picc->uid.value[i] != uid.value[i]) {
+            return ESP_ERR_RC522_PICC_HEARTBEAT_CHANGES;
+        }
+    }
 
     memcpy(out_uid, &uid, sizeof(rc522_picc_uid_t));
     *out_sak = sak;
