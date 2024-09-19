@@ -283,10 +283,7 @@ void rc522_task(void *arg)
                 continue;
             }
 
-            rc522_picc_uid_t uid;
-            uint8_t sak;
-
-            if (rc522_picc_heartbeat(rc522, &rc522->picc, &uid, &sak) == ESP_OK) {
+            if (rc522_picc_heartbeat(rc522, &rc522->picc, NULL, NULL) == ESP_OK) {
                 picc_heartbeat_failure_at_ms = 0;
             }
             else if (picc_heartbeat_failure_at_ms == 0) {

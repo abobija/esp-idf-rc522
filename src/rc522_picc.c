@@ -256,9 +256,7 @@ inline esp_err_t rc522_picc_wupa(rc522_handle_t rc522, rc522_picc_atqa_desc_t *o
 esp_err_t rc522_picc_select(rc522_handle_t rc522, rc522_picc_uid_t *out_uid, uint8_t *out_sak, bool skip_anticoll)
 {
     RC522_CHECK(rc522 == NULL);
-    RC522_CHECK(out_uid == NULL);
-    RC522_CHECK(out_sak == NULL);
-    RC522_CHECK(skip_anticoll && out_uid->length < RC522_PICC_UID_SIZE_MIN);
+    RC522_CHECK(skip_anticoll && (out_uid == NULL || out_uid->length < RC522_PICC_UID_SIZE_MIN));
 
     bool uid_complete;
     bool select_done;
@@ -527,8 +525,13 @@ esp_err_t rc522_picc_select(rc522_handle_t rc522, rc522_picc_uid_t *out_uid, uin
     // Set correct uid.size
     uid.length = 3 * cascade_level + 1;
 
-    memcpy(out_uid, &uid, sizeof(rc522_picc_uid_t));
-    *out_sak = sak;
+    if (out_uid) {
+        memcpy(out_uid, &uid, sizeof(rc522_picc_uid_t));
+    }
+
+    if (out_sak) {
+        *out_sak = sak;
+    }
 
     return ESP_OK;
 }
@@ -540,8 +543,6 @@ esp_err_t rc522_picc_heartbeat(rc522_handle_t rc522, rc522_picc_t *picc, rc522_p
 {
     RC522_CHECK(rc522 == NULL);
     RC522_CHECK(picc == NULL);
-    RC522_CHECK(out_uid == NULL);
-    RC522_CHECK(out_sak == NULL);
 
     esp_err_t ret = ESP_OK;
     uint8_t retry = 5;
@@ -584,8 +585,13 @@ esp_err_t rc522_picc_heartbeat(rc522_handle_t rc522, rc522_picc_t *picc, rc522_p
         }
     }
 
-    memcpy(out_uid, &uid, sizeof(rc522_picc_uid_t));
-    *out_sak = sak;
+    if (out_uid) {
+        memcpy(out_uid, &uid, sizeof(rc522_picc_uid_t));
+    }
+
+    if (out_sak) {
+        *out_sak = sak;
+    }
 
     return ESP_OK;
 }
