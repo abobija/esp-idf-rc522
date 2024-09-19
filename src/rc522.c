@@ -239,7 +239,13 @@ void rc522_task(void *arg)
 
             // card is present
             rc522->picc.atqa = atqa;
-            rc522->picc.state = RC522_PICC_STATE_READY;
+
+            if (rc522->picc.state == RC522_PICC_STATE_IDLE) {
+                rc522->picc.state = RC522_PICC_STATE_READY;
+            }
+            else if (rc522->picc.state == RC522_PICC_STATE_HALT) {
+                rc522->picc.state = RC522_PICC_STATE_ACTIVE; // woken up
+            }
         }
 
         if (rc522->picc.state == RC522_PICC_STATE_READY) {
