@@ -658,21 +658,13 @@ char *rc522_picc_type_name(rc522_picc_type_t type)
     }
 }
 
-esp_err_t rc522_picc_uid_to_str(rc522_picc_uid_t *uid, char buffer[RC522_PICC_UID_STR_BUFFER_SIZE])
+esp_err_t rc522_picc_uid_to_str(rc522_picc_uid_t *uid, char *buffer, uint8_t buffer_size)
 {
     RC522_CHECK(uid == NULL);
     RC522_CHECK(buffer == NULL);
+    RC522_CHECK(buffer_size < RC522_PICC_UID_STR_BUFFER_SIZE_MAX);
 
-    memset(buffer, 0x00, RC522_PICC_UID_STR_BUFFER_SIZE);
-
-    uint8_t n = 0;
-    for (uint8_t i = 0; i < uid->length; i++) {
-        n += sprintf(buffer + (i * 3), "%02x ", uid->value[i]);
-    }
-
-    buffer[n - 1] = 0x00;
-
-    return ESP_OK;
+    return rc522_buffer_to_hex_str(uid->value, uid->length, buffer, buffer_size);
 }
 
 esp_err_t rc522_picc_halta(rc522_handle_t rc522, rc522_picc_t *picc)

@@ -6,9 +6,9 @@
 extern "C" {
 #endif
 
-#define RC522_PICC_UID_SIZE_MAX        (10)
-#define RC522_PICC_UID_SIZE_MIN        (4)
-#define RC522_PICC_UID_STR_BUFFER_SIZE (RC522_PICC_UID_SIZE_MAX * 3)
+#define RC522_PICC_UID_SIZE_MAX            (10)
+#define RC522_PICC_UID_SIZE_MIN            (4)
+#define RC522_PICC_UID_STR_BUFFER_SIZE_MAX (RC522_PICC_UID_SIZE_MAX * 3)
 
 typedef struct
 {
@@ -96,7 +96,7 @@ typedef struct
 
 char *rc522_picc_type_name(rc522_picc_type_t type);
 
-esp_err_t rc522_picc_uid_to_str(rc522_picc_uid_t *uid, char buffer[RC522_PICC_UID_STR_BUFFER_SIZE]);
+esp_err_t rc522_picc_uid_to_str(rc522_picc_uid_t *uid, char *buffer, uint8_t buffer_size);
 
 #ifdef __cplusplus
 }

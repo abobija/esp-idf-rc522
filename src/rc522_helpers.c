@@ -32,16 +32,15 @@ esp_err_t rc522_buffer_to_hex_str(uint8_t *buffer, uint8_t buffer_length, char *
 
     const char *format = "%02x ";
     const uint8_t formatted_length = 3;
-    uint8_t length = 0;
 
     RC522_CHECK(str_buffer_length < (buffer_length * formatted_length));
 
-    for (uint8_t i = 0; i < buffer_length; i++) {
-        sprintf(str_buffer + (i * formatted_length), format, buffer[i]);
-        length += formatted_length;
+    uint16_t len = 0;
+    for (uint16_t i = 0; i < buffer_length; i++) {
+        len += sprintf(str_buffer + len, format, buffer[i]);
     }
 
-    str_buffer[length - 1] = 0x00;
+    str_buffer[len - 1] = 0x00;
 
     return ESP_OK;
 }
