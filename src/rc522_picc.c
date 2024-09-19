@@ -554,7 +554,7 @@ esp_err_t rc522_picc_heartbeat(rc522_handle_t rc522, rc522_picc_t *picc, rc522_p
             break;
         }
 
-        rc522_delay_ms(10);
+        rc522_delay_ms(20);
         taskYIELD();
     }
     while (--retry);
