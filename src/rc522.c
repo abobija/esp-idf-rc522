@@ -213,9 +213,6 @@ void rc522_task(void *arg)
 
     xEventGroupClearBits(rc522->bits, RC522_TASK_STOPPED_BIT);
 
-    // TODO: consider sending picc clone to the event handlers
-    //       to avoid modifying picc state by the user
-
     while (!rc522->exit_requested) {
         if (rc522->state == RC522_STATE_POLLING) {
             rc522_delay_ms(rc522->config->task_throttling_ms);
