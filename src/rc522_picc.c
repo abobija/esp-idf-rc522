@@ -20,7 +20,7 @@ esp_err_t rc522_picc_comm(rc522_handle_t rc522, rc522_pcd_command_t command, uin
     RC522_CHECK(send_data_len < 1);
 
     if (RC522_LOG_LEVEL >= ESP_LOG_DEBUG) {
-        RC522_LOGD("transceive (rx_align=0x%02x, check_crc=%d)", rx_align, check_crc);
+        RC522_LOGD("transceive (rx_align=0x%02" RC522_X ", check_crc=%d)", rx_align, check_crc);
         char debug_buffer[64];
         rc522_buffer_to_hex_str(send_data, send_data_len, debug_buffer, sizeof(debug_buffer));
         RC522_LOGD("picc << %s", debug_buffer);
@@ -63,7 +63,7 @@ esp_err_t rc522_picc_comm(rc522_handle_t rc522, rc522_pcd_command_t command, uin
 
         // Timer interrupt - nothing received in 25ms
         if (irq & RC522_PCD_TIMER_IRQ_BIT) {
-            RC522_LOGD("timer interrupt (irq=0x%02x)", irq);
+            RC522_LOGD("timer interrupt (irq=0x%02" RC522_X ")", irq);
 
             return ESP_ERR_RC522_RX_TIMER_TIMEOUT;
         }
@@ -95,7 +95,7 @@ esp_err_t rc522_picc_comm(rc522_handle_t rc522, rc522_pcd_command_t command, uin
         RC522_RETURN_ON_ERROR(rc522_pcd_read(rc522, RC522_PCD_FIFO_LEVEL_REG, &fifo_level));
 
         if (fifo_level < 1) {
-            RC522_LOGW("unexpectedly, fifo is empty (irq=0x%02x)", irq);
+            RC522_LOGW("unexpectedly, fifo is empty (irq=0x%02" RC522_X ")", irq);
         }
     }
 
@@ -115,7 +115,7 @@ esp_err_t rc522_picc_comm(rc522_handle_t rc522, rc522_pcd_command_t command, uin
         RC522_RETURN_ON_ERROR(rc522_pcd_fifo_read(rc522, back_data, fifo_level));
 
         if (rx_align) { // Only update bit positions rxAlign..7 in values[0]
-            RC522_LOGD("rx_align=0x%02x, applying mask", rx_align);
+            RC522_LOGD("rx_align=0x%02" RC522_X ", applying mask", rx_align);
 
             // Create bit mask for bit positions rxAlign..7
             uint8_t mask = (0xFF << rx_align) & 0xFF;
@@ -219,7 +219,7 @@ static esp_err_t rc522_picc_reqa_or_wupa(rc522_handle_t rc522, uint8_t picc_cmd,
         // Timeouts are expected if no PICC are in the field.
         // Log other errors
         if (ret != ESP_ERR_RC522_RX_TIMER_TIMEOUT && ret != ESP_ERR_RC522_RX_TIMEOUT) {
-            RC522_LOGD("non-timeout error: %04x", ret);
+            RC522_LOGD("non-timeout error: %04" RC522_X, ret);
         }
 
         return ret;

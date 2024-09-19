@@ -30,7 +30,7 @@ esp_err_t rc522_buffer_to_hex_str(uint8_t *buffer, uint8_t buffer_length, char *
     RC522_CHECK(buffer_length < 1);
     RC522_CHECK(str_buffer == NULL);
 
-    const char *format = "%02x ";
+    const char *format = "%02" RC522_X " ";
     const uint8_t formatted_length = 3;
 
     RC522_CHECK(str_buffer_length < (buffer_length * formatted_length));

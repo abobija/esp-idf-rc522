@@ -9,6 +9,8 @@
 extern "C" {
 #endif
 
+#define RC522_X "X"
+
 #define ESP_ERR_RC522_BASE                     (0xF522)
 #define ESP_ERR_RC522_COLLISION                (ESP_ERR_RC522_BASE + 1)
 #define ESP_ERR_RC522_COLLISION_UNSOLVABLE     (ESP_ERR_RC522_BASE + 2)

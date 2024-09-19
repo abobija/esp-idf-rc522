@@ -56,7 +56,7 @@ struct rc522
     do {                                                                                                               \
         esp_err_t err_rc_ = (x);                                                                                       \
         if (unlikely(err_rc_ != ESP_OK)) {                                                                             \
-            ESP_LOGE(TAG, "%s(%d): %04x", __FUNCTION__, __LINE__, err_rc_);                                            \
+            ESP_LOGE(TAG, "%s(%d): %04" RC522_X "", __FUNCTION__, __LINE__, err_rc_);                                  \
             return err_rc_;                                                                                            \
         }                                                                                                              \
     }                                                                                                                  \
