@@ -135,11 +135,7 @@ static void on_picc_activated(void *arg, esp_event_base_t base, int32_t event_id
     char uid_str[RC522_PICC_UID_STR_BUFFER_SIZE_MAX];
     rc522_picc_uid_to_str(&picc->uid, uid_str, RC522_PICC_UID_STR_BUFFER_SIZE_MAX);
 
-    ESP_LOGI(TAG,
-        "Card (type=%s, uid=%s, sak=%02" RC522_X ") detected",
-        rc522_picc_type_name(picc->type),
-        uid_str,
-        picc->sak);
+    ESP_LOGI(TAG, "Card (type=%s, uid=%s) detected", rc522_picc_type_name(picc->type), uid_str);
 
     if (rc522_mifare_type_is_classic_compatible(picc->type)) {
         if (rc522_mifare_handle_as_transaction(dump_memory, rc522, picc) != ESP_OK) {
