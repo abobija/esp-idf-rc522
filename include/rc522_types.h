@@ -48,7 +48,7 @@ typedef enum
     /**
      * Card moved out of the PCD field
      */
-    RC522_EVENT_PICC_DISAPPEARED,
+    RC522_EVENT_PICC_REMOVED,
 } rc522_event_t;
 
 #ifdef __cplusplus

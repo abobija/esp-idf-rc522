@@ -46,7 +46,7 @@ static void on_picc_activated(void *arg, esp_event_base_t base, int32_t event_id
         picc->sak);
 }
 
-static void on_picc_disappeared(void *arg, esp_event_base_t base, int32_t event_id, void *data)
+static void on_picc_removed(void *arg, esp_event_base_t base, int32_t event_id, void *data)
 {
     // the UID is available here in same way as
     // in the `on_picc_activated` handler above
@@ -65,6 +65,6 @@ void app_main()
 
     rc522_create(&config, &rc522);
     rc522_register_events(rc522, RC522_EVENT_PICC_ACTIVATED, on_picc_activated, NULL);
-    rc522_register_events(rc522, RC522_EVENT_PICC_DISAPPEARED, on_picc_disappeared, NULL);
+    rc522_register_events(rc522, RC522_EVENT_PICC_REMOVED, on_picc_removed, NULL);
     rc522_start(rc522);
 }
