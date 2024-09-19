@@ -69,7 +69,9 @@ static esp_err_t read_write(rc522_handle_t rc522, rc522_picc_t *picc)
 
     // Read
     ESP_LOGI(TAG, "Reading data from the block %d", block_address);
-    ESP_RETURN_ON_ERROR(rc522_mifare_read(rc522, picc, block_address, read_buffer), TAG, "read fail");
+    ESP_RETURN_ON_ERROR(rc522_mifare_read(rc522, picc, block_address, read_buffer, sizeof(read_buffer)),
+        TAG,
+        "read fail");
     ESP_LOGI(TAG, "Current content of the block %d:", block_address);
     dump_block(read_buffer);
     // ~Read
@@ -85,12 +87,16 @@ static esp_err_t read_write(rc522_handle_t rc522, rc522_picc_t *picc)
 
     ESP_LOGI(TAG, "Writing next data to the block %d:", block_address);
     dump_block(write_buffer);
-    ESP_RETURN_ON_ERROR(rc522_mifare_write(rc522, picc, block_address, write_buffer), TAG, "write fail");
+    ESP_RETURN_ON_ERROR(rc522_mifare_write(rc522, picc, block_address, write_buffer, sizeof(write_buffer)),
+        TAG,
+        "write fail");
     // ~Write
 
     // Read again
     ESP_LOGI(TAG, "Write done. Reading block %d again", block_address);
-    ESP_RETURN_ON_ERROR(rc522_mifare_read(rc522, picc, block_address, read_buffer), TAG, "read fail");
+    ESP_RETURN_ON_ERROR(rc522_mifare_read(rc522, picc, block_address, read_buffer, sizeof(read_buffer)),
+        TAG,
+        "read fail");
     ESP_LOGI(TAG, "New content of the block %d:", block_address);
     dump_block(read_buffer);
     // ~Read again

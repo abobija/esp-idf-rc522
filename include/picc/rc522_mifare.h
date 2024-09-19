@@ -83,10 +83,10 @@ esp_err_t rc522_mifare_info(rc522_picc_t *picc, rc522_mifare_t *mifare);
 esp_err_t rc522_mifare_auth(rc522_handle_t rc522, rc522_picc_t *picc, uint8_t block_addr, rc522_mifare_key_t *key);
 
 esp_err_t rc522_mifare_read(
-    rc522_handle_t rc522, rc522_picc_t *picc, uint8_t block_addr, uint8_t buffer[RC522_MIFARE_BLOCK_SIZE]);
+    rc522_handle_t rc522, rc522_picc_t *picc, uint8_t block_addr, uint8_t *buffer, uint8_t buffer_size);
 
 esp_err_t rc522_mifare_write(
-    rc522_handle_t rc522, rc522_picc_t *picc, uint8_t block_addr, uint8_t buffer[RC522_MIFARE_BLOCK_SIZE]);
+    rc522_handle_t rc522, rc522_picc_t *picc, uint8_t block_addr, uint8_t *buffer, uint8_t buffer_size);
 
 esp_err_t rc522_mifare_transactions_end(rc522_handle_t rc522, rc522_picc_t *picc);
 

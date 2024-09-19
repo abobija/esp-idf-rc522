@@ -117,11 +117,12 @@ esp_err_t rc522_mifare_auth(rc522_handle_t rc522, rc522_picc_t *picc, uint8_t bl
 }
 
 esp_err_t rc522_mifare_read(
-    rc522_handle_t rc522, rc522_picc_t *picc, uint8_t block_addr, uint8_t buffer[RC522_MIFARE_BLOCK_SIZE])
+    rc522_handle_t rc522, rc522_picc_t *picc, uint8_t block_addr, uint8_t *buffer, uint8_t buffer_size)
 {
     RC522_CHECK(rc522 == NULL);
     RC522_CHECK(picc == NULL);
     RC522_CHECK(buffer == NULL);
+    RC522_CHECK(buffer_size < RC522_MIFARE_BLOCK_SIZE);
 
     // Build command buffer
     buffer[0] = RC522_MIFARE_READ_CMD;
@@ -287,12 +288,13 @@ static esp_err_t rc522_mifare_check_sector_trailer_write(uint8_t block_address)
 }
 
 esp_err_t rc522_mifare_write(
-    rc522_handle_t rc522, rc522_picc_t *picc, uint8_t block_addr, uint8_t buffer[RC522_MIFARE_BLOCK_SIZE])
+    rc522_handle_t rc522, rc522_picc_t *picc, uint8_t block_addr, uint8_t *buffer, uint8_t buffer_size)
 {
     RC522_CHECK(rc522 == NULL);
     RC522_CHECK(picc == NULL);
-    RC522_CHECK(!rc522_mifare_type_is_classic_compatible(picc->type));
     RC522_CHECK(buffer == NULL);
+    RC522_CHECK(buffer_size < RC522_MIFARE_BLOCK_SIZE);
+    RC522_CHECK(!rc522_mifare_type_is_classic_compatible(picc->type));
     RC522_CHECK(rc522_mifare_check_sector_trailer_write(block_addr) != ESP_OK);
 
     // Step 1: Tell the PICC we want to write to block blockAddr.
@@ -469,7 +471,7 @@ esp_err_t rc522_mifare_iterate_sector_blocks(rc522_handle_t rc522, rc522_picc_t 
             block.type = RC522_MIFARE_BLOCK_TRAILER;
         }
 
-        RC522_RETURN_ON_ERROR(rc522_mifare_read(rc522, picc, block.address, block.bytes));
+        RC522_RETURN_ON_ERROR(rc522_mifare_read(rc522, picc, block.address, block.bytes, sizeof(block.bytes)));
 
         if (block.type == RC522_MIFARE_BLOCK_TRAILER) {
             block.access_bits_err = rc522_mifare_parse_access_bits_into_groups(block.bytes, access_bit_groups);
