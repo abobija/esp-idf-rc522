@@ -68,6 +68,20 @@ static esp_err_t rc522_spi_receive(rc522_driver_handle_t driver, uint8_t address
     return ESP_OK;
 }
 
+static esp_err_t rc522_spi_reset(rc522_driver_handle_t driver)
+{
+    rc522_spi_config_t *conf = (rc522_spi_config_t *)(driver->config);
+
+    if (conf->rst_io_num < 0) {
+        return ESP_ERR_RC522_RST_PIN_UNUSED;
+    }
+
+    // TODO: Implement
+    RC522_LOGW("not implemented");
+
+    return ESP_ERR_NOT_SUPPORTED;
+}
+
 static esp_err_t rc522_spi_uninstall(rc522_driver_handle_t driver)
 {
     RC522_CHECK(driver == NULL);
@@ -94,6 +108,7 @@ esp_err_t rc522_spi_create(rc522_spi_config_t *config, rc522_driver_handle_t *dr
     (*driver)->install = rc522_spi_install;
     (*driver)->send = rc522_spi_send;
     (*driver)->receive = rc522_spi_receive;
+    (*driver)->reset = rc522_spi_reset;
     (*driver)->uninstall = rc522_spi_uninstall;
 
     return ESP_OK;

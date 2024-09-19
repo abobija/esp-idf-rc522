@@ -55,6 +55,20 @@ static esp_err_t rc522_i2c_receive(rc522_driver_handle_t driver, uint8_t address
     return ESP_OK;
 }
 
+static esp_err_t rc522_i2c_reset(rc522_driver_handle_t driver)
+{
+    rc522_i2c_config_t *conf = (rc522_i2c_config_t *)(driver->config);
+
+    if (conf->rst_io_num < 0) {
+        return ESP_ERR_RC522_RST_PIN_UNUSED;
+    }
+
+    // TODO: Implement
+    RC522_LOGW("not implemented");
+
+    return ESP_ERR_NOT_SUPPORTED;
+}
+
 static esp_err_t rc522_i2c_uninstall(rc522_driver_handle_t driver)
 {
     RC522_CHECK(driver == NULL);
@@ -76,6 +90,7 @@ esp_err_t rc522_i2c_create(rc522_i2c_config_t *config, rc522_driver_handle_t *dr
     (*driver)->install = rc522_i2c_install;
     (*driver)->send = rc522_i2c_send;
     (*driver)->receive = rc522_i2c_receive;
+    (*driver)->reset = rc522_i2c_reset;
     (*driver)->uninstall = rc522_i2c_uninstall;
 
     return ESP_OK;

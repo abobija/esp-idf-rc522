@@ -8,6 +8,7 @@ static const char *TAG = "rc522-basic-i2c-example";
 #define RC522_I2C_ADDRESS  (0x28)
 #define RC522_I2C_GPIO_SDA (18)
 #define RC522_I2C_GPIO_SCL (21)
+#define RC522_GPIO_RST     (-1) // Use soft-reset
 
 static rc522_i2c_config_t driver_config = {
     .port = I2C_NUM_0,
@@ -21,6 +22,7 @@ static rc522_i2c_config_t driver_config = {
         .scl_pullup_en = GPIO_PULLUP_ENABLE,
         .master.clk_speed = 100000,
     },
+    .rst_io_num = RC522_GPIO_RST,
 };
 
 static rc522_driver_handle_t driver;

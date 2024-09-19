@@ -29,6 +29,13 @@ inline esp_err_t rc522_driver_receive(rc522_driver_handle_t driver, uint8_t addr
     return driver->receive(driver, address, buffer, length);
 }
 
+inline esp_err_t rc522_driver_reset(rc522_driver_handle_t driver)
+{
+    RC522_CHECK(driver == NULL);
+
+    return driver->reset(driver);
+}
+
 inline esp_err_t rc522_driver_uninstall(rc522_driver_handle_t driver)
 {
     RC522_CHECK(driver == NULL);

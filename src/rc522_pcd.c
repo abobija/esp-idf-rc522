@@ -69,10 +69,11 @@ esp_err_t rc522_pcd_calculate_crc(rc522_handle_t rc522, uint8_t *data, uint8_t n
     return ESP_OK;
 }
 
-static esp_err_t rc522_pcd_soft_reset(rc522_handle_t rc522, uint32_t timeout_ms)
+static esp_err_t rc522_pcd_wait_for_reset(rc522_handle_t rc522, uint32_t timeout_ms)
 {
-    RC522_RETURN_ON_ERROR(rc522_pcd_write(rc522, RC522_PCD_COMMAND_REG, RC522_PCD_SOFT_RESET_CMD));
+    RC522_CHECK(rc522 == NULL);
 
+    esp_err_t ret = ESP_OK;
     bool power_down_bit = true;
     uint32_t start_ms = rc522_millis();
 
@@ -81,7 +82,10 @@ static esp_err_t rc522_pcd_soft_reset(rc522_handle_t rc522, uint32_t timeout_ms)
         rc522_delay_ms(25);
 
         uint8_t cmd;
-        RC522_RETURN_ON_ERROR(rc522_pcd_read(rc522, RC522_PCD_COMMAND_REG, &cmd));
+        if ((ret = rc522_pcd_read(rc522, RC522_PCD_COMMAND_REG, &cmd)) != ESP_OK) {
+            RC522_LOGD("wait for reset error %04" RC522_X, ret);
+            continue;
+        }
 
         if (!(power_down_bit = (cmd & RC522_PCD_POWER_DOWN_BIT))) {
             break;
@@ -90,6 +94,41 @@ static esp_err_t rc522_pcd_soft_reset(rc522_handle_t rc522, uint32_t timeout_ms)
     while ((rc522_millis() - start_ms) < timeout_ms);
 
     return power_down_bit ? ESP_ERR_TIMEOUT : ESP_OK;
+}
+
+inline static esp_err_t rc522_pcd_hard_reset(rc522_handle_t rc522, uint32_t timeout_ms)
+{
+    RC522_CHECK(rc522 == NULL);
+    RC522_LOGD("hard reset");
+
+    esp_err_t ret = rc522_driver_reset(rc522->config->driver);
+
+    return ret == ESP_OK ? rc522_pcd_wait_for_reset(rc522, timeout_ms) : ret;
+}
+
+inline static esp_err_t rc522_pcd_soft_reset(rc522_handle_t rc522, uint32_t timeout_ms)
+{
+    RC522_CHECK(rc522 == NULL);
+    RC522_LOGD("soft reset");
+
+    RC522_RETURN_ON_ERROR(rc522_pcd_write(rc522, RC522_PCD_COMMAND_REG, RC522_PCD_SOFT_RESET_CMD));
+
+    return rc522_pcd_wait_for_reset(rc522, timeout_ms);
+}
+
+inline static esp_err_t rc522_pcd_reset(rc522_handle_t rc522, uint32_t timeout_ms)
+{
+    esp_err_t ret = ESP_OK;
+
+    if ((ret = rc522_pcd_hard_reset(rc522, timeout_ms)) != ESP_OK) {
+        if (ret != ESP_ERR_RC522_RST_PIN_UNUSED) {
+            RC522_LOGW("hard reset failed, trying soft reset");
+        }
+
+        ret = rc522_pcd_soft_reset(rc522, timeout_ms);
+    }
+
+    return ret;
 }
 
 inline static esp_err_t rc522_pcd_antenna_on(rc522_handle_t rc522)
@@ -135,10 +174,7 @@ esp_err_t rc522_pcd_init(rc522_handle_t rc522)
 {
     RC522_CHECK(rc522 == NULL);
 
-    // TODO: Implement hard reset via RST pin
-    //       and ability to choose between hard and soft reset
-
-    RC522_RETURN_ON_ERROR(rc522_pcd_soft_reset(rc522, 150));
+    RC522_RETURN_ON_ERROR(rc522_pcd_reset(rc522, 150));
 
     // Reset baud rates
     RC522_RETURN_ON_ERROR(rc522_pcd_write(rc522, RC522_PCD_TX_MODE_REG, RC522_PCD_TX_MODE_REG_RESET_VALUE));

@@ -11,6 +11,7 @@ static const char *TAG = "rc522-memory-dump-example";
 #define RC522_SPI_BUS_GPIO_MOSI   (23)
 #define RC522_SPI_BUS_GPIO_SCLK   (19)
 #define RC522_SPI_DEVICE_GPIO_SDA (22)
+#define RC522_GPIO_RST            (-1) // Use soft-reset
 
 static rc522_spi_config_t driver_config = {
     .host_id = VSPI_HOST,
@@ -29,6 +30,7 @@ static rc522_spi_config_t driver_config = {
         .queue_size = 7,
         .flags = SPI_DEVICE_HALFDUPLEX,
     },
+    .rst_io_num = RC522_GPIO_RST,
 };
 
 static rc522_driver_handle_t driver;
