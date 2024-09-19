@@ -13,12 +13,12 @@ esp_err_t rc522_driver_init_rst_pin(gpio_num_t rst_io_num)
         .intr_type = GPIO_INTR_DISABLE,
         .mode = GPIO_MODE_OUTPUT,
         .pin_bit_mask = (1ULL << rst_io_num),
-        .pull_down_en = 0,
-        .pull_up_en = 0,
+        .pull_down_en = GPIO_PULLDOWN_DISABLE,
+        .pull_up_en = GPIO_PULLUP_DISABLE,
     };
 
     RC522_RETURN_ON_ERROR(gpio_config(&io_conf));
-    RC522_RETURN_ON_ERROR(gpio_set_level(rst_io_num, 0));
+    RC522_RETURN_ON_ERROR(gpio_set_level(rst_io_num, !RC522_DRIVER_HARD_RST_PIN_PWR_DOWN_LEVEL));
 
     return ESP_OK;
 }

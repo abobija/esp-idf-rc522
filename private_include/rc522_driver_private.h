@@ -1,6 +1,9 @@
 #include <driver/gpio.h>
 #include "rc522_driver.h"
 
+#define RC522_DRIVER_HARD_RST_PIN_PWR_DOWN_LEVEL (0)
+#define RC522_DRIVER_HARD_RST_PULSE_DURATION_MS  (15)
+
 typedef esp_err_t (*rc522_driver_install_handler_t)(rc522_driver_handle_t driver);
 
 typedef esp_err_t (*rc522_driver_send_handler_t)(

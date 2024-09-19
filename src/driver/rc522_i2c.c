@@ -68,10 +68,10 @@ static esp_err_t rc522_i2c_reset(rc522_driver_handle_t driver)
         return ESP_ERR_RC522_RST_PIN_UNUSED;
     }
 
-    RC522_RETURN_ON_ERROR(gpio_set_level(conf->rst_io_num, 0));
-    rc522_delay_ms(15);
-    RC522_RETURN_ON_ERROR(gpio_set_level(conf->rst_io_num, 1));
-    rc522_delay_ms(15);
+    RC522_RETURN_ON_ERROR(gpio_set_level(conf->rst_io_num, RC522_DRIVER_HARD_RST_PIN_PWR_DOWN_LEVEL));
+    rc522_delay_ms(RC522_DRIVER_HARD_RST_PULSE_DURATION_MS);
+    RC522_RETURN_ON_ERROR(gpio_set_level(conf->rst_io_num, !RC522_DRIVER_HARD_RST_PIN_PWR_DOWN_LEVEL));
+    rc522_delay_ms(RC522_DRIVER_HARD_RST_PULSE_DURATION_MS);
 
     return ESP_OK;
 }
