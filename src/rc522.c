@@ -206,8 +206,10 @@ static esp_err_t rc522_dispatch_event(rc522_handle_t rc522, rc522_event_t event,
 
 void rc522_task(void *arg)
 {
-    rc522_handle_t rc522 = (rc522_handle_t)arg;
     esp_err_t ret = ESP_OK;
+    rc522_handle_t rc522 = (rc522_handle_t)arg;
+    const uint32_t picc_heartbeat_failure_threshold_ms = 200;
+    uint32_t picc_heartbeat_failure_at_ms = 0;
 
     xEventGroupClearBits(rc522->bits, RC522_TASK_STOPPED_BIT);
 
@@ -240,23 +242,6 @@ void rc522_task(void *arg)
             rc522->picc.state = RC522_PICC_STATE_READY;
         }
 
-        if (rc522->picc.state == RC522_PICC_STATE_ACTIVE) {
-            rc522_picc_uid_t uid;
-            uint8_t sak;
-
-            if (rc522_picc_heartbeat(rc522, &rc522->picc, &uid, &sak) != ESP_OK) {
-                rc522->picc.state = RC522_PICC_STATE_IDLE;
-
-                if (rc522_dispatch_event(rc522, RC522_EVENT_PICC_DISAPPEARED, &rc522->picc, sizeof(rc522_picc_t))
-                    != ESP_OK) {
-                    RC522_LOGW("event dispatch failed");
-                }
-            }
-
-            // card is still in the field
-            continue;
-        }
-
         if (rc522->picc.state == RC522_PICC_STATE_READY) {
             rc522_picc_uid_t uid;
             uint8_t sak;
@@ -275,9 +260,41 @@ void rc522_task(void *arg)
             rc522->picc.type = rc522_picc_type(sak);
             rc522->picc.state = RC522_PICC_STATE_ACTIVE;
 
+            picc_heartbeat_failure_at_ms = 0;
+
             if (rc522_dispatch_event(rc522, RC522_EVENT_PICC_ACTIVATED, &rc522->picc, sizeof(rc522_picc_t)) != ESP_OK) {
                 RC522_LOGW("event dispatch failed");
             }
+
+            continue;
+        }
+
+        if (rc522->picc.state == RC522_PICC_STATE_ACTIVE) {
+            if (picc_heartbeat_failure_at_ms != 0
+                && ((rc522_millis() - picc_heartbeat_failure_at_ms) > picc_heartbeat_failure_threshold_ms)) {
+                rc522->picc.state = RC522_PICC_STATE_IDLE;
+
+                if (rc522_dispatch_event(rc522, RC522_EVENT_PICC_DISAPPEARED, &rc522->picc, sizeof(rc522_picc_t))
+                    != ESP_OK) {
+                    RC522_LOGW("event dispatch failed");
+                }
+
+                picc_heartbeat_failure_at_ms = 0;
+                continue;
+            }
+
+            rc522_picc_uid_t uid;
+            uint8_t sak;
+
+            if (rc522_picc_heartbeat(rc522, &rc522->picc, &uid, &sak) == ESP_OK) {
+                picc_heartbeat_failure_at_ms = 0;
+            }
+            else if (picc_heartbeat_failure_at_ms == 0) {
+                picc_heartbeat_failure_at_ms = rc522_millis();
+            }
+
+            // card is still in the field
+            continue;
         }
     }
 
