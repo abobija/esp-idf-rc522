@@ -47,7 +47,7 @@ static void on_picc_disappeared(void *arg, esp_event_base_t base, int32_t event_
     // the UID is available here in same way as
     // in the `on_picc_activated` handler above
 
-    ESP_LOGI(TAG, "PICC has been moved away");
+    ESP_LOGI(TAG, "PICC has been removed");
 }
 
 void app_main()
