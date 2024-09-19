@@ -1,6 +1,7 @@
 #pragma once
 
 #include <driver/i2c.h> // TODO: Migrate to new i2c API
+#include <driver/gpio.h>
 #include "rc522_driver.h"
 
 #ifdef __cplusplus
@@ -18,7 +19,7 @@ typedef struct
      * GPIO number of the RC522 RST pin.
      * Set to -1 if the RST pin is not connected.
      */
-    int rst_io_num;
+    gpio_num_t rst_io_num;
 } rc522_i2c_config_t;
 
 esp_err_t rc522_i2c_create(rc522_i2c_config_t *config, rc522_driver_handle_t *driver);

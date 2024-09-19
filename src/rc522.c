@@ -82,6 +82,8 @@ esp_err_t rc522_start(rc522_handle_t rc522)
         return ESP_OK;
     }
 
+    RC522_RETURN_ON_ERROR(rc522_pcd_reset(rc522, 150));
+
     ESP_RETURN_ON_ERROR(rc522_pcd_rw_test(rc522), TAG, "RW test failed");
 
     ESP_RETURN_ON_ERROR(rc522_pcd_init(rc522), TAG, "Unable to init PCD");

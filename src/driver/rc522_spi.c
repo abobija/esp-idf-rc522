@@ -1,4 +1,5 @@
 #include <string.h>
+#include "rc522_helpers_private.h"
 #include "rc522_types_private.h"
 #include "rc522_driver_private.h"
 #include "driver/rc522_spi.h"
@@ -20,6 +21,10 @@ static esp_err_t rc522_spi_install(rc522_driver_handle_t driver)
 
     RC522_RETURN_ON_ERROR(
         spi_bus_add_device(conf->host_id, &conf->dev_config, (spi_device_handle_t *)(&driver->device)));
+
+    if (conf->rst_io_num > GPIO_NUM_NC) {
+        RC522_RETURN_ON_ERROR(rc522_driver_init_rst_pin(conf->rst_io_num));
+    }
 
     return ESP_OK;
 }
@@ -76,10 +81,12 @@ static esp_err_t rc522_spi_reset(rc522_driver_handle_t driver)
         return ESP_ERR_RC522_RST_PIN_UNUSED;
     }
 
-    // TODO: Implement
-    RC522_LOGW("not implemented");
+    RC522_RETURN_ON_ERROR(gpio_set_level(conf->rst_io_num, 0));
+    rc522_delay_ms(15);
+    RC522_RETURN_ON_ERROR(gpio_set_level(conf->rst_io_num, 1));
+    rc522_delay_ms(15);
 
-    return ESP_ERR_NOT_SUPPORTED;
+    return ESP_OK;
 }
 
 static esp_err_t rc522_spi_uninstall(rc522_driver_handle_t driver)

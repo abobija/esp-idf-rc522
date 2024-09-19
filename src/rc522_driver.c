@@ -1,8 +1,27 @@
 #include <string.h>
+#include <driver/gpio.h>
 #include "rc522_types_private.h"
 #include "rc522_driver_private.h"
 
 RC522_LOG_DEFINE_BASE();
+
+esp_err_t rc522_driver_init_rst_pin(gpio_num_t rst_io_num)
+{
+    RC522_CHECK(rst_io_num < 0);
+
+    gpio_config_t io_conf = {
+        .intr_type = GPIO_INTR_DISABLE,
+        .mode = GPIO_MODE_OUTPUT,
+        .pin_bit_mask = (1ULL << rst_io_num),
+        .pull_down_en = 0,
+        .pull_up_en = 0,
+    };
+
+    RC522_RETURN_ON_ERROR(gpio_config(&io_conf));
+    RC522_RETURN_ON_ERROR(gpio_set_level(rst_io_num, 0));
+
+    return ESP_OK;
+}
 
 inline esp_err_t rc522_driver_install(rc522_driver_handle_t driver)
 {

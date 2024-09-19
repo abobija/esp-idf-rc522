@@ -116,7 +116,7 @@ inline static esp_err_t rc522_pcd_soft_reset(rc522_handle_t rc522, uint32_t time
     return rc522_pcd_wait_for_reset(rc522, timeout_ms);
 }
 
-inline static esp_err_t rc522_pcd_reset(rc522_handle_t rc522, uint32_t timeout_ms)
+esp_err_t rc522_pcd_reset(rc522_handle_t rc522, uint32_t timeout_ms)
 {
     esp_err_t ret = ESP_OK;
 
@@ -173,8 +173,6 @@ inline static esp_err_t rc522_pcd_set_antenna_gain(rc522_handle_t rc522, rc522_p
 esp_err_t rc522_pcd_init(rc522_handle_t rc522)
 {
     RC522_CHECK(rc522 == NULL);
-
-    RC522_RETURN_ON_ERROR(rc522_pcd_reset(rc522, 150));
 
     // Reset baud rates
     RC522_RETURN_ON_ERROR(rc522_pcd_write(rc522, RC522_PCD_TX_MODE_REG, RC522_PCD_TX_MODE_REG_RESET_VALUE));

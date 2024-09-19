@@ -1,3 +1,4 @@
+#include <driver/gpio.h>
 #include "rc522_driver.h"
 
 typedef esp_err_t (*rc522_driver_install_handler_t)(rc522_driver_handle_t driver);
@@ -22,6 +23,8 @@ struct rc522_driver_handle
     rc522_driver_reset_handler_t reset;
     rc522_driver_uninstall_handler_t uninstall;
 };
+
+esp_err_t rc522_driver_init_rst_pin(gpio_num_t rst_io_num);
 
 esp_err_t rc522_driver_create(void *config, size_t config_size, rc522_driver_handle_t *driver);
 
