@@ -4,6 +4,7 @@
 #include <esp_event.h>
 #include <inttypes.h>
 #include "rc522_driver.h"
+#include "rc522_picc.h"
 
 #ifdef __cplusplus
 extern "C" {
@@ -38,17 +39,7 @@ typedef enum
 {
     RC522_EVENT_ANY = ESP_EVENT_ANY_ID,
     RC522_EVENT_NONE,
-
-    /**
-     * Card is detected. UID is available.
-     * PICC is in the field of the PCD and its listens to any higher level message.
-     */
-    RC522_EVENT_PICC_ACTIVATED,
-
-    /**
-     * Card moved out of the PCD field
-     */
-    RC522_EVENT_PICC_REMOVED,
+    RC522_EVENT_PICC_STATE_CHANGED,
 } rc522_event_t;
 
 #ifdef __cplusplus

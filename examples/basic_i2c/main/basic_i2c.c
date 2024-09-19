@@ -26,9 +26,14 @@ static rc522_i2c_config_t driver_config = {
 static rc522_driver_handle_t driver;
 static rc522_handle_t rc522;
 
-static void on_picc_activated(void *arg, esp_event_base_t base, int32_t event_id, void *data)
+static void on_picc_state_changed(void *arg, esp_event_base_t base, int32_t event_id, void *data)
 {
-    rc522_picc_t *picc = (rc522_picc_t *)data;
+    rc522_picc_state_changed_event_t *event = (rc522_picc_state_changed_event_t *)data;
+    rc522_picc_t *picc = event->picc;
+
+    if (picc->state != RC522_PICC_STATE_ACTIVE) {
+        return;
+    }
 
     char uid_str[RC522_PICC_UID_STR_BUFFER_SIZE_MAX];
     rc522_picc_uid_to_str(&picc->uid, uid_str, RC522_PICC_UID_STR_BUFFER_SIZE_MAX);
@@ -46,6 +51,6 @@ void app_main()
     };
 
     rc522_create(&config, &rc522);
-    rc522_register_events(rc522, RC522_EVENT_PICC_ACTIVATED, on_picc_activated, NULL);
+    rc522_register_events(rc522, RC522_EVENT_PICC_STATE_CHANGED, on_picc_state_changed, NULL);
     rc522_start(rc522);
 }

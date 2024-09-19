@@ -32,22 +32,20 @@ static rc522_spi_config_t driver_config = {
 static rc522_driver_handle_t driver;
 static rc522_handle_t rc522;
 
-static void on_picc_activated(void *arg, esp_event_base_t base, int32_t event_id, void *data)
+static void on_picc_state_changed(void *arg, esp_event_base_t base, int32_t event_id, void *data)
 {
-    rc522_picc_t *picc = (rc522_picc_t *)data;
+    rc522_picc_state_changed_event_t *event = (rc522_picc_state_changed_event_t *)data;
+    rc522_picc_t *picc = event->picc;
 
-    char uid_str[RC522_PICC_UID_STR_BUFFER_SIZE_MAX];
-    rc522_picc_uid_to_str(&picc->uid, uid_str, RC522_PICC_UID_STR_BUFFER_SIZE_MAX);
+    if (picc->state == RC522_PICC_STATE_ACTIVE) {
+        char uid_str[RC522_PICC_UID_STR_BUFFER_SIZE_MAX];
+        rc522_picc_uid_to_str(&picc->uid, uid_str, RC522_PICC_UID_STR_BUFFER_SIZE_MAX);
 
-    ESP_LOGI(TAG, "Card (type=%s, uid=%s) detected", rc522_picc_type_name(picc->type), uid_str);
-}
-
-static void on_picc_removed(void *arg, esp_event_base_t base, int32_t event_id, void *data)
-{
-    // the UID is available here in same way as
-    // in the `on_picc_activated` handler above
-
-    ESP_LOGI(TAG, "Card has been removed");
+        ESP_LOGI(TAG, "Card (type=%s, uid=%s) detected", rc522_picc_type_name(picc->type), uid_str);
+    }
+    else if (picc->state == RC522_PICC_STATE_IDLE) {
+        ESP_LOGI(TAG, "Card has been removed");
+    }
 }
 
 void app_main()
@@ -60,7 +58,6 @@ void app_main()
     };
 
     rc522_create(&config, &rc522);
-    rc522_register_events(rc522, RC522_EVENT_PICC_ACTIVATED, on_picc_activated, NULL);
-    rc522_register_events(rc522, RC522_EVENT_PICC_REMOVED, on_picc_removed, NULL);
+    rc522_register_events(rc522, RC522_EVENT_PICC_STATE_CHANGED, on_picc_state_changed, NULL);
     rc522_start(rc522);
 }

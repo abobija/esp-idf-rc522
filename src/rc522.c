@@ -122,7 +122,7 @@ esp_err_t rc522_create(rc522_config_t *config, rc522_handle_t *out_rc522)
     rc522_handle_t rc522 = calloc(1, sizeof(struct rc522));
     ESP_RETURN_ON_FALSE(rc522 != NULL, ESP_ERR_NO_MEM, TAG, "nomem");
 
-    rc522->picc.state = RC522_PICC_STATE_IDLE;
+    rc522_picc_set_state(rc522, &rc522->picc, RC522_PICC_STATE_IDLE, false);
 
     esp_err_t ret = ESP_OK;
 
@@ -197,7 +197,7 @@ esp_err_t rc522_destroy(rc522_handle_t rc522)
     return ESP_OK;
 }
 
-static esp_err_t rc522_dispatch_event(rc522_handle_t rc522, rc522_event_t event, const void *data, size_t data_size)
+esp_err_t rc522_dispatch_event(rc522_handle_t rc522, rc522_event_t event, const void *data, size_t data_size)
 {
     RC522_RETURN_ON_ERROR(esp_event_post_to(rc522->event_handle, RC522_EVENTS, event, data, data_size, portMAX_DELAY));
 
@@ -241,50 +241,45 @@ void rc522_task(void *arg)
             rc522->picc.atqa = atqa;
 
             if (rc522->picc.state == RC522_PICC_STATE_IDLE) {
-                rc522->picc.state = RC522_PICC_STATE_READY;
+                rc522_picc_set_state(rc522, &rc522->picc, RC522_PICC_STATE_READY, true);
             }
             else if (rc522->picc.state == RC522_PICC_STATE_HALT) {
-                rc522->picc.state = RC522_PICC_STATE_ACTIVE; // woken up
+                rc522_picc_set_state(rc522, &rc522->picc, RC522_PICC_STATE_READY_H, true);
             }
         }
 
-        if (rc522->picc.state == RC522_PICC_STATE_READY) {
+        if (rc522->picc.state == RC522_PICC_STATE_READY || rc522->picc.state == RC522_PICC_STATE_READY_H) {
             rc522_picc_uid_t uid;
             uint8_t sak;
 
             if ((ret = rc522_picc_select(rc522, &uid, &sak, false)) != ESP_OK) {
                 RC522_LOGW("select failed (err=%04" RC522_X ")", ret);
 
-                rc522->picc.state = RC522_PICC_STATE_IDLE;
+                rc522_picc_set_state(rc522, &rc522->picc, RC522_PICC_STATE_IDLE, true);
                 continue;
             }
 
-            memcpy(&rc522->picc.uid, &uid, sizeof(rc522_picc_t));
+            memcpy(&rc522->picc.uid, &uid, sizeof(rc522_picc_uid_t));
             rc522->picc.sak = sak;
             rc522->picc.type = rc522_picc_type(sak);
-            rc522->picc.state = RC522_PICC_STATE_ACTIVE;
+
+            if (rc522->picc.state == RC522_PICC_STATE_READY) {
+                rc522_picc_set_state(rc522, &rc522->picc, RC522_PICC_STATE_ACTIVE, true);
+            }
+            else if (rc522->picc.state == RC522_PICC_STATE_READY_H) {
+                rc522_picc_set_state(rc522, &rc522->picc, RC522_PICC_STATE_ACTIVE_H, true);
+            }
 
             picc_heartbeat_failure_at_ms = 0;
-
-            if ((ret = rc522_dispatch_event(rc522, RC522_EVENT_PICC_ACTIVATED, &rc522->picc, sizeof(rc522_picc_t)))
-                != ESP_OK) {
-                RC522_LOGW("event dispatch failed (err=%04" RC522_X ")", ret);
-            }
 
             continue;
         }
 
-        if (rc522->picc.state == RC522_PICC_STATE_ACTIVE) {
+        if (rc522->picc.state == RC522_PICC_STATE_ACTIVE || rc522->picc.state == RC522_PICC_STATE_ACTIVE_H) {
             if (picc_heartbeat_failure_at_ms != 0
                 && ((rc522_millis() - picc_heartbeat_failure_at_ms) > picc_heartbeat_failure_threshold_ms)) {
-                rc522->picc.state = RC522_PICC_STATE_IDLE;
-
-                if ((ret = rc522_dispatch_event(rc522, RC522_EVENT_PICC_REMOVED, &rc522->picc, sizeof(rc522_picc_t)))
-                    != ESP_OK) {
-                    RC522_LOGW("event dispatch failed (err=%04" RC522_X ")", ret);
-                }
-
                 picc_heartbeat_failure_at_ms = 0;
+                rc522_picc_set_state(rc522, &rc522->picc, RC522_PICC_STATE_IDLE, true);
                 continue;
             }
 
@@ -293,6 +288,10 @@ void rc522_task(void *arg)
             }
             else if (picc_heartbeat_failure_at_ms == 0) {
                 picc_heartbeat_failure_at_ms = rc522_millis();
+            }
+
+            if (ret != ESP_OK) {
+                RC522_LOGV("heartbeat failed (err=%04" RC522_X ")", ret);
             }
 
             // card is still in the field

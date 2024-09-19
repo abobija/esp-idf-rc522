@@ -34,13 +34,17 @@ typedef enum
 typedef enum
 {
     /**
-     * In the POWER-OFF State, the PICC is not powered due to a lack of carrier energy
+     * Not used! Ignore this one.
+     *
+     * In the POWER-OFF State, the PICC is not powered
+     * due to a lack of carrier energy.
      */
     RC522_PICC_STATE_POWER_OFF = -1,
 
     /**
-     * In the IDLE State, the PICC is powered.
-     * It listens for commands and shall recognize REQA and WUPA Commands.
+     * PICC is maybe in the field.
+     *
+     * In the IDLE State, the PICC shall recognize REQA and WUPA Commands.
      * The PICC enters the READY State after it has received a valid
      * REQA or WUPA Command and transmitted its ATQA.
      */
@@ -50,27 +54,56 @@ typedef enum
      * In the READY State, either the bit frame anticollision or a proprietary
      * anticollision method can be applied. Cascade levels are handled inside
      * this state to get the complete UID.
+     *
      * The PICC enters the ACTIVE State when it is selected with its complete UID.
      */
     RC522_PICC_STATE_READY,
 
     /**
+     * PICC is in the field.
+     *
      * In the ACTIVE State, the PICC listens to any higher layer message.
      * The PICC enters the HALT State when a valid HLTA Command is received.
      *
      * NOTE:
      * In the higher layer protocol, specific commands may be defined
-     * to return the PICC to its HALT State
+     * to return the PICC to its HALT State.
      */
     RC522_PICC_STATE_ACTIVE,
 
     /**
      * In the HALT State, the PICC shall respond only to a WUPA Command.
      *
-     * The PICC enters the READY State after it has received a valid
+     * The PICC enters the READY* state after it has received a valid
      * WUPA Command and transmitted its ATQA.
      */
     RC522_PICC_STATE_HALT,
+
+    /**
+     * READY* State
+     *
+     * PICC is woken from HALT state by WUPA command.
+     *
+     * The READY* State is similar to the READY State, either the bit frame
+     * anticollision or a proprietary anticollision method can be applied.
+     * Cascade levels are handled inside this state to get complete UID.
+     *
+     * The PICC enters the ACTIVE* State when it is selected with its complete UID.
+     */
+    RC522_PICC_STATE_READY_H,
+
+    /**
+     * ACTIVE* State
+     *
+     * PICC is still in the field. PICC enters this state
+     * when it is SELECTED in the READY* state.
+     *
+     * The ACTIVE* State is similar to the ACTIVE State, the PICC is selected and
+     * listens to any higher layer message.
+     *
+     * The PICC enters the HALT State when a valid HLTA Command is received.
+     */
+    RC522_PICC_STATE_ACTIVE_H,
 } rc522_picc_state_t;
 
 /**
@@ -93,6 +126,12 @@ typedef struct
     rc522_picc_type_t type;
     rc522_picc_state_t state;
 } rc522_picc_t;
+
+typedef struct
+{
+    rc522_picc_state_t old_state;
+    rc522_picc_t *picc;
+} rc522_picc_state_changed_event_t;
 
 char *rc522_picc_type_name(rc522_picc_type_t type);
 

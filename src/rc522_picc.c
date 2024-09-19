@@ -2,6 +2,7 @@
 #include <esp_check.h>
 #include <string.h>
 
+#include "rc522_private.h"
 #include "rc522_types_private.h"
 #include "rc522_helpers_private.h"
 #include "rc522_pcd_private.h"
@@ -284,7 +285,7 @@ esp_err_t rc522_picc_select(rc522_handle_t rc522, rc522_picc_uid_t *out_uid, uin
         memcpy(&uid, out_uid, sizeof(rc522_picc_uid_t));
     }
     else {
-        memset(&uid, 0, sizeof(rc522_picc_uid_t));
+        memset(&uid, 0, sizeof(uid));
     }
 
     uint8_t sak;
@@ -529,7 +530,7 @@ esp_err_t rc522_picc_select(rc522_handle_t rc522, rc522_picc_uid_t *out_uid, uin
     uid.length = 3 * cascade_level + 1;
 
     if (out_uid) {
-        memcpy(out_uid, &uid, sizeof(rc522_picc_uid_t));
+        memcpy(out_uid, &uid, sizeof(uid));
     }
 
     if (out_sak) {
@@ -546,13 +547,28 @@ esp_err_t rc522_picc_heartbeat(rc522_handle_t rc522, rc522_picc_t *picc, rc522_p
 {
     RC522_CHECK(rc522 == NULL);
     RC522_CHECK(picc == NULL);
+    RC522_CHECK(picc->state != RC522_PICC_STATE_ACTIVE && picc->state != RC522_PICC_STATE_ACTIVE_H);
 
     esp_err_t ret = ESP_OK;
-    uint8_t retry = 5;
+    const uint8_t retries = 5;
+    uint8_t retry = 1;
 
     do {
         rc522_picc_atqa_desc_t atqa;
-        ret = rc522_picc_reqa(rc522, &atqa);
+
+        if (retry <= 2) {
+            if (picc->state == RC522_PICC_STATE_ACTIVE) {
+                ret = rc522_picc_reqa(rc522, &atqa);
+            }
+            else if (picc->state == RC522_PICC_STATE_ACTIVE_H) {
+                ret = rc522_picc_wupa(rc522, &atqa);
+            }
+        }
+        else {
+            if ((ret = rc522_picc_reqa(rc522, &atqa)) != ESP_OK) {
+                ret = rc522_picc_wupa(rc522, &atqa);
+            }
+        }
 
         if (ret == ESP_OK) {
             break;
@@ -561,7 +577,7 @@ esp_err_t rc522_picc_heartbeat(rc522_handle_t rc522, rc522_picc_t *picc, rc522_p
         rc522_delay_ms(10);
         taskYIELD();
     }
-    while (--retry);
+    while (retry++ < retries);
 
     if (ret != ESP_OK) {
         return ret;
@@ -570,7 +586,7 @@ esp_err_t rc522_picc_heartbeat(rc522_handle_t rc522, rc522_picc_t *picc, rc522_p
     rc522_picc_uid_t uid;
     uint8_t sak;
 
-    memcpy(&uid, &picc->uid, sizeof(rc522_picc_t));
+    memcpy(&uid, &picc->uid, sizeof(rc522_picc_uid_t));
 
     ret = rc522_picc_select(rc522, &uid, &sak, true);
 
@@ -589,7 +605,7 @@ esp_err_t rc522_picc_heartbeat(rc522_handle_t rc522, rc522_picc_t *picc, rc522_p
     }
 
     if (out_uid) {
-        memcpy(out_uid, &uid, sizeof(rc522_picc_uid_t));
+        memcpy(out_uid, &uid, sizeof(uid));
     }
 
     if (out_sak) {
@@ -684,20 +700,50 @@ esp_err_t rc522_picc_halta(rc522_handle_t rc522, rc522_picc_t *picc)
 
     // Send the command.
     // The standard says:
-    //		If the PICC responds with any modulation during a period of 1 ms after the end of the frame containing the
-    //		HLTA command, this response shall be interpreted as 'not acknowledge'.
+    //		If the PICC responds with any modulation during a period of 1 ms after the end of the frame containing
+    // the 		HLTA command, this response shall be interpreted as 'not acknowledge'.
     // We interpret that this way: Only STATUS_TIMEOUT is a success.
     esp_err_t ret = rc522_picc_transceive(rc522, buffer, sizeof(buffer), NULL, NULL, NULL, 0, false);
 
     if (ret == ESP_ERR_RC522_RX_TIMER_TIMEOUT || ret == ESP_ERR_RC522_RX_TIMEOUT) {
-        rc522->picc.state = RC522_PICC_STATE_HALT;
-
-        return ESP_OK;
+        return rc522_picc_set_state(rc522, picc, RC522_PICC_STATE_HALT, true);
     }
 
     if (ret == ESP_OK) {
         // That is ironically NOT ok in this case ;-)
         return ESP_FAIL; // TODO: use custom err
+    }
+
+    return ret;
+}
+
+esp_err_t rc522_picc_set_state(rc522_handle_t rc522, rc522_picc_t *picc, rc522_picc_state_t new_state, bool fire_event)
+{
+    RC522_CHECK(rc522 == NULL);
+    RC522_CHECK(picc == NULL);
+
+    esp_err_t ret = ESP_OK;
+
+    if (picc->state == new_state) {
+        return ESP_OK;
+    }
+
+    RC522_LOGD("changing state from %d to %d (fire=%d)", picc->state, new_state, fire_event);
+
+    rc522_picc_state_t old_state = picc->state;
+
+    picc->state = new_state;
+
+    if (fire_event) {
+        rc522_picc_state_changed_event_t event_data = {
+            .old_state = old_state,
+            .picc = picc,
+        };
+
+        if ((ret = rc522_dispatch_event(rc522, RC522_EVENT_PICC_STATE_CHANGED, &event_data, sizeof(event_data)))
+            != ESP_OK) {
+            RC522_LOGW("picc_state_changed event dispatch failed (err=%04" RC522_X ")", ret);
+        }
     }
 
     return ret;

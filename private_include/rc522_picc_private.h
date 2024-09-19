@@ -77,6 +77,8 @@ esp_err_t rc522_picc_heartbeat(rc522_handle_t rc522, rc522_picc_t *picc, rc522_p
 
 rc522_picc_type_t rc522_picc_type(uint8_t sak);
 
+esp_err_t rc522_picc_set_state(rc522_handle_t rc522, rc522_picc_t *picc, rc522_picc_state_t new_state, bool fire_event);
+
 #ifdef __cplusplus
 }
 #endif
