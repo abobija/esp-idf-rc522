@@ -216,7 +216,7 @@ static esp_err_t rc522_picc_reqa_or_wupa(rc522_handle_t rc522, uint8_t picc_cmd,
         // Timeouts are expected if no PICC are in the field.
         // Log other errors
         if (ret != ESP_ERR_RC522_RX_TIMER_TIMEOUT && ret != ESP_ERR_RC522_RX_TIMEOUT) {
-            RC522_LOGE("non-timeout error: %04x", ret);
+            RC522_LOGW("non-timeout error: %04x", ret);
         }
 
         return ret;
