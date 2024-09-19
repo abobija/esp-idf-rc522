@@ -672,6 +672,8 @@ esp_err_t rc522_picc_halta(rc522_handle_t rc522, rc522_picc_t *picc)
     RC522_CHECK(rc522 == NULL);
     RC522_CHECK(picc == NULL);
 
+    RC522_LOGD("HALTA");
+
     uint8_t buffer[4];
 
     // Build command buffer

@@ -77,6 +77,8 @@ esp_err_t rc522_mifare_auth(rc522_handle_t rc522, rc522_picc_t *picc, uint8_t bl
     RC522_CHECK(picc == NULL);
     RC522_CHECK(key == NULL);
 
+    RC522_LOGD("MIFARE AUTH");
+
     uint8_t auth_cmd;
 
     switch (key->type) {
@@ -123,6 +125,8 @@ esp_err_t rc522_mifare_read(
     RC522_CHECK(picc == NULL);
     RC522_CHECK(buffer == NULL);
     RC522_CHECK(buffer_size < RC522_MIFARE_BLOCK_SIZE);
+
+    RC522_LOGD("MIFARE READ");
 
     // Build command buffer
     buffer[0] = RC522_MIFARE_READ_CMD;
@@ -296,6 +300,8 @@ esp_err_t rc522_mifare_write(
     RC522_CHECK(buffer_size < RC522_MIFARE_BLOCK_SIZE);
     RC522_CHECK(!rc522_mifare_type_is_classic_compatible(picc->type));
     RC522_CHECK(rc522_mifare_check_sector_trailer_write(block_addr) != ESP_OK);
+
+    RC522_LOGD("MIFARE WRITE");
 
     // Step 1: Tell the PICC we want to write to block blockAddr.
     uint8_t cmd_buffer[] = { RC522_MIFARE_WRITE_CMD, block_addr };
