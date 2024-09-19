@@ -43,7 +43,7 @@ static void on_picc_state_changed(void *arg, esp_event_base_t base, int32_t even
 
         ESP_LOGI(TAG, "Card (type=%s, uid=%s) detected", rc522_picc_type_name(picc->type), uid_str);
     }
-    else if (picc->state == RC522_PICC_STATE_IDLE) {
+    else if (picc->state == RC522_PICC_STATE_IDLE && event->old_state >= RC522_PICC_STATE_ACTIVE) {
         ESP_LOGI(TAG, "Card has been removed");
     }
 }
