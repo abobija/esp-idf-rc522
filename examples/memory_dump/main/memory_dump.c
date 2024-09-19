@@ -58,7 +58,7 @@ static esp_err_t dump_block(rc522_mifare_sector_block_t *block)
     // Data
     DUMP("  ");
     for (uint8_t i = 0; i < 16; i++) {
-        DUMP("%02x", block->bytes[i]);
+        DUMP("%02" RC522_X "", block->bytes[i]);
 
         if ((i % 4) == 3) {
             DUMP(" ");
@@ -86,7 +86,10 @@ static esp_err_t dump_block(rc522_mifare_sector_block_t *block)
 
     // Value (if it's value block)
     else if (block->type == RC522_MIFARE_BLOCK_VALUE) {
-        DUMP("  (val=%ld (0x%04lx), adr=0x%02x)", block->value->value, block->value->value, block->value->address);
+        DUMP("  (val=%ld (0x%04l" RC522_X "), adr=0x%02" RC522_X ")",
+            block->value->value,
+            block->value->value,
+            block->value->address);
     }
 
     // Errors and warnings
@@ -132,7 +135,11 @@ static void on_picc_activated(void *arg, esp_event_base_t base, int32_t event_id
     char uid_str[RC522_PICC_UID_STR_BUFFER_SIZE_MAX];
     rc522_picc_uid_to_str(&picc->uid, uid_str, RC522_PICC_UID_STR_BUFFER_SIZE_MAX);
 
-    ESP_LOGI(TAG, "PICC (type=%s, uid=%s, sak=%02x) detected", rc522_picc_type_name(picc->type), uid_str, picc->sak);
+    ESP_LOGI(TAG,
+        "PICC (type=%s, uid=%s, sak=%02" RC522_X ") detected",
+        rc522_picc_type_name(picc->type),
+        uid_str,
+        picc->sak);
 
     if (rc522_mifare_type_is_classic_compatible(picc->type)) {
         if (rc522_mifare_handle_as_transaction(dump_memory, rc522, picc) != ESP_OK) {
@@ -142,7 +149,7 @@ static void on_picc_activated(void *arg, esp_event_base_t base, int32_t event_id
         return;
     }
 
-    ESP_LOGW(TAG, "PICC of type %02x not supported by this example", picc->type);
+    ESP_LOGW(TAG, "PICC of type %02" RC522_X " not supported by this example", picc->type);
 
     return;
 }

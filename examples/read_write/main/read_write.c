@@ -39,7 +39,7 @@ static rc522_handle_t rc522;
 static void dump_block(uint8_t buffer[16])
 {
     for (uint8_t i = 0; i < 16; i++) {
-        esp_log_write(ESP_LOG_INFO, TAG, "%02x ", buffer[i]);
+        esp_log_write(ESP_LOG_INFO, TAG, "%02" RC522_X " ", buffer[i]);
     }
 
     esp_log_write(ESP_LOG_INFO, TAG, "\n");
@@ -117,7 +117,11 @@ static esp_err_t read_write(rc522_handle_t rc522, rc522_picc_t *picc)
         ESP_LOGI(TAG, "Write success!");
     }
     else {
-        ESP_LOGE(TAG, "Write failed. RW missmatch on the byte %d (w:%02x, r:%02x)", i, write_buffer[i], read_buffer[i]);
+        ESP_LOGE(TAG,
+            "Write failed. RW missmatch on the byte %d (w:%02" RC522_X ", r:%02" RC522_X ")",
+            i,
+            write_buffer[i],
+            read_buffer[i]);
 
         dump_block(write_buffer);
         dump_block(read_buffer);
@@ -134,7 +138,11 @@ static void on_picc_activated(void *arg, esp_event_base_t base, int32_t event_id
     char uid_str[RC522_PICC_UID_STR_BUFFER_SIZE_MAX];
     rc522_picc_uid_to_str(&picc->uid, uid_str, RC522_PICC_UID_STR_BUFFER_SIZE_MAX);
 
-    ESP_LOGI(TAG, "PICC (type=%s, uid=%s, sak=%02x) detected", rc522_picc_type_name(picc->type), uid_str, picc->sak);
+    ESP_LOGI(TAG,
+        "PICC (type=%s, uid=%s, sak=%02" RC522_X ") detected",
+        rc522_picc_type_name(picc->type),
+        uid_str,
+        picc->sak);
 
     if (rc522_mifare_type_is_classic_compatible(picc->type)) {
         if (rc522_mifare_handle_as_transaction(read_write, rc522, picc) != ESP_OK) {
@@ -144,7 +152,7 @@ static void on_picc_activated(void *arg, esp_event_base_t base, int32_t event_id
         return;
     }
 
-    ESP_LOGW(TAG, "PICC of type %02x not supported by this example", picc->type);
+    ESP_LOGW(TAG, "PICC of type %02" RC522_X " not supported by this example", picc->type);
 
     return;
 }
