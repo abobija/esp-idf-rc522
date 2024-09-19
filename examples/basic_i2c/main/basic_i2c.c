@@ -34,7 +34,7 @@ static void on_picc_activated(void *arg, esp_event_base_t base, int32_t event_id
     rc522_picc_uid_to_str(&picc->uid, uid_str, RC522_PICC_UID_STR_BUFFER_SIZE_MAX);
 
     ESP_LOGI(TAG,
-        "PICC (type=%s, uid=%s, sak=%02" RC522_X ") detected",
+        "Card (type=%s, uid=%s, sak=%02" RC522_X ") detected",
         rc522_picc_type_name(picc->type),
         uid_str,
         picc->sak);
