@@ -65,7 +65,7 @@ esp_err_t rc522_picc_comm(rc522_handle_t rc522, rc522_pcd_command_t command, uin
         if (irq & RC522_PCD_TIMER_IRQ_BIT) {
             RC522_LOGD("timer interrupt (irq=0x%02x)", irq);
 
-            return ESP_ERR_TIMEOUT;
+            return ESP_ERR_RC522_RX_TIMER_TIMEOUT;
         }
 
         taskYIELD();
@@ -73,7 +73,7 @@ esp_err_t rc522_picc_comm(rc522_handle_t rc522, rc522_pcd_command_t command, uin
     while (rc522_millis() < deadline);
 
     // 36ms and nothing happened. Communication with the MFRC522 might be down.
-    RC522_RETURN_ON_FALSE(completed, ESP_ERR_TIMEOUT);
+    RC522_RETURN_ON_FALSE(completed, ESP_ERR_RC522_RX_TIMEOUT);
 
     // Stop now if any errors except collisions were detected.
     uint8_t error_reg_value;
@@ -183,52 +183,82 @@ inline esp_err_t rc522_picc_transceive(rc522_handle_t rc522, uint8_t *send_data,
         check_crc);
 }
 
-static esp_err_t rc522_picc_reqa_or_wupa(
-    rc522_handle_t rc522, uint8_t picc_cmd, uint8_t *atqa_buffer, uint8_t atqa_buffer_size)
+inline static esp_err_t rc522_picc_parse_atqa(uint16_t atqa, rc522_picc_atqa_desc_t *out_atqa)
+{
+    RC522_CHECK(out_atqa == NULL);
+
+    out_atqa->rfu4 = (atqa >> 12) & 0x0F;
+    out_atqa->prop_coding = (atqa >> 8) & 0x0F;
+    out_atqa->uid_size = (atqa >> 6) & 0x03;
+    out_atqa->rfu1 = (atqa >> 5) & 0x01;
+    out_atqa->anticollision = atqa & 0x1F;
+
+    return ESP_OK;
+}
+
+static esp_err_t rc522_picc_reqa_or_wupa(rc522_handle_t rc522, uint8_t picc_cmd, rc522_picc_atqa_desc_t *out_atqa)
 {
     RC522_CHECK(rc522 == NULL);
-    RC522_CHECK(atqa_buffer == NULL);
-    RC522_CHECK(atqa_buffer_size < 2);
-
-    uint8_t valid_bits;
+    RC522_CHECK(out_atqa == NULL);
 
     RC522_RETURN_ON_ERROR(rc522_pcd_clear_bits(rc522, RC522_PCD_COLL_REG, RC522_PCD_VALUES_AFTER_COLL_BIT));
 
+    uint8_t atqa_buffer[2];
+    uint8_t atqa_buffer_size = sizeof(atqa_buffer);
+
     // For REQA and WUPA we need the short frame format - transmit only 7 bits of the last (and only)
     // byte. TxLastBits = BitFramingReg[2..0]
-    valid_bits = 7;
+    uint8_t valid_bits = 7;
 
-    RC522_RETURN_ON_ERROR_SILENTLY(
-        rc522_picc_transceive(rc522, &picc_cmd, 1, atqa_buffer, &atqa_buffer_size, &valid_bits, 0, false));
+    esp_err_t ret = rc522_picc_transceive(rc522, &picc_cmd, 1, atqa_buffer, &atqa_buffer_size, &valid_bits, 0, false);
 
-    RC522_LOGD("ATQA: %02x %02x", atqa_buffer[0], atqa_buffer[1]);
+    if (ret != ESP_OK) {
+        // Timeouts are expected if no PICC are in the field.
+        // Log other errors
+        if (ret != ESP_ERR_RC522_RX_TIMER_TIMEOUT && ret != ESP_ERR_RC522_RX_TIMEOUT) {
+            RC522_LOGE("non-timeout error: %04x", ret);
+        }
+
+        return ret;
+    }
 
     if (atqa_buffer_size != 2 || valid_bits != 0) { // ATQA must be exactly 16 bits.
         return ESP_ERR_RC522_INVALID_ATQA;
     }
 
+    uint16_t atqa = (atqa_buffer[0] << 8) | atqa_buffer[1];
+    RC522_RETURN_ON_ERROR(rc522_picc_parse_atqa(atqa, out_atqa));
+
     return ESP_OK;
 }
 
-esp_err_t rc522_picc_reqa(rc522_handle_t rc522, uint16_t *out_atqa)
+inline esp_err_t rc522_picc_reqa(rc522_handle_t rc522, rc522_picc_atqa_desc_t *out_atqa)
 {
     RC522_CHECK(rc522 == NULL);
     RC522_CHECK(out_atqa == NULL);
 
     RC522_LOGD("REQA");
-
-    uint8_t atqa_buffer[2];
-    RC522_RETURN_ON_ERROR(rc522_picc_reqa_or_wupa(rc522, RC522_PICC_CMD_REQA, atqa_buffer, sizeof(atqa_buffer)));
-
-    *out_atqa = (atqa_buffer[0] << 8) | atqa_buffer[1];
-
-    return ESP_OK;
+    return rc522_picc_reqa_or_wupa(rc522, RC522_PICC_CMD_REQA, out_atqa);
 }
 
-static esp_err_t rc522_picc_select(rc522_handle_t rc522, rc522_picc_t *picc, uint8_t valid_bits)
+inline esp_err_t rc522_picc_wupa(rc522_handle_t rc522, rc522_picc_atqa_desc_t *out_atqa)
 {
-    RC522_CHECK(valid_bits > 80);
+    RC522_CHECK(rc522 == NULL);
+    RC522_CHECK(out_atqa == NULL);
 
+    RC522_LOGD("WUPA");
+    return rc522_picc_reqa_or_wupa(rc522, RC522_PICC_CMD_WUPA, out_atqa);
+}
+
+/**
+ * Resolve collision and SELECT a PICC
+ */
+esp_err_t rc522_picc_anticoll_and_select(rc522_handle_t rc522, rc522_picc_t *picc)
+{
+    RC522_CHECK(rc522 == NULL);
+    RC522_CHECK(picc == NULL);
+
+    uint8_t valid_bits = 0;
     bool uid_complete;
     bool select_done;
     bool use_cascade_tag;
@@ -398,7 +428,7 @@ static esp_err_t rc522_picc_select(rc522_handle_t rc522, rc522_picc_t *picc, uin
 
                 if (value_of_coll_reg & RC522_PCD_COLL_POS_NOT_VALID_BIT) {
                     // Without a valid collision position we cannot continue
-                    return ESP_ERR_RC522_COLLISION;
+                    return ESP_ERR_RC522_COLLISION_INVALID;
                 }
 
                 uint8_t collision_pos = value_of_coll_reg & 0x1F; // Values 0-31, 0 means bit 32.
@@ -406,7 +436,7 @@ static esp_err_t rc522_picc_select(rc522_handle_t rc522, rc522_picc_t *picc, uin
                     collision_pos = 32;
                 }
                 if (collision_pos <= current_level_known_bits) { // No progress - should not happen
-                    return ESP_FAIL;                             // TODO: use custom err
+                    return ESP_ERR_RC522_COLLISION_INVALID;
                 }
                 // Choose the PICC with the bit set.
                 current_level_known_bits = collision_pos;
@@ -447,7 +477,8 @@ static esp_err_t rc522_picc_select(rc522_handle_t rc522, rc522_picc_t *picc, uin
 
         // Check response SAK (Select Acknowledge)
         if (response_length != 3 || tx_last_bits != 0) { // SAK must be exactly 24 bits (1 byte + CRC_A).
-            return ESP_FAIL;                             // TODO: use custom err
+            RC522_LOGD("invalid sak");
+            return ESP_FAIL; // TODO: use custom err
         }
         // Verify CRC_A - do our own calculation and store the control in buffer[2..3] - those bytes are not needed
         // anymore.
@@ -458,6 +489,7 @@ static esp_err_t rc522_picc_select(rc522_handle_t rc522, rc522_picc_t *picc, uin
         RC522_RETURN_ON_ERROR(rc522_pcd_calculate_crc(rc522, response_buffer, 1, buffer + 2));
 
         if ((buffer[2] != response_buffer[1]) || (buffer[3] != response_buffer[2])) {
+            RC522_LOGD("crc wrong");
             return ESP_ERR_RC522_CRC_WRONG;
         }
         if (response_buffer[0] & 0x04) { // Cascade bit set - UID not complete yes
@@ -476,7 +508,7 @@ static esp_err_t rc522_picc_select(rc522_handle_t rc522, rc522_picc_t *picc, uin
     return ESP_OK;
 }
 
-static rc522_picc_type_t rc522_picc_type(uint8_t sak)
+rc522_picc_type_t rc522_picc_type(uint8_t sak)
 {
     // http://www.nxp.com/documents/application_note/AN10833.pdf
     // 3.2 Coding of Select Acknowledge (SAK)
@@ -552,31 +584,6 @@ esp_err_t rc522_picc_uid_to_str(rc522_picc_uid_t *uid, char buffer[RC522_PICC_UI
     return ESP_OK;
 }
 
-/**
- * Resolve collision and select PICC.
- * If ESP_OK is returned, PICC is in ACTIVE state.
- */
-esp_err_t rc522_picc_activate(rc522_handle_t rc522, rc522_picc_t *picc)
-{
-    RC522_CHECK(rc522 == NULL);
-    RC522_CHECK(picc == NULL);
-
-    esp_err_t ret = rc522_picc_select(rc522, picc, 0);
-
-    if (ret != ESP_OK) {
-        if (ret != ESP_ERR_TIMEOUT || RC522_LOG_LEVEL >= ESP_LOG_DEBUG) {
-            RC522_LOGE("select fail: %04x", ret);
-        }
-
-        return ret;
-    }
-
-    picc->type = rc522_picc_type(picc->sak);
-    picc->activated_at_ms = rc522_millis();
-
-    return ESP_OK;
-}
-
 esp_err_t rc522_picc_halta(rc522_handle_t rc522, rc522_picc_t *picc)
 {
     RC522_CHECK(rc522 == NULL);
@@ -597,7 +604,9 @@ esp_err_t rc522_picc_halta(rc522_handle_t rc522, rc522_picc_t *picc)
     // We interpret that this way: Only STATUS_TIMEOUT is a success.
     esp_err_t ret = rc522_picc_transceive(rc522, buffer, sizeof(buffer), NULL, NULL, NULL, 0, false);
 
-    if (ret == ESP_ERR_TIMEOUT) {
+    if (ret == ESP_ERR_RC522_RX_TIMER_TIMEOUT || ret == ESP_ERR_RC522_RX_TIMEOUT) {
+        rc522->picc.state = RC522_PICC_STATE_HALT;
+
         return ESP_OK;
     }
 

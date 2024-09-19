@@ -122,6 +122,8 @@ esp_err_t rc522_create(rc522_config_t *config, rc522_handle_t *out_rc522)
     rc522_handle_t rc522 = calloc(1, sizeof(struct rc522));
     ESP_RETURN_ON_FALSE(rc522 != NULL, ESP_ERR_NO_MEM, TAG, "nomem");
 
+    rc522->picc.state = RC522_PICC_STATE_IDLE;
+
     esp_err_t ret = ESP_OK;
 
     ESP_GOTO_ON_ERROR(rc522_clone_config(config, &(rc522->config)), _error, TAG, "clone config failed");
@@ -205,69 +207,71 @@ static esp_err_t rc522_dispatch_event(rc522_handle_t rc522, rc522_event_t event,
 void rc522_task(void *arg)
 {
     rc522_handle_t rc522 = (rc522_handle_t)arg;
-    uint8_t not_present_counter = 0;
+    esp_err_t ret = ESP_OK;
 
     xEventGroupClearBits(rc522->bits, RC522_TASK_STOPPED_BIT);
 
-    while (!rc522->exit_requested) {
-        if (rc522->state != RC522_STATE_POLLING) {
-            rc522_delay_ms(125);
+    // TODO: consider sending picc clone to the event handlers
+    //       to avoid modifying picc state by the user
 
+    while (!rc522->exit_requested) {
+        if (rc522->state == RC522_STATE_POLLING) {
+            rc522_delay_ms(rc522->config->task_throttling_ms);
+        }
+        else {
+            // wait for state change to polling
+            rc522_delay_ms(125);
             continue;
         }
 
-        rc522_picc_t picc;
-        memset(&picc, 0, sizeof(picc));
+        if (rc522->picc.state == RC522_PICC_STATE_IDLE || rc522->picc.state == RC522_PICC_STATE_HALT) {
+            rc522_picc_atqa_desc_t atqa;
 
-        // FIXME: will return error even if card
-        //        is still on the reader, and on next iteration
-        //        it will be ESP_OK. for now i will use counter
-        //        as workaround but this need to be investigated
-        //        if picc_find is able to figure out if card
-        //        is still there or not
+            if (rc522->picc.state == RC522_PICC_STATE_IDLE && rc522_picc_reqa(rc522, &atqa) != ESP_OK) {
+                continue;
+            }
 
-        esp_err_t ret = rc522_picc_reqa(rc522, &picc.atqa);
+            if (rc522->picc.state == RC522_PICC_STATE_HALT && rc522_picc_wupa(rc522, &atqa) != ESP_OK) {
+                continue;
+            }
 
-        if (ret != ESP_OK) {
-            if (++not_present_counter >= 2) {
-                not_present_counter = 0;
+            // card is present
+            rc522->picc.atqa = atqa;
+            rc522->picc.state = RC522_PICC_STATE_READY;
+        }
 
-                RC522_LOGD("picc not present");
+        if (rc522->picc.state == RC522_PICC_STATE_READY || rc522->picc.state == RC522_PICC_STATE_ACTIVE) {
+            ret = rc522_picc_anticoll_and_select(rc522, &rc522->picc);
 
-                if (rc522->is_picc_activated) {
-                    if (rc522_dispatch_event(rc522,
-                            RC522_EVENT_PICC_DISAPPEARED,
-                            &rc522->activated_picc,
-                            sizeof(rc522_picc_t))
+            if (ret != ESP_OK) {
+                RC522_LOGE("select failed: %04x", ret);
+
+                rc522_picc_state_t prev_state = rc522->picc.state;
+                rc522->picc.state = RC522_PICC_STATE_IDLE;
+
+                if (prev_state == RC522_PICC_STATE_ACTIVE) {
+                    if (rc522_dispatch_event(rc522, RC522_EVENT_PICC_DISAPPEARED, &rc522->picc, sizeof(rc522_picc_t))
                         != ESP_OK) {
                         RC522_LOGW("event dispatch failed");
                     }
                 }
 
-                rc522->is_picc_activated = false;
-                memset(&rc522->activated_picc, 0x00, sizeof(rc522_picc_t));
+                continue;
+            }
+
+            if (rc522->picc.state == RC522_PICC_STATE_ACTIVE) {
+                // cars is still in the field
+                // TODO: maybe to check if SAK is still the same?
+                continue;
+            }
+
+            rc522->picc.type = rc522_picc_type(rc522->picc.sak);
+            rc522->picc.state = RC522_PICC_STATE_ACTIVE;
+
+            if (rc522_dispatch_event(rc522, RC522_EVENT_PICC_ACTIVATED, &rc522->picc, sizeof(rc522_picc_t)) != ESP_OK) {
+                RC522_LOGW("event dispatch failed");
             }
         }
-        else if (rc522_picc_activate(rc522, &picc) == ESP_OK) {
-            not_present_counter = 0;
-
-            bool picc_was_activated = rc522->is_picc_activated;
-            rc522->is_picc_activated = true;
-            memcpy(&rc522->activated_picc, &picc, sizeof(rc522_picc_t));
-
-            if (!picc_was_activated) {
-                if (rc522_dispatch_event(rc522, RC522_EVENT_PICC_ACTIVATED, &picc, sizeof(rc522_picc_t)) != ESP_OK) {
-                    RC522_LOGW("event dispatch failed");
-                }
-            }
-            else {
-                // TODO: dispatch reactivated event?
-                //       if we fix FIXME above, maybe there
-                //       will not be need for such event
-            }
-        }
-
-        rc522_delay_ms(rc522->config->task_throttling_ms);
     }
 
     xEventGroupSetBits(rc522->bits, RC522_TASK_STOPPED_BIT);
