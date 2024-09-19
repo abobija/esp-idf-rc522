@@ -735,13 +735,9 @@ esp_err_t rc522_picc_set_state(rc522_handle_t rc522, rc522_picc_t *picc, rc522_p
     picc->state = new_state;
 
     if (fire_event) {
-        // clone the picc to avoid external modifications
-        rc522_picc_t picc_clone;
-        memcpy(&picc_clone, picc, sizeof(rc522_picc_t));
-
         rc522_picc_state_changed_event_t event_data = {
             .old_state = old_state,
-            .picc = &picc_clone,
+            .picc = picc,
         };
 
         if ((ret = rc522_dispatch_event(rc522, RC522_EVENT_PICC_STATE_CHANGED, &event_data, sizeof(event_data)))
