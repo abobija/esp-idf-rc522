@@ -139,7 +139,7 @@ esp_err_t rc522_picc_comm(rc522_handle_t rc522, rc522_pcd_command_t command, uin
     }
 
     // Perform CRC_A validation if requested.
-    if (check_crc && back_data && back_data_len) {
+    if (check_crc && back_data && back_data_len && fifo_level > 0) {
         // We need at least the CRC_A value and all 8 bits of the last byte must be received.
         if (*back_data_len < 2 || _valid_bits != 0) {
             RC522_LOGD("crc cannot be performed (len=%d, valid_bits=%d)", *back_data_len, _valid_bits);
@@ -735,13 +735,9 @@ esp_err_t rc522_picc_set_state(rc522_handle_t rc522, rc522_picc_t *picc, rc522_p
     picc->state = new_state;
 
     if (fire_event) {
-        // clone the picc to avoid external modifications
-        rc522_picc_t picc_clone;
-        memcpy(&picc_clone, picc, sizeof(rc522_picc_t));
-
         rc522_picc_state_changed_event_t event_data = {
             .old_state = old_state,
-            .picc = &picc_clone,
+            .picc = picc,
         };
 
         if ((ret = rc522_dispatch_event(rc522, RC522_EVENT_PICC_STATE_CHANGED, &event_data, sizeof(event_data)))
