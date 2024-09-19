@@ -103,7 +103,7 @@ esp_err_t rc522_picc_comm(rc522_handle_t rc522, rc522_pcd_command_t command, uin
     uint8_t _valid_bits = 0;
 
     // If the caller wants data back, get it from the MFRC522.
-    if (back_data && back_data_len && fifo_level > 0) {
+    if (back_data && back_data_len) {
         if (fifo_level > *back_data_len) {
             RC522_LOGW("buffer no space");
 
@@ -139,7 +139,7 @@ esp_err_t rc522_picc_comm(rc522_handle_t rc522, rc522_pcd_command_t command, uin
     }
 
     // Perform CRC_A validation if requested.
-    if (check_crc && back_data && back_data_len && fifo_level > 0) {
+    if (check_crc && back_data && back_data_len) {
         // We need at least the CRC_A value and all 8 bits of the last byte must be received.
         if (*back_data_len < 2 || _valid_bits != 0) {
             RC522_LOGD("crc cannot be performed (len=%d, valid_bits=%d)", *back_data_len, _valid_bits);
