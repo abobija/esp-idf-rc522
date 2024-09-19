@@ -241,7 +241,10 @@ void rc522_task(void *arg)
         }
 
         if (rc522->picc.state == RC522_PICC_STATE_READY || rc522->picc.state == RC522_PICC_STATE_ACTIVE) {
-            ret = rc522_picc_anticoll_and_select(rc522, &rc522->picc);
+            rc522_picc_uid_t uid;
+            uint8_t sak;
+
+            ret = rc522_picc_anticoll_and_select(rc522, &uid, &sak);
 
             if (ret != ESP_OK) {
                 RC522_LOGE("select failed: %04x", ret);
@@ -261,11 +264,13 @@ void rc522_task(void *arg)
 
             if (rc522->picc.state == RC522_PICC_STATE_ACTIVE) {
                 // cars is still in the field
-                // TODO: maybe to check if SAK is still the same?
+                // TODO: maybe to check if UID and SAK are still the same?
                 continue;
             }
 
-            rc522->picc.type = rc522_picc_type(rc522->picc.sak);
+            memcpy(&rc522->picc.uid, &uid, sizeof(rc522_picc_t));
+            rc522->picc.sak = sak;
+            rc522->picc.type = rc522_picc_type(sak);
             rc522->picc.state = RC522_PICC_STATE_ACTIVE;
 
             if (rc522_dispatch_event(rc522, RC522_EVENT_PICC_ACTIVATED, &rc522->picc, sizeof(rc522_picc_t)) != ESP_OK) {

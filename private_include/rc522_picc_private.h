@@ -69,7 +69,7 @@ esp_err_t rc522_picc_reqa(rc522_handle_t rc522, rc522_picc_atqa_desc_t *out_atqa
 
 esp_err_t rc522_picc_wupa(rc522_handle_t rc522, rc522_picc_atqa_desc_t *out_atqa);
 
-esp_err_t rc522_picc_anticoll_and_select(rc522_handle_t rc522, rc522_picc_t *picc);
+esp_err_t rc522_picc_anticoll_and_select(rc522_handle_t rc522, rc522_picc_uid_t *out_uid, uint8_t *out_sak);
 
 esp_err_t rc522_picc_halta(rc522_handle_t rc522, rc522_picc_t *picc);
 

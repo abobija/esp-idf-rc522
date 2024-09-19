@@ -253,10 +253,11 @@ inline esp_err_t rc522_picc_wupa(rc522_handle_t rc522, rc522_picc_atqa_desc_t *o
 /**
  * Resolve collision and SELECT a PICC
  */
-esp_err_t rc522_picc_anticoll_and_select(rc522_handle_t rc522, rc522_picc_t *picc)
+esp_err_t rc522_picc_anticoll_and_select(rc522_handle_t rc522, rc522_picc_uid_t *out_uid, uint8_t *out_sak)
 {
     RC522_CHECK(rc522 == NULL);
-    RC522_CHECK(picc == NULL);
+    RC522_CHECK(out_uid == NULL);
+    RC522_CHECK(out_sak == NULL);
 
     uint8_t valid_bits = 0;
     bool uid_complete;
@@ -275,6 +276,10 @@ esp_err_t rc522_picc_anticoll_and_select(rc522_handle_t rc522, rc522_picc_t *pic
     uint8_t tx_last_bits; // Used in BitFramingReg. The number of valid bits in the last transmitted byte.
     uint8_t *response_buffer;
     uint8_t response_length;
+
+    rc522_picc_uid_t uid;
+    memset(&uid, 0, sizeof(rc522_picc_uid_t));
+    uint8_t sak;
 
     // Description of buffer structure:
     //	 Byte 0: SEL              Indicates the Cascade Level: PICC_CMD_SEL_CL1, PICC_CMD_SEL_CL2 or PICC_CMD_SEL_CL3
@@ -306,7 +311,7 @@ esp_err_t rc522_picc_anticoll_and_select(rc522_handle_t rc522, rc522_picc_t *pic
     // Repeat Cascade Level loop until we have a complete UID.
     uid_complete = false;
     while (!uid_complete) {
-        RC522_LOGD("cascade_level=%d, valid_bits=%d, uid->length=%d", cascade_level, valid_bits, picc->uid.length);
+        RC522_LOGD("cascade_level=%d, valid_bits=%d, uid.length=%d", cascade_level, valid_bits, uid.length);
 
         // Set the Cascade Level in the SEL byte, find out if we need to use the Cascade Tag in byte 2.
         switch (cascade_level) {
@@ -315,7 +320,7 @@ esp_err_t rc522_picc_anticoll_and_select(rc522_handle_t rc522, rc522_picc_t *pic
                 uid_index = 0;
 
                 // When we know that the UID has more than 4 bytes
-                use_cascade_tag = valid_bits && picc->uid.length > 4;
+                use_cascade_tag = valid_bits && uid.length > 4;
                 break;
 
             case 2:
@@ -323,7 +328,7 @@ esp_err_t rc522_picc_anticoll_and_select(rc522_handle_t rc522, rc522_picc_t *pic
                 uid_index = 3;
 
                 // When we know that the UID has more than 7 bytes
-                use_cascade_tag = valid_bits && picc->uid.length > 7;
+                use_cascade_tag = valid_bits && uid.length > 7;
                 break;
 
             case 3:
@@ -344,7 +349,7 @@ esp_err_t rc522_picc_anticoll_and_select(rc522_handle_t rc522, rc522_picc_t *pic
         if (current_level_known_bits < 0) {
             current_level_known_bits = 0;
         }
-        // Copy the known bits from uid->uidByte[] to buffer[]
+        // Copy the known bits from uid.uidByte[] to buffer[]
         index = 2; // destination index in buffer[]
         if (use_cascade_tag) {
             buffer[index++] = RC522_PICC_CMD_CT;
@@ -360,7 +365,7 @@ esp_err_t rc522_picc_anticoll_and_select(rc522_handle_t rc522, rc522_picc_t *pic
                 bytes_to_copy = max_bytes;
             }
             for (count = 0; count < bytes_to_copy; count++) {
-                buffer[index++] = picc->uid.value[uid_index + count];
+                buffer[index++] = uid.value[uid_index + count];
             }
         }
         // Now that the data has been copied we need to include the 8 bits in CT in current_level_known_bits
@@ -468,11 +473,11 @@ esp_err_t rc522_picc_anticoll_and_select(rc522_handle_t rc522, rc522_picc_t *pic
 
         // We do not check the CBB - it was constructed by us above.
 
-        // Copy the found UID bytes from buffer[] to uid->uidByte[]
+        // Copy the found UID bytes from buffer[] to uid.uidByte[]
         index = (buffer[2] == RC522_PICC_CMD_CT) ? 3 : 2; // source index in buffer[]
         bytes_to_copy = (buffer[2] == RC522_PICC_CMD_CT) ? 3 : 4;
         for (count = 0; count < bytes_to_copy; count++) {
-            picc->uid.value[uid_index + count] = buffer[index++];
+            uid.value[uid_index + count] = buffer[index++];
         }
 
         // Check response SAK (Select Acknowledge)
@@ -497,13 +502,16 @@ esp_err_t rc522_picc_anticoll_and_select(rc522_handle_t rc522, rc522_picc_t *pic
         }
         else {
             uid_complete = true;
-            picc->sak = response_buffer[0];
+            sak = response_buffer[0];
         }
 #pragma GCC diagnostic pop
     } // End of while (!uidComplete)
 
-    // Set correct uid->size
-    picc->uid.length = 3 * cascade_level + 1;
+    // Set correct uid.size
+    uid.length = 3 * cascade_level + 1;
+
+    memcpy(out_uid, &uid, sizeof(rc522_picc_uid_t));
+    *out_sak = sak;
 
     return ESP_OK;
 }
