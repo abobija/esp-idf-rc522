@@ -253,7 +253,10 @@ void rc522_task(void *arg)
             uint8_t sak;
 
             if ((ret = rc522_picc_select(rc522, &uid, &sak, false)) != ESP_OK) {
-                RC522_LOGW("select failed (err=%04" RC522_X ")", ret);
+                if (ret != ESP_ERR_RC522_RX_TIMEOUT && ret != ESP_ERR_RC522_INVALID_ATQA
+                    && ret != ESP_ERR_RC522_INVALID_SAK) {
+                    RC522_LOGW("select failed (err=%04" RC522_X ")", ret);
+                }
 
                 rc522_picc_set_state(rc522, &rc522->picc, RC522_PICC_STATE_IDLE, true);
                 continue;
