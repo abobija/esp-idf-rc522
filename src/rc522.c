@@ -257,6 +257,9 @@ void rc522_task(void *arg)
                     && ret != ESP_ERR_RC522_INVALID_SAK) {
                     RC522_LOGW("select failed (err=%04" RC522_X ")", ret);
                 }
+                else {
+                    RC522_LOGD("select failed (err=%04" RC522_X ")", ret);
+                }
 
                 rc522_picc_set_state(rc522, &rc522->picc, RC522_PICC_STATE_IDLE, true);
                 continue;
