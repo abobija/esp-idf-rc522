@@ -44,11 +44,10 @@ static void dump_header()
     DUMP("                0 1 2 3  4 5 6 7  8 9  11 12    15    c1 c2 c3\n");
 }
 
-static esp_err_t dump_block(rc522_mifare_sector_block_t *block)
+static void dump_block(rc522_mifare_sector_block_t *block, uint8_t sector_index)
 {
-    // Sector number only on first line
     if (block->type == RC522_MIFARE_BLOCK_TRAILER) {
-        DUMP("%*d", 6, block->sector_index);
+        DUMP("%*d", 6, sector_index);
     }
     else {
         DUMP("%*s", 6, "");
@@ -89,24 +88,22 @@ static esp_err_t dump_block(rc522_mifare_sector_block_t *block)
     // Value (if it's value block)
     else if (block->type == RC522_MIFARE_BLOCK_VALUE) {
         DUMP("  (val=%ld (0x%04l" RC522_X "), adr=0x%02" RC522_X ")",
-            block->value->value,
-            block->value->value,
-            block->value->address);
+            block->value_data.value,
+            block->value_data.value,
+            block->value_data.addr);
     }
 
     // Errors and warnings
-    if (block->access_bits_err == RC522_ERR_MIFARE_ACCESS_BITS_INTEGRITY_VIOLATION) {
+    if (block->trailer_data.err == RC522_ERR_MIFARE_ACCESS_BITS_INTEGRITY_VIOLATION) {
         DUMP("  ABITS_ERR");
     }
 
-    if (block->value_err == RC522_ERR_MIFARE_VALUE_BLOCK_INTEGRITY_VIOLATION) {
+    if (block->value_data.err == RC522_ERR_MIFARE_VALUE_BLOCK_INTEGRITY_VIOLATION) {
         DUMP("  VAL_ERR");
     }
 
     // Termination
     DUMP("\n");
-
-    return ESP_OK;
 }
 
 static esp_err_t dump_memory(rc522_handle_t rc522, rc522_picc_t *picc)
@@ -115,18 +112,31 @@ static esp_err_t dump_memory(rc522_handle_t rc522, rc522_picc_t *picc)
         .value = RC522_MIFARE_KEY_VALUE_DEFAULT,
     };
 
-    rc522_mifare_t mifare;
-    ESP_RETURN_ON_ERROR(rc522_mifare_info(picc, &mifare), TAG, "");
+    rc522_mifare_desc_t mifare;
+    ESP_RETURN_ON_ERROR(rc522_mifare_get_desc(picc, &mifare), TAG, "");
 
     DUMP("\n");
     dump_header();
 
     // Start from the highest sector
-    for (int8_t sector = mifare.number_of_sectors - 1; sector >= 0; sector--) {
-        ESP_RETURN_ON_ERROR(rc522_mifare_iterate_sector_blocks(rc522, picc, sector, &key, dump_block),
-            TAG,
-            "sector iteration failed");
+    uint8_t sector_index = mifare.number_of_sectors - 1;
+
+    do {
+        rc522_mifare_sector_desc_t sector;
+        ESP_RETURN_ON_ERROR(rc522_mifare_get_sector_desc(sector_index, &sector), TAG, "");
+        ESP_RETURN_ON_ERROR(rc522_mifare_auth_sector(rc522, picc, &sector, &key), TAG, "");
+
+        uint8_t block_offset = sector.number_of_blocks - 1;
+
+        do {
+            rc522_mifare_sector_block_t block;
+            ESP_RETURN_ON_ERROR(rc522_mifare_read_sector_block(rc522, picc, &sector, block_offset, &block), TAG, "");
+
+            dump_block(&block, sector_index);
+        }
+        while (block_offset--);
     }
+    while (sector_index--);
 
     DUMP("\n");
 

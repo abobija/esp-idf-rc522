@@ -5,37 +5,37 @@
 TEST_CASE("test_Sector_number_by_block_address", "[mifare]")
 {
     uint8_t addr = 0;
-    TEST_ASSERT_EQUAL(0, rc522_mifare_sector_index_by_block_address(addr));
+    TEST_ASSERT_EQUAL(0, rc522_mifare_get_sector_index_by_block_address(addr));
     addr += (3);
-    TEST_ASSERT_EQUAL(0, rc522_mifare_sector_index_by_block_address(addr));
+    TEST_ASSERT_EQUAL(0, rc522_mifare_get_sector_index_by_block_address(addr));
     addr += (1);
-    TEST_ASSERT_EQUAL(1, rc522_mifare_sector_index_by_block_address(addr));
+    TEST_ASSERT_EQUAL(1, rc522_mifare_get_sector_index_by_block_address(addr));
     addr += (4);
-    TEST_ASSERT_EQUAL(2, rc522_mifare_sector_index_by_block_address(addr));
+    TEST_ASSERT_EQUAL(2, rc522_mifare_get_sector_index_by_block_address(addr));
     addr += (4);
-    TEST_ASSERT_EQUAL(3, rc522_mifare_sector_index_by_block_address(addr));
+    TEST_ASSERT_EQUAL(3, rc522_mifare_get_sector_index_by_block_address(addr));
     addr += (7 * 4);
-    TEST_ASSERT_EQUAL(10, rc522_mifare_sector_index_by_block_address(addr));
+    TEST_ASSERT_EQUAL(10, rc522_mifare_get_sector_index_by_block_address(addr));
     addr += (20 * 4);
-    TEST_ASSERT_EQUAL(30, rc522_mifare_sector_index_by_block_address(addr));
+    TEST_ASSERT_EQUAL(30, rc522_mifare_get_sector_index_by_block_address(addr));
     addr += (4);
-    TEST_ASSERT_EQUAL(31, rc522_mifare_sector_index_by_block_address(addr));
+    TEST_ASSERT_EQUAL(31, rc522_mifare_get_sector_index_by_block_address(addr));
     addr += (4);
-    TEST_ASSERT_EQUAL(32, rc522_mifare_sector_index_by_block_address(addr));
+    TEST_ASSERT_EQUAL(32, rc522_mifare_get_sector_index_by_block_address(addr));
     addr += (4);
-    TEST_ASSERT_EQUAL(32, rc522_mifare_sector_index_by_block_address(addr));
+    TEST_ASSERT_EQUAL(32, rc522_mifare_get_sector_index_by_block_address(addr));
     addr += (4);
-    TEST_ASSERT_EQUAL(32, rc522_mifare_sector_index_by_block_address(addr));
+    TEST_ASSERT_EQUAL(32, rc522_mifare_get_sector_index_by_block_address(addr));
     addr += (4);
-    TEST_ASSERT_EQUAL(32, rc522_mifare_sector_index_by_block_address(addr));
+    TEST_ASSERT_EQUAL(32, rc522_mifare_get_sector_index_by_block_address(addr));
     addr += (4);
-    TEST_ASSERT_EQUAL(33, rc522_mifare_sector_index_by_block_address(addr));
+    TEST_ASSERT_EQUAL(33, rc522_mifare_get_sector_index_by_block_address(addr));
     addr += (16);
-    TEST_ASSERT_EQUAL(34, rc522_mifare_sector_index_by_block_address(addr));
+    TEST_ASSERT_EQUAL(34, rc522_mifare_get_sector_index_by_block_address(addr));
     addr += (5 * 16);
-    TEST_ASSERT_EQUAL(39, rc522_mifare_sector_index_by_block_address(addr));
+    TEST_ASSERT_EQUAL(39, rc522_mifare_get_sector_index_by_block_address(addr));
     addr += (15);
-    TEST_ASSERT_EQUAL(39, rc522_mifare_sector_index_by_block_address(addr));
+    TEST_ASSERT_EQUAL(39, rc522_mifare_get_sector_index_by_block_address(addr));
 }
 
 TEST_CASE("test_MIFAREMini_has_5_sectors", "[mifare]")

@@ -24,7 +24,7 @@ extern "C" {
 typedef struct
 {
     uint8_t number_of_sectors;
-} rc522_mifare_t;
+} rc522_mifare_desc_t;
 
 typedef enum
 {
@@ -49,7 +49,7 @@ typedef enum
 
 typedef struct
 {
-    uint8_t group;
+    uint8_t group; // 3: Trailer, 2: Block 2, 1: Block 1, 0: Block 0
     uint8_t c1 :1;
     uint8_t c2 :1;
     uint8_t c3 :1;
@@ -57,27 +57,35 @@ typedef struct
 
 typedef struct
 {
-    int32_t value;
-    uint8_t address;
-} rc522_mifare_value_block_t;
+    uint8_t index;            // Zero-based index of Sector
+    uint8_t number_of_blocks; // Total number of blocks inside of Sector
+    uint8_t block_0_address;  // Zero-based index of the first Block inside of MIFARE memory
+} rc522_mifare_sector_desc_t;
 
 typedef struct
 {
-    uint8_t sector_index;
-    uint8_t address;
+    uint8_t access_bit_groups[4]; // [3] = Trailer, [2] = Block 2, [1] = Block 1, [0] = Block 0
+    esp_err_t err;                // Parsing error
+} rc522_mifare_sector_trailer_data_t;
+
+typedef struct
+{
+    int32_t value; // Value stored in the block
+    uint8_t addr;  // Value block address (this is not the memory address)
+    esp_err_t err; // Parsing error
+} rc522_mifare_value_block_data_t;
+
+typedef struct
+{
+    uint8_t address; // Zero-based index of Block inside of MIFARE memory
     uint8_t bytes[RC522_MIFARE_BLOCK_SIZE];
     rc522_mifare_block_type_t type;
+    rc522_mifare_sector_trailer_data_t trailer_data; // Valid only if type == RC522_MIFARE_BLOCK_TRAILER
     rc522_mifare_access_bits_t access_bits;
-    esp_err_t access_bits_err;
-    rc522_mifare_value_block_t *value;
-    esp_err_t value_err;
+    rc522_mifare_value_block_data_t value_data; // Valid only if type == RC522_MIFARE_BLOCK_VALUE
 } rc522_mifare_sector_block_t;
 
-typedef esp_err_t (*rc522_mifare_sector_block_iterator_t)(rc522_mifare_sector_block_t *block);
-
-bool rc522_mifare_type_is_classic_compatible(rc522_picc_type_t type);
-
-esp_err_t rc522_mifare_info(rc522_picc_t *picc, rc522_mifare_t *mifare);
+#pragma region MIFARE_Specific_Functions
 
 esp_err_t rc522_mifare_auth(rc522_handle_t rc522, rc522_picc_t *picc, uint8_t block_addr, rc522_mifare_key_t *key);
 
@@ -87,10 +95,43 @@ esp_err_t rc522_mifare_read(
 esp_err_t rc522_mifare_write(
     rc522_handle_t rc522, rc522_picc_t *picc, uint8_t block_addr, uint8_t *buffer, uint8_t buffer_size);
 
+#pragma endregion MIFARE_Specific_Functions
+
+#pragma region MIFARE_Utility_Functions
+
+/**
+ * @brief Authenticates read/write operations
+ */
+esp_err_t rc522_mifare_auth_sector(
+    rc522_handle_t rc522, rc522_picc_t *picc, rc522_mifare_sector_desc_t *sector_desc, rc522_mifare_key_t *key);
+
+/**
+ * @brief Deauthenticates read/write operations and allows PCD to perform other commands
+ */
 esp_err_t rc522_mifare_deauth(rc522_handle_t rc522, rc522_picc_t *picc);
 
-esp_err_t rc522_mifare_iterate_sector_blocks(rc522_handle_t rc522, rc522_picc_t *picc, uint8_t sector_index,
-    rc522_mifare_key_t *key, rc522_mifare_sector_block_iterator_t iterator);
+/**
+ * @brief Checks if the PICC is MIFARE Classic
+ */
+bool rc522_mifare_type_is_classic_compatible(rc522_picc_type_t type);
+
+/**
+ * @brief Get MIFARE description (e.g number of sectors)
+ */
+esp_err_t rc522_mifare_get_desc(rc522_picc_t *picc, rc522_mifare_desc_t *out_mifare_desc);
+
+/**
+ * @brief Get MIFARE sector description (e.g number of blocks, block 0 address)
+ */
+esp_err_t rc522_mifare_get_sector_desc(uint8_t sector_index, rc522_mifare_sector_desc_t *out_sector_desc);
+
+/**
+ * @brief Read and parse MIFARE sector block
+ */
+esp_err_t rc522_mifare_read_sector_block(rc522_handle_t rc522, rc522_picc_t *picc,
+    rc522_mifare_sector_desc_t *sector_desc, uint8_t block_offset, rc522_mifare_sector_block_t *out_block);
+
+#pragma endregion MIFARE_Utility_Functions
 
 #ifdef __cplusplus
 }
