@@ -135,6 +135,9 @@ typedef struct
 
 char *rc522_picc_type_name(rc522_picc_type_t type);
 
+/**
+ * @brief Convert PICC UID to (null-terminated) string
+ */
 esp_err_t rc522_picc_uid_to_str(rc522_picc_uid_t *uid, char *buffer, uint8_t buffer_size);
 
 #ifdef __cplusplus
