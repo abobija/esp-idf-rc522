@@ -4,6 +4,10 @@
 
 This repository contains [ESP-IDF](https://github.com/espressif/esp-idf) library (component) for communication with RFID cards using [MFRC522](https://www.nxp.com/docs/en/data-sheet/MFRC522.pdf) reader.
 
+![read-write-example](docs/img/read-write-example.png)
+
+Library takes care of polling the cards and managing the card lifecycle. It also fires events when a card is detected, removed, or when the card changes to any state described in ISO-14443. Additionally, it provides an API for reading and writing to card memory blocks.
+
 ## Installation
 
 To install latest version of this component to your project, run:
@@ -11,13 +15,6 @@ To install latest version of this component to your project, run:
 ```bash
 idf.py add-dependency "abobija/rc522"
 ```
-
-## Terms
-
-| Term | Description |
-| ---- | ----------- |
-| PCD  | Proximity Coupling Device (the card reader). In our case this is MFRC522 module |
-| PICC | Proximity Integrated Circuit Card (e.g: rfid card, tag, ...) |
 
 ## Support
 
@@ -67,6 +64,12 @@ Then build the project and run tests:
 idf.py build && ./build/test.elf
 ```
 
+## Terms
+
+| Term | Description |
+| ---- | ----------- |
+| PCD  | Proximity Coupling Device (the card reader). In our case this is MFRC522 module |
+| PICC | Proximity Integrated Circuit Card (e.g: rfid card, tag, ...) |
 
 ## Additional resources
 
