@@ -153,10 +153,10 @@ static void on_picc_state_changed(void *arg, esp_event_base_t base, int32_t even
     }
 
     if (read_write(rc522, picc) == ESP_OK) {
-        ESP_LOGI(TAG, "read write success");
+        ESP_LOGI(TAG, "Read/Write success");
     }
     else {
-        ESP_LOGE(TAG, "read write failed");
+        ESP_LOGE(TAG, "Read/Write failed");
     }
 
     if (rc522_mifare_deauth(rc522, picc) != ESP_OK) {
