@@ -147,20 +147,21 @@ static void on_picc_state_changed(void *arg, esp_event_base_t base, int32_t even
 
     ESP_LOGI(TAG, "Card (type=%s, uid=%s) detected", rc522_picc_type_name(picc->type), uid_str);
 
-    if (rc522_mifare_type_is_classic_compatible(picc->type)) {
-        if (rc522_mifare_handle_as_transaction(dump_memory, rc522, picc) == ESP_OK) {
-            ESP_LOGI(TAG, "Memory dump success");
-        }
-        else {
-            ESP_LOGE(TAG, "Memory dump failed");
-        }
-
+    if (!rc522_mifare_type_is_classic_compatible(picc->type)) {
+        ESP_LOGW(TAG, "Card of type %02" RC522_X " not supported by this example", picc->type);
         return;
     }
 
-    ESP_LOGW(TAG, "Card of type %02" RC522_X " not supported by this example", picc->type);
+    if (dump_memory(rc522, picc) == ESP_OK) {
+        ESP_LOGI(TAG, "Memory dump success");
+    }
+    else {
+        ESP_LOGE(TAG, "Memory dump failed");
+    }
 
-    return;
+    if (rc522_mifare_deauth(rc522, picc) != ESP_OK) {
+        ESP_LOGW(TAG, "Deauth failed");
+    }
 }
 
 void app_main()

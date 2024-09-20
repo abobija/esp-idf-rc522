@@ -417,35 +417,14 @@ static esp_err_t rc522_mifare_parse_value_block(
     return ESP_OK;
 }
 
-esp_err_t rc522_mifare_transactions_end(rc522_handle_t rc522, rc522_picc_t *picc)
+inline esp_err_t rc522_mifare_deauth(rc522_handle_t rc522, rc522_picc_t *picc)
 {
     RC522_CHECK(rc522 == NULL);
     RC522_CHECK(picc == NULL);
 
-    if (rc522_picc_halta(rc522, picc) != ESP_OK) {
-        RC522_LOGW("halta failed");
-    }
+    RC522_RETURN_ON_ERROR(rc522_pcd_stop_crypto1(rc522));
 
-    return rc522_pcd_stop_crypto1(rc522);
-}
-
-/**
- * Ensures that communication with PICC is ended correctly by calling rc522_mifare_transactions_end
- */
-esp_err_t rc522_mifare_handle_as_transaction(
-    rc522_mifare_transaction_handler_t transaction_handler, rc522_handle_t rc522, rc522_picc_t *picc)
-{
-    RC522_CHECK(rc522 == NULL);
-    RC522_CHECK(picc == NULL);
-    RC522_CHECK(transaction_handler == NULL);
-
-    esp_err_t ret = transaction_handler(rc522, picc);
-
-    if (rc522_mifare_transactions_end(rc522, picc) != ESP_OK) {
-        RC522_LOGW("ending transaction failed");
-    }
-
-    return ret;
+    return ESP_OK;
 }
 
 esp_err_t rc522_mifare_iterate_sector_blocks(rc522_handle_t rc522, rc522_picc_t *picc, uint8_t sector_index,
