@@ -118,6 +118,7 @@ static esp_err_t dump_memory(rc522_handle_t rc522, rc522_picc_t *picc)
     rc522_mifare_t mifare;
     ESP_RETURN_ON_ERROR(rc522_mifare_info(picc, &mifare), TAG, "");
 
+    DUMP("\n");
     dump_header();
 
     // Start from the highest sector
@@ -126,6 +127,8 @@ static esp_err_t dump_memory(rc522_handle_t rc522, rc522_picc_t *picc)
             TAG,
             "sector iteration failed");
     }
+
+    DUMP("\n");
 
     return ESP_OK;
 }
