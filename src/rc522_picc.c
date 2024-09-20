@@ -20,16 +20,21 @@ esp_err_t rc522_picc_comm(rc522_handle_t rc522, rc522_pcd_command_t command, uin
     RC522_CHECK(send_data == NULL);
     RC522_CHECK(send_data_len < 1);
 
+    // Prepare values for bit framing
+    uint8_t tx_last_bits = valid_bits ? *valid_bits : 0;
+    uint8_t bit_framing = (rx_align << 4) + tx_last_bits;
+
     if (RC522_LOG_LEVEL >= ESP_LOG_DEBUG) {
-        RC522_LOGD("transceive (rx_align=0x%02" RC522_X ", check_crc=%d)", rx_align, check_crc);
+        RC522_LOGD("rx_align=%d, check_crc=%d, tx_last_bits=%d, bit_framing=%d",
+            rx_align,
+            check_crc,
+            tx_last_bits,
+            bit_framing);
+
         char debug_buffer[64];
         rc522_buffer_to_hex_str(send_data, send_data_len, debug_buffer, sizeof(debug_buffer));
         RC522_LOGD("picc << %s", debug_buffer);
     }
-
-    // Prepare values for bit framing
-    uint8_t tx_last_bits = valid_bits ? *valid_bits : 0;
-    uint8_t bit_framing = (rx_align << 4) + tx_last_bits;
 
     RC522_RETURN_ON_ERROR(rc522_pcd_stop_active_command(rc522));
     RC522_RETURN_ON_ERROR(rc522_pcd_clear_all_com_interrupts(rc522));
@@ -115,8 +120,14 @@ esp_err_t rc522_picc_comm(rc522_handle_t rc522, rc522_pcd_command_t command, uin
         uint8_t b0_orig = back_data[0];
         RC522_RETURN_ON_ERROR(rc522_pcd_fifo_read(rc522, back_data, fifo_level));
 
+        if (RC522_LOG_LEVEL >= ESP_LOG_DEBUG) {
+            char debug_buffer[64];
+            rc522_buffer_to_hex_str(back_data, *back_data_len, debug_buffer, sizeof(debug_buffer));
+            RC522_LOGD("picc >> %s", debug_buffer);
+        }
+
         if (rx_align) { // Only update bit positions rxAlign..7 in values[0]
-            RC522_LOGD("rx_align=0x%02" RC522_X ", applying mask", rx_align);
+            RC522_LOGD("applying mask based on rx_align=%d", rx_align);
 
             // Create bit mask for bit positions rxAlign..7
             uint8_t mask = (0xFF << rx_align) & 0xFF;
@@ -128,6 +139,10 @@ esp_err_t rc522_picc_comm(rc522_handle_t rc522, rc522_pcd_command_t command, uin
         // received byte. If this value is 000b, the whole byte is valid.
         RC522_RETURN_ON_ERROR(rc522_pcd_read(rc522, RC522_PCD_CONTROL_REG, &_valid_bits));
         _valid_bits &= 0x07;
+
+        if (_valid_bits) {
+            RC522_LOGD("not full byte received, valid_bits=%d", _valid_bits);
+        }
 
         if (valid_bits) {
             *valid_bits = _valid_bits;
@@ -156,16 +171,11 @@ esp_err_t rc522_picc_comm(rc522_handle_t rc522, rc522_pcd_command_t command, uin
     }
 
     if (RC522_LOG_LEVEL >= ESP_LOG_DEBUG) {
-        if (back_data && back_data_len) {
-            char debug_buffer[64];
-            rc522_buffer_to_hex_str(back_data, *back_data_len, debug_buffer, sizeof(debug_buffer));
-            RC522_LOGD("picc >> %s", debug_buffer);
-        }
-        else {
+        if (!back_data || !back_data_len) {
             // TODO: Read from PICC above even if back_data is null so we can log.
             //        But then we would need local buffer. Hmm...
 
-            RC522_LOGW("Cannot log rx data since back_data buffer is null");
+            RC522_LOGD("cannot log rx data, back_data buffer is null");
         }
     }
 

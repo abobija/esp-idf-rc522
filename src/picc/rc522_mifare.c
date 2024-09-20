@@ -77,7 +77,7 @@ esp_err_t rc522_mifare_auth(rc522_handle_t rc522, rc522_picc_t *picc, uint8_t bl
     RC522_CHECK(picc == NULL);
     RC522_CHECK(key == NULL);
 
-    RC522_LOGD("MIFARE AUTH");
+    RC522_LOGD("MIFARE AUTH (block_addr=%02" RC522_X ")", block_addr);
 
     uint8_t auth_cmd;
 
@@ -126,7 +126,7 @@ esp_err_t rc522_mifare_read(
     RC522_CHECK(buffer == NULL);
     RC522_CHECK(buffer_size < RC522_MIFARE_BLOCK_SIZE);
 
-    RC522_LOGD("MIFARE READ");
+    RC522_LOGD("MIFARE READ (block_addr=%02" RC522_X ")", block_addr);
 
     // FIXME: Cloning the buffer since picc_transceive uses +2 bytes buffer
     //        to store some extra data (crc i think). Refactor picc_transceive
@@ -303,7 +303,7 @@ esp_err_t rc522_mifare_write(
     RC522_CHECK(!rc522_mifare_type_is_classic_compatible(picc->type));
     RC522_CHECK(rc522_mifare_check_sector_trailer_write(block_addr) != ESP_OK);
 
-    RC522_LOGD("MIFARE WRITE");
+    RC522_LOGD("MIFARE WRITE (block_addr=%02" RC522_X ")", block_addr);
 
     // Step 1: Tell the PICC we want to write to block blockAddr.
     uint8_t cmd_buffer[] = { RC522_MIFARE_WRITE_CMD, block_addr };
