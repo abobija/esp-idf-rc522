@@ -1,33 +1,62 @@
 #include <esp_log.h>
-#include <inttypes.h>
 #include "rc522.h"
+#include "driver/rc522_spi.h"
+#include "rc522_picc.h"
 
-static const char *TAG = "rc522-demo";
-static rc522_handle_t scanner;
+static const char *TAG = "rc522-basic-example";
 
-static void rc522_handler(void *arg, esp_event_base_t base, int32_t event_id, void *event_data)
+#define RC522_SPI_BUS_GPIO_MISO   (25)
+#define RC522_SPI_BUS_GPIO_MOSI   (23)
+#define RC522_SPI_BUS_GPIO_SCLK   (19)
+#define RC522_SPI_DEVICE_GPIO_SDA (22)
+#define RC522_GPIO_RST            (-1) // soft-reset
+
+static rc522_spi_config_t driver_config = {
+    .host_id = VSPI_HOST,
+    .dma_chan = SPI_DMA_DISABLED,
+    .bus_config = &(spi_bus_config_t){
+        .miso_io_num = RC522_SPI_BUS_GPIO_MISO,
+        .mosi_io_num = RC522_SPI_BUS_GPIO_MOSI,
+        .sclk_io_num = RC522_SPI_BUS_GPIO_SCLK,
+        .quadwp_io_num = -1,
+        .quadhd_io_num = -1,
+    },
+    .dev_config = {
+        .clock_speed_hz = 5000000,
+        .mode = 0,
+        .spics_io_num = RC522_SPI_DEVICE_GPIO_SDA,
+        .queue_size = 7,
+        .flags = SPI_DEVICE_HALFDUPLEX,
+    },
+    .rst_io_num = RC522_GPIO_RST,
+};
+
+static rc522_driver_handle_t driver;
+static rc522_handle_t rc522;
+
+static void on_picc_state_changed(void *arg, esp_event_base_t base, int32_t event_id, void *data)
 {
-    rc522_event_data_t *data = (rc522_event_data_t *)event_data;
+    rc522_picc_state_changed_event_t *event = (rc522_picc_state_changed_event_t *)data;
+    rc522_picc_t *picc = event->picc;
 
-    switch (event_id) {
-        case RC522_EVENT_TAG_SCANNED: {
-            rc522_tag_t *tag = (rc522_tag_t *)data->ptr;
-            ESP_LOGI(TAG, "Tag scanned (sn: %" PRIu64 ")", tag->serial_number);
-        } break;
+    if (picc->state == RC522_PICC_STATE_ACTIVE) {
+        rc522_picc_print(picc);
+    }
+    else if (picc->state == RC522_PICC_STATE_IDLE && event->old_state >= RC522_PICC_STATE_ACTIVE) {
+        ESP_LOGI(TAG, "Card has been removed");
     }
 }
 
 void app_main()
 {
+    rc522_spi_create(&driver_config, &driver);
+    rc522_driver_install(driver);
+
     rc522_config_t config = {
-        .spi.host = VSPI_HOST,
-        .spi.miso_gpio = 25,
-        .spi.mosi_gpio = 23,
-        .spi.sck_gpio = 19,
-        .spi.sda_gpio = 22,
+        .driver = driver,
     };
 
-    rc522_create(&config, &scanner);
-    rc522_register_events(scanner, RC522_EVENT_ANY, rc522_handler, NULL);
-    rc522_start(scanner);
+    rc522_create(&config, &rc522);
+    rc522_register_events(rc522, RC522_EVENT_PICC_STATE_CHANGED, on_picc_state_changed, NULL);
+    rc522_start(rc522);
 }

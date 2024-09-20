@@ -1,0 +1,11 @@
+idf_component_register(
+    INCLUDE_DIRS
+        "."
+        "${CMAKE_CURRENT_SOURCE_DIR}/../../include"
+        "${CMAKE_CURRENT_SOURCE_DIR}/../../private_include"
+        "${CMAKE_CURRENT_SOURCE_DIR}/../../src"
+    SRC_DIRS
+        "."
+    REQUIRES
+        unity
+)

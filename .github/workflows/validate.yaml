@@ -1,0 +1,75 @@
+name: Validate
+
+on:
+  pull_request:
+  push:
+    branches:
+      - main
+  schedule:
+    - cron: "0 0 * * 6"
+
+jobs:
+  format_check:
+    name: "Check formatting"
+    runs-on: ubuntu-latest
+
+    steps:
+      - uses: actions/checkout@v4
+      - name: 'clang-format check'
+        uses: jidicula/clang-format-action@v4.13.0
+        with:
+          clang-format-version: 18
+  
+  unit_test:
+    name: "Unit test"
+    runs-on: ubuntu-latest
+
+    needs:
+      - format_check
+
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          path: rc522
+
+      - name: "Unit test"
+        uses: espressif/esp-idf-ci-action@v1
+        with:
+          path: rc522/test
+          esp_idf_version: release-v5.3
+          target: linux
+          command: idf.py build && ./build/test.elf
+
+  build_examples:
+    name: "Build example"
+    runs-on: ubuntu-latest
+
+    needs:
+      - unit_test
+
+    strategy:
+      matrix:
+        example:
+          - basic
+          - basic_i2c
+          - memory_dump
+          - read_write
+        idf_ver:
+          - release-v5.0
+          - release-v5.1
+          - release-v5.2
+          - release-v5.3
+        idf_target:
+          - esp32
+
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          path: rc522
+
+      - name: Build
+        uses: espressif/esp-idf-ci-action@v1
+        with:
+          path: rc522/examples/${{ matrix.example }}
+          esp_idf_version: ${{ matrix.idf_ver }}
+          target: ${{ matrix.idf_target }}

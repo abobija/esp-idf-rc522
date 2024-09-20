@@ -1,0 +1,14 @@
+menu "RC522"
+
+    config RC522_PREVENT_SECTOR_TRAILER_WRITE
+        bool "Prevent writing to the Sector Trailer block"
+        default y
+        help
+            The Sector Trailer block stores authentication keys
+            and access bits. Enabling this option prevents writing
+            to the Trailer block. This is enabled by default to protect
+            inexperienced users from accidentally overwriting keys or
+            writing incorrect access bits, which could render the sector
+            unusable.
+
+endmenu

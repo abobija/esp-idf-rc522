@@ -1,14 +1,20 @@
-version: "2.6.1"
+version: "3.0.0"
 description: "MFRC522 driver"
 url: "https://github.com/abobija/esp-idf-rc522"
 repository: "https://github.com/abobija/esp-idf-rc522.git"
-license: "MIT"
+license: "Apache-2.0"
 maintainers:
-  - Alija Bobija <bobija.alija@gmail.com>
+  - "Alija Bobija <bobija.alija@gmail.com>"
 tags:
+  - mfrc522
   - rfid
   - nfc
-  - mfrc522
   - contactless
+  - mifare
+  - iso_1443
+  - card
+files:
+  exclude:
+    - "test/**/*"
 dependencies:
   idf: "^5"

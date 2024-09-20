@@ -1,8 +1,8 @@
-name: Publish component
+name: Publish ESP-IDF Component
 
 on:
   release:
-    types: [published]
+    types: [ published ]
 
 jobs:
   publish:
@@ -10,6 +10,7 @@ jobs:
 
     steps:
       - uses: actions/checkout@v4
+      
       - name: Upload component to the registry
         uses: espressif/upload-components-ci-action@v1
         with:
