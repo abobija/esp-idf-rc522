@@ -291,7 +291,7 @@ void rc522_task(void *arg)
             }
 
             if (ret != ESP_OK) {
-                RC522_LOGV("heartbeat failed (err=%04" RC522_X ")", ret);
+                RC522_LOGD("heartbeat failed (err=%04" RC522_X ")", ret);
             }
 
             // card is still in the field
