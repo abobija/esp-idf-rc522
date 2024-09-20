@@ -47,7 +47,7 @@ idf.py build flash monitor
 
 ## Pin Layout
 
-Pin layout is configurable by the user. Check `#define`s of [basic example](examples/basic/main/basic.c) to see how GPIOs are configured. Library currently does not use RST pin so connect it to the 3.3V.
+Pin layout is configurable by the user. To configure the GPIOs, check the `#define` statements in the [basic example](examples/basic/main/basic.c). If you are not using the RST pin, you can connect it to the 3.3V.
 
 ## Unit testing
 
