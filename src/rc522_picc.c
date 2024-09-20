@@ -89,9 +89,13 @@ esp_err_t rc522_picc_comm(rc522_handle_t rc522, rc522_pcd_command_t command, uin
         return ESP_ERR_RC522_PCD_FIFO_BUFFER_OVERFLOW;
     }
     else if (error_reg_value & RC522_PCD_PARITY_ERR_BIT) {
+        RC522_LOGD("parity error detected");
+
         return ESP_ERR_RC522_PCD_PARITY_CHECK_FAILED;
     }
     else if (error_reg_value & RC522_PCD_PROTOCOL_ERR_BIT) {
+        RC522_LOGD("protocol error detected");
+
         return ESP_ERR_RC522_PCD_PROTOCOL_ERROR;
     }
 
