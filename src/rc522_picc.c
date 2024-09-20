@@ -539,6 +539,8 @@ esp_err_t rc522_picc_select(rc522_handle_t rc522, rc522_picc_uid_t *out_uid, uin
     // Set correct uid.size
     uid.length = 3 * cascade_level + 1;
 
+    RC522_LOGD("sak=0x%02" RC522_X, sak);
+
     if (out_uid) {
         memcpy(out_uid, &uid, sizeof(uid));
     }
