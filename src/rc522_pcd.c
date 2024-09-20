@@ -121,7 +121,7 @@ esp_err_t rc522_pcd_reset(rc522_handle_t rc522, uint32_t timeout_ms)
     esp_err_t ret = ESP_OK;
 
     if ((ret = rc522_pcd_hard_reset(rc522, timeout_ms)) != ESP_OK) {
-        if (ret != ESP_ERR_RC522_RST_PIN_UNUSED) {
+        if (ret != RC522_ERR_RST_PIN_UNUSED) {
             RC522_LOGW("hard reset failed, trying soft reset");
         }
 

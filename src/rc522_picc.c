@@ -71,7 +71,7 @@ esp_err_t rc522_picc_comm(rc522_handle_t rc522, rc522_pcd_command_t command, uin
         if (irq & RC522_PCD_TIMER_IRQ_BIT) {
             RC522_LOGD("timer interrupt (irq=0x%02" RC522_X ")", irq);
 
-            return ESP_ERR_RC522_RX_TIMER_TIMEOUT;
+            return RC522_ERR_RX_TIMER_TIMEOUT;
         }
 
         taskYIELD();
@@ -79,24 +79,24 @@ esp_err_t rc522_picc_comm(rc522_handle_t rc522, rc522_pcd_command_t command, uin
     while (rc522_millis() < deadline);
 
     // 36ms and nothing happened. Communication with the MFRC522 might be down.
-    RC522_RETURN_ON_FALSE(completed, ESP_ERR_RC522_RX_TIMEOUT);
+    RC522_RETURN_ON_FALSE(completed, RC522_ERR_RX_TIMEOUT);
 
     // Stop now if any errors except collisions were detected.
     uint8_t error_reg_value;
     RC522_RETURN_ON_ERROR(rc522_pcd_read(rc522, RC522_PCD_ERROR_REG, &error_reg_value));
 
     if (error_reg_value & RC522_PCD_BUFFER_OVFL_BIT) {
-        return ESP_ERR_RC522_PCD_FIFO_BUFFER_OVERFLOW;
+        return RC522_ERR_PCD_FIFO_BUFFER_OVERFLOW;
     }
     else if (error_reg_value & RC522_PCD_PARITY_ERR_BIT) {
         RC522_LOGD("parity error detected");
 
-        return ESP_ERR_RC522_PCD_PARITY_CHECK_FAILED;
+        return RC522_ERR_PCD_PARITY_CHECK_FAILED;
     }
     else if (error_reg_value & RC522_PCD_PROTOCOL_ERR_BIT) {
         RC522_LOGD("protocol error detected");
 
-        return ESP_ERR_RC522_PCD_PROTOCOL_ERROR;
+        return RC522_ERR_PCD_PROTOCOL_ERROR;
     }
 
     uint8_t fifo_level = 0;
@@ -154,7 +154,7 @@ esp_err_t rc522_picc_comm(rc522_handle_t rc522, rc522_pcd_command_t command, uin
     }
 
     if (error_reg_value & RC522_PCD_COLL_ERR_BIT) {
-        return ESP_ERR_RC522_COLLISION;
+        return RC522_ERR_COLLISION;
     }
 
     // Perform CRC_A validation if requested.
@@ -170,7 +170,7 @@ esp_err_t rc522_picc_comm(rc522_handle_t rc522, rc522_pcd_command_t command, uin
         RC522_RETURN_ON_ERROR(rc522_pcd_calculate_crc(rc522, back_data, *back_data_len - 2, crc));
 
         if ((back_data[*back_data_len - 2] != crc[0]) || (back_data[*back_data_len - 1] != crc[1])) {
-            return ESP_ERR_RC522_CRC_WRONG;
+            return RC522_ERR_CRC_WRONG;
         }
     }
 
@@ -233,7 +233,7 @@ static esp_err_t rc522_picc_reqa_or_wupa(rc522_handle_t rc522, uint8_t picc_cmd,
     if (ret != ESP_OK) {
         // Timeouts are expected if no PICC are in the field.
         // Log other errors
-        if (ret != ESP_ERR_RC522_RX_TIMER_TIMEOUT && ret != ESP_ERR_RC522_RX_TIMEOUT) {
+        if (ret != RC522_ERR_RX_TIMER_TIMEOUT && ret != RC522_ERR_RX_TIMEOUT) {
             RC522_LOGD("non-timeout error: %04" RC522_X, ret);
         }
 
@@ -241,7 +241,7 @@ static esp_err_t rc522_picc_reqa_or_wupa(rc522_handle_t rc522, uint8_t picc_cmd,
     }
 
     if (atqa_buffer_size != 2 || valid_bits != 0) { // ATQA must be exactly 16 bits.
-        return ESP_ERR_RC522_INVALID_ATQA;
+        return RC522_ERR_INVALID_ATQA;
     }
 
     uint16_t atqa = (atqa_buffer[0] << 8) | atqa_buffer[1];
@@ -452,7 +452,7 @@ esp_err_t rc522_picc_select(rc522_handle_t rc522, rc522_picc_uid_t *out_uid, uin
                 rx_align,
                 false);
 
-            if (ret == ESP_ERR_RC522_COLLISION) { // More than one PICC in the field => collision.
+            if (ret == RC522_ERR_COLLISION) { // More than one PICC in the field => collision.
                 RC522_LOGD("collision detected (cl=%d, skip_anticoll=%d)", cascade_level, skip_anticoll);
 
                 if (skip_anticoll) {
@@ -470,7 +470,7 @@ esp_err_t rc522_picc_select(rc522_handle_t rc522, rc522_picc_uid_t *out_uid, uin
                     // Without a valid collision position we cannot continue
                     RC522_LOGD("collision position not valid, coll_poss[4:0] out of range");
 
-                    return ESP_ERR_RC522_COLLISION_UNSOLVABLE;
+                    return RC522_ERR_COLLISION_UNSOLVABLE;
                 }
 
                 uint8_t collision_pos = value_of_coll_reg & 0x1F; // Values 0-31, 0 means bit 32.
@@ -482,7 +482,7 @@ esp_err_t rc522_picc_select(rc522_handle_t rc522, rc522_picc_uid_t *out_uid, uin
                         collision_pos,
                         current_level_known_bits);
 
-                    return ESP_ERR_RC522_COLLISION_UNSOLVABLE;
+                    return RC522_ERR_COLLISION_UNSOLVABLE;
                 }
                 // Choose the PICC with the bit set.
                 current_level_known_bits = collision_pos;
@@ -524,7 +524,7 @@ esp_err_t rc522_picc_select(rc522_handle_t rc522, rc522_picc_uid_t *out_uid, uin
         // Check response SAK (Select Acknowledge)
         if (response_length != 3 || tx_last_bits != 0) { // SAK must be exactly 24 bits (1 byte + CRC_A).
             RC522_LOGD("invalid sak");
-            return ESP_ERR_RC522_INVALID_SAK;
+            return RC522_ERR_INVALID_SAK;
         }
         // Verify CRC_A - do our own calculation and store the control in buffer[2..3] - those bytes are not needed
         // anymore.
@@ -536,7 +536,7 @@ esp_err_t rc522_picc_select(rc522_handle_t rc522, rc522_picc_uid_t *out_uid, uin
 
         if ((buffer[2] != response_buffer[1]) || (buffer[3] != response_buffer[2])) {
             RC522_LOGD("crc wrong");
-            return ESP_ERR_RC522_CRC_WRONG;
+            return RC522_ERR_CRC_WRONG;
         }
         if (response_buffer[0] & 0x04) { // Cascade bit set - UID not complete yes
             cascade_level++;
@@ -619,12 +619,12 @@ esp_err_t rc522_picc_heartbeat(rc522_handle_t rc522, rc522_picc_t *picc, rc522_p
     }
 
     if (picc->sak != sak) {
-        return ESP_ERR_RC522_PICC_HEARTBEAT_CHANGES;
+        return RC522_ERR_PICC_HEARTBEAT_CHANGES;
     }
 
     for (uint8_t i = 0; i < uid.length; i++) {
         if (picc->uid.value[i] != uid.value[i]) {
-            return ESP_ERR_RC522_PICC_HEARTBEAT_CHANGES;
+            return RC522_ERR_PICC_HEARTBEAT_CHANGES;
         }
     }
 
@@ -729,7 +729,7 @@ esp_err_t rc522_picc_halta(rc522_handle_t rc522, rc522_picc_t *picc)
     // We interpret that this way: Only STATUS_TIMEOUT is a success.
     esp_err_t ret = rc522_picc_transceive(rc522, buffer, sizeof(buffer), NULL, NULL, NULL, 0, false);
 
-    if (ret == ESP_ERR_RC522_RX_TIMER_TIMEOUT || ret == ESP_ERR_RC522_RX_TIMEOUT) {
+    if (ret == RC522_ERR_RX_TIMER_TIMEOUT || ret == RC522_ERR_RX_TIMEOUT) {
         return rc522_picc_set_state(rc522, picc, RC522_PICC_STATE_HALT, true);
     }
 

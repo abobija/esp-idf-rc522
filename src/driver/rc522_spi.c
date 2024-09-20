@@ -78,7 +78,7 @@ static esp_err_t rc522_spi_reset(rc522_driver_handle_t driver)
     rc522_spi_config_t *conf = (rc522_spi_config_t *)(driver->config);
 
     if (conf->rst_io_num < 0) {
-        return ESP_ERR_RC522_RST_PIN_UNUSED;
+        return RC522_ERR_RST_PIN_UNUSED;
     }
 
     RC522_RETURN_ON_ERROR(gpio_set_level(conf->rst_io_num, RC522_DRIVER_HARD_RST_PIN_PWR_DOWN_LEVEL));
