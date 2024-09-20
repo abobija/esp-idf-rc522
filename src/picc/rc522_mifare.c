@@ -128,21 +128,23 @@ esp_err_t rc522_mifare_read(
 
     RC522_LOGD("MIFARE READ");
 
-    // Build command buffer
-    buffer[0] = RC522_MIFARE_READ_CMD;
-    buffer[1] = block_addr;
-
-    // Calculate CRC_A
-    RC522_RETURN_ON_ERROR(rc522_pcd_calculate_crc(rc522, buffer, 2, &buffer[2]));
-
     // FIXME: Cloning the buffer since picc_transceive uses +2 bytes buffer
     //        to store some extra data (crc i think). Refactor picc_transceive
     //        and picc_comm functions!
     uint8_t buffer_clone[RC522_MIFARE_BLOCK_SIZE + 2];
 
+    // Build command buffer
+    buffer_clone[0] = RC522_MIFARE_READ_CMD;
+    buffer_clone[1] = block_addr;
+
+    // Calculate CRC_A
+    RC522_RETURN_ON_ERROR(rc522_pcd_calculate_crc(rc522, buffer_clone, 2, &buffer_clone[2]));
+
     // Transmit the buffer and receive the response, validate CRC_A.
     uint8_t _ = sizeof(buffer_clone);
-    RC522_RETURN_ON_ERROR(rc522_picc_transceive(rc522, buffer, 4, buffer_clone, &_, NULL, 0, true));
+    RC522_RETURN_ON_ERROR(rc522_picc_transceive(rc522, buffer_clone, 4, buffer_clone, &_, NULL, 0, true));
+
+    RC522_CHECK(_ != (RC522_MIFARE_BLOCK_SIZE + 2));
 
     // FIXME: Move data back to the original buffer
     memcpy(buffer, buffer_clone, RC522_MIFARE_BLOCK_SIZE);
