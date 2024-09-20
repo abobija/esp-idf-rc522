@@ -85,7 +85,7 @@ typedef struct
     rc522_mifare_value_block_data_t value_data; // Valid only if type == RC522_MIFARE_BLOCK_VALUE
 } rc522_mifare_sector_block_t;
 
-#pragma region MIFARE_Specific_Functions
+// {{ MIFARE_Specific_Functions
 
 esp_err_t rc522_mifare_auth(rc522_handle_t rc522, rc522_picc_t *picc, uint8_t block_addr, rc522_mifare_key_t *key);
 
@@ -95,9 +95,9 @@ esp_err_t rc522_mifare_read(
 esp_err_t rc522_mifare_write(
     rc522_handle_t rc522, rc522_picc_t *picc, uint8_t block_addr, uint8_t *buffer, uint8_t buffer_size);
 
-#pragma endregion MIFARE_Specific_Functions
+// }} MIFARE_Specific_Functions
 
-#pragma region MIFARE_Utility_Functions
+// {{ MIFARE_Utility_Functions
 
 /**
  * @brief Authenticates read/write operations
@@ -131,7 +131,7 @@ esp_err_t rc522_mifare_get_sector_desc(uint8_t sector_index, rc522_mifare_sector
 esp_err_t rc522_mifare_read_sector_block(rc522_handle_t rc522, rc522_picc_t *picc,
     rc522_mifare_sector_desc_t *sector_desc, uint8_t block_offset, rc522_mifare_sector_block_t *out_block);
 
-#pragma endregion MIFARE_Utility_Functions
+// }} MIFARE_Utility_Functions
 
 #ifdef __cplusplus
 }
