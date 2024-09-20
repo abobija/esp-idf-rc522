@@ -453,10 +453,12 @@ esp_err_t rc522_picc_select(rc522_handle_t rc522, rc522_picc_uid_t *out_uid, uin
                 false);
 
             if (ret == ESP_ERR_RC522_COLLISION) { // More than one PICC in the field => collision.
-                RC522_LOGD("collision detected");
+                RC522_LOGD("collision detected (cl=%d, skip_anticoll=%d)", cascade_level, skip_anticoll);
 
                 if (skip_anticoll) {
                     // If we are skipping anticoll, we should not have collisions
+                    RC522_LOGD("unexpected collision detected");
+
                     return ret;
                 }
 
@@ -466,6 +468,8 @@ esp_err_t rc522_picc_select(rc522_handle_t rc522, rc522_picc_uid_t *out_uid, uin
 
                 if (value_of_coll_reg & RC522_PCD_COLL_POS_NOT_VALID_BIT) {
                     // Without a valid collision position we cannot continue
+                    RC522_LOGD("collision position not valid, coll_poss[4:0] out of range");
+
                     return ESP_ERR_RC522_COLLISION_UNSOLVABLE;
                 }
 
@@ -474,6 +478,10 @@ esp_err_t rc522_picc_select(rc522_handle_t rc522, rc522_picc_uid_t *out_uid, uin
                     collision_pos = 32;
                 }
                 if (collision_pos <= current_level_known_bits) { // No progress - should not happen
+                    RC522_LOGD("collision_pos (%d) <= current_level_known_bits (%d)",
+                        collision_pos,
+                        current_level_known_bits);
+
                     return ESP_ERR_RC522_COLLISION_UNSOLVABLE;
                 }
                 // Choose the PICC with the bit set.
