@@ -13,7 +13,7 @@ static const char *TAG = "rc522-read-write-example";
 #define RC522_SPI_BUS_GPIO_MOSI   (23)
 #define RC522_SPI_BUS_GPIO_SCLK   (19)
 #define RC522_SPI_DEVICE_GPIO_SDA (22)
-#define RC522_GPIO_RST            (-1) // Use soft-reset
+#define RC522_GPIO_RST            (-1) // soft-reset
 
 static rc522_spi_config_t driver_config = {
     .host_id = VSPI_HOST,
@@ -49,13 +49,11 @@ static void dump_block(uint8_t buffer[16])
 
 static esp_err_t read_write(rc522_handle_t rc522, rc522_picc_t *picc)
 {
-    const char *data_to_write = "rfid is dope";
+    const char *data_to_write = "rc522 is dope";
     const uint8_t block_address = 4;
     rc522_mifare_key_t key = {
         .value = { RC522_MIFARE_KEY_VALUE_DEFAULT },
     };
-
-    ESP_LOGI(TAG, "Writing data '%s' into the block %d", data_to_write, block_address);
 
     if (strlen(data_to_write) > 14) {
         ESP_LOGW(TAG, "Please make sure that data length is no more than 14 characters");
@@ -74,7 +72,7 @@ static esp_err_t read_write(rc522_handle_t rc522, rc522_picc_t *picc)
     ESP_RETURN_ON_ERROR(rc522_mifare_read(rc522, picc, block_address, read_buffer, sizeof(read_buffer)),
         TAG,
         "read fail");
-    ESP_LOGI(TAG, "Current content of the block %d:", block_address);
+    ESP_LOGI(TAG, "Current data:");
     dump_block(read_buffer);
     // ~Read
 
@@ -87,7 +85,7 @@ static esp_err_t read_write(rc522_handle_t rc522, rc522_picc_t *picc)
     write_buffer[16 - 2] = ((r >> 8) & 0xFF);
     write_buffer[16 - 1] = ((r >> 0) & 0xFF);
 
-    ESP_LOGI(TAG, "Writing next data to the block %d:", block_address);
+    ESP_LOGI(TAG, "Writing data (%s) to the block %d:", data_to_write, block_address);
     dump_block(write_buffer);
     ESP_RETURN_ON_ERROR(rc522_mifare_write(rc522, picc, block_address, write_buffer, sizeof(write_buffer)),
         TAG,
@@ -95,11 +93,11 @@ static esp_err_t read_write(rc522_handle_t rc522, rc522_picc_t *picc)
     // ~Write
 
     // Read again
-    ESP_LOGI(TAG, "Write done. Reading block %d again", block_address);
+    ESP_LOGI(TAG, "Write done. Verifying...");
     ESP_RETURN_ON_ERROR(rc522_mifare_read(rc522, picc, block_address, read_buffer, sizeof(read_buffer)),
         TAG,
         "read fail");
-    ESP_LOGI(TAG, "New content of the block %d:", block_address);
+    ESP_LOGI(TAG, "New data in the block %d:", block_address);
     dump_block(read_buffer);
     // ~Read again
 
@@ -116,7 +114,7 @@ static esp_err_t read_write(rc522_handle_t rc522, rc522_picc_t *picc)
 
     // Feedback
     if (!rw_missmatch) {
-        ESP_LOGI(TAG, "Write success!");
+        ESP_LOGI(TAG, "Verified.");
     }
     else {
         ESP_LOGE(TAG,
@@ -142,13 +140,10 @@ static void on_picc_state_changed(void *arg, esp_event_base_t base, int32_t even
         return;
     }
 
-    char uid_str[RC522_PICC_UID_STR_BUFFER_SIZE_MAX];
-    rc522_picc_uid_to_str(&picc->uid, uid_str, RC522_PICC_UID_STR_BUFFER_SIZE_MAX);
-
-    ESP_LOGI(TAG, "Card (type=%s, uid=%s) detected", rc522_picc_type_name(picc->type), uid_str);
+    rc522_picc_print(picc);
 
     if (!rc522_mifare_type_is_classic_compatible(picc->type)) {
-        ESP_LOGW(TAG, "Card of type %02" RC522_X " not supported by this example", picc->type);
+        ESP_LOGW(TAG, "Card is not supported by this example");
         return;
     }
 

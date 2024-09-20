@@ -205,6 +205,7 @@ inline static esp_err_t rc522_picc_parse_atqa(uint16_t atqa, rc522_picc_atqa_des
 {
     RC522_CHECK(out_atqa == NULL);
 
+    out_atqa->source = atqa;
     out_atqa->rfu4 = (atqa >> 12) & 0x0F;
     out_atqa->prop_coding = (atqa >> 8) & 0x0F;
     out_atqa->uid_size = (atqa >> 6) & 0x03;
@@ -619,12 +620,12 @@ esp_err_t rc522_picc_heartbeat(rc522_handle_t rc522, rc522_picc_t *picc, rc522_p
     }
 
     if (picc->sak != sak) {
-        return RC522_ERR_PICC_HEARTBEAT_CHANGES;
+        return RC522_ERR_PICC_POST_HEARTBEAT_MISSMATCH;
     }
 
     for (uint8_t i = 0; i < uid.length; i++) {
         if (picc->uid.value[i] != uid.value[i]) {
-            return RC522_ERR_PICC_HEARTBEAT_CHANGES;
+            return RC522_ERR_PICC_POST_HEARTBEAT_MISSMATCH;
         }
     }
 
@@ -771,4 +772,23 @@ esp_err_t rc522_picc_set_state(rc522_handle_t rc522, rc522_picc_t *picc, rc522_p
     }
 
     return ret;
+}
+
+esp_err_t rc522_picc_print(rc522_picc_t *picc)
+{
+    RC522_CHECK(picc == NULL);
+
+    char uid_str[RC522_PICC_UID_STR_BUFFER_SIZE_MAX];
+    RC522_RETURN_ON_ERROR(rc522_picc_uid_to_str(&picc->uid, uid_str, sizeof(uid_str)));
+
+    ESP_LOGI(TAG, "");
+    ESP_LOGI(TAG, "╔══════════════╗");
+    ESP_LOGI(TAG, "║              ║ Type: %s", rc522_picc_type_name(picc->type));
+    ESP_LOGI(TAG, "║     RFID     ║ UID:  %s", uid_str);
+    ESP_LOGI(TAG, "║     CARD     ║ ATQA: 0x%04" RC522_X, picc->atqa.source);
+    ESP_LOGI(TAG, "║              ║ SAK:  0x%02" RC522_X, picc->sak);
+    ESP_LOGI(TAG, "╚══════════════╝");
+    ESP_LOGI(TAG, "");
+
+    return ESP_OK;
 }

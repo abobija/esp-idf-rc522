@@ -30,8 +30,8 @@ static esp_err_t rc522_clone_config(rc522_config_t *config, rc522_config_t **res
     memcpy(config_clone, config, sizeof(rc522_config_t));
 
     // defaults
-    if (config_clone->task_throttling_ms < RC522_TASK_THROTTLING_MS_MIN) {
-        config_clone->task_throttling_ms = RC522_TASK_THROTTLING_MS_DEFAULT;
+    if (config_clone->poll_interval_ms < RC522_POLL_INTERVAL_MS_MIN) {
+        config_clone->poll_interval_ms = RC522_POLL_INTERVAL_MS_DEFAULT;
     }
 
     if (config_clone->task_stack_size == 0) {
@@ -208,7 +208,9 @@ void rc522_task(void *arg)
 {
     esp_err_t ret = ESP_OK;
     rc522_handle_t rc522 = (rc522_handle_t)arg;
-    const uint32_t picc_heartbeat_failure_threshold_ms = 200;
+    uint32_t last_poll_ms = 0;
+    const uint32_t task_delay_ms = 50;
+    const uint32_t picc_heartbeat_failure_threshold_ms = (2 * task_delay_ms);
     uint32_t picc_heartbeat_failure_at_ms = 0;
 
     xEventGroupClearBits(rc522->bits, RC522_TASK_STOPPED_BIT);
@@ -217,14 +219,15 @@ void rc522_task(void *arg)
     //       to avoid modifying picc state by the user
 
     while (!rc522->exit_requested) {
-        if (rc522->state == RC522_STATE_POLLING) {
-            rc522_delay_ms(rc522->config->task_throttling_ms);
-        }
-        else {
-            // wait for state change to polling
-            rc522_delay_ms(125);
+        if (rc522->state != RC522_STATE_POLLING) {
+            // waiting for state change to polling
+            rc522_delay_ms(100);
             continue;
         }
+
+        rc522_delay_ms(task_delay_ms);
+
+        bool should_poll = (rc522_millis() - last_poll_ms) > rc522->config->poll_interval_ms;
 
         if (rc522->picc.state == RC522_PICC_STATE_IDLE || rc522->picc.state == RC522_PICC_STATE_HALT) {
             rc522_picc_atqa_desc_t atqa;
@@ -248,11 +251,15 @@ void rc522_task(void *arg)
             }
         }
 
-        if (rc522->picc.state == RC522_PICC_STATE_READY || rc522->picc.state == RC522_PICC_STATE_READY_H) {
+        if (should_poll
+            && (rc522->picc.state == RC522_PICC_STATE_READY || rc522->picc.state == RC522_PICC_STATE_READY_H)) {
             rc522_picc_uid_t uid;
             uint8_t sak;
 
-            if ((ret = rc522_picc_select(rc522, &uid, &sak, false)) != ESP_OK) {
+            ret = rc522_picc_select(rc522, &uid, &sak, false);
+            last_poll_ms = rc522_millis();
+
+            if (ret != ESP_OK) {
                 if (ret != RC522_ERR_RX_TIMEOUT && ret != RC522_ERR_INVALID_ATQA && ret != RC522_ERR_INVALID_SAK) {
                     RC522_LOGW("select failed (err=%04" RC522_X ")", ret);
                 }

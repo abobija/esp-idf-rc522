@@ -65,7 +65,7 @@ typedef enum
      * In the ACTIVE State, the PICC listens to any higher layer message.
      * The PICC enters the HALT State when a valid HLTA Command is received.
      *
-     * NOTE:
+     * @note
      * In the higher layer protocol, specific commands may be defined
      * to return the PICC to its HALT State.
      */
@@ -111,6 +111,7 @@ typedef enum
  */
 typedef struct
 {
+    uint16_t source;
     uint8_t rfu4          :4;
     uint8_t prop_coding   :4;
     uint8_t uid_size      :2; // 00b - single (4 bytes), 01b - double (7 bytes), 10b - triple (10 bytes)
@@ -139,6 +140,11 @@ char *rc522_picc_type_name(rc522_picc_type_t type);
  * @brief Convert PICC UID to (null-terminated) string
  */
 esp_err_t rc522_picc_uid_to_str(rc522_picc_uid_t *uid, char *buffer, uint8_t buffer_size);
+
+/**
+ * @brief Print PICC information in fancy way
+ */
+esp_err_t rc522_picc_print(rc522_picc_t *picc);
 
 #ifdef __cplusplus
 }

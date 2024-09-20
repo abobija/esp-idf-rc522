@@ -9,7 +9,7 @@ static const char *TAG = "rc522-basic-example";
 #define RC522_SPI_BUS_GPIO_MOSI   (23)
 #define RC522_SPI_BUS_GPIO_SCLK   (19)
 #define RC522_SPI_DEVICE_GPIO_SDA (22)
-#define RC522_GPIO_RST            (-1) // Use soft-reset
+#define RC522_GPIO_RST            (-1) // soft-reset
 
 static rc522_spi_config_t driver_config = {
     .host_id = VSPI_HOST,
@@ -40,10 +40,7 @@ static void on_picc_state_changed(void *arg, esp_event_base_t base, int32_t even
     rc522_picc_t *picc = event->picc;
 
     if (picc->state == RC522_PICC_STATE_ACTIVE) {
-        char uid_str[RC522_PICC_UID_STR_BUFFER_SIZE_MAX];
-        rc522_picc_uid_to_str(&picc->uid, uid_str, RC522_PICC_UID_STR_BUFFER_SIZE_MAX);
-
-        ESP_LOGI(TAG, "Card (type=%s, uid=%s) detected", rc522_picc_type_name(picc->type), uid_str);
+        rc522_picc_print(picc);
     }
     else if (picc->state == RC522_PICC_STATE_IDLE && event->old_state >= RC522_PICC_STATE_ACTIVE) {
         ESP_LOGI(TAG, "Card has been removed");

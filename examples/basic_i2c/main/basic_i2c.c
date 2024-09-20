@@ -8,7 +8,7 @@ static const char *TAG = "rc522-basic-i2c-example";
 #define RC522_I2C_ADDRESS  (0x28)
 #define RC522_I2C_GPIO_SDA (18)
 #define RC522_I2C_GPIO_SCL (21)
-#define RC522_GPIO_RST     (-1) // Use soft-reset
+#define RC522_GPIO_RST     (-1) // soft-reset
 
 static rc522_i2c_config_t driver_config = {
     .port = I2C_NUM_0,
@@ -31,16 +31,12 @@ static rc522_handle_t rc522;
 static void on_picc_state_changed(void *arg, esp_event_base_t base, int32_t event_id, void *data)
 {
     rc522_picc_state_changed_event_t *event = (rc522_picc_state_changed_event_t *)data;
-    rc522_picc_t *picc = event->picc;
 
-    if (picc->state != RC522_PICC_STATE_ACTIVE) {
+    if (event->picc->state != RC522_PICC_STATE_ACTIVE) {
         return;
     }
 
-    char uid_str[RC522_PICC_UID_STR_BUFFER_SIZE_MAX];
-    rc522_picc_uid_to_str(&picc->uid, uid_str, RC522_PICC_UID_STR_BUFFER_SIZE_MAX);
-
-    ESP_LOGI(TAG, "Card (type=%s, uid=%s) detected", rc522_picc_type_name(picc->type), uid_str);
+    rc522_picc_print(event->picc);
 }
 
 void app_main()
