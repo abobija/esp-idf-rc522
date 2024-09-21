@@ -377,6 +377,12 @@ esp_err_t rc522_mifare_get_desc(rc522_picc_t *picc, rc522_mifare_desc_t *out_mif
  * | [6]  | C23_ | C22_ | C21_ | C20_ | C13_ | C12_ | C11_ | C10_ |
  * | [7]  | C13  | C12  | C11  | C10  | C33_ | C32_ | C31_ | C30_ |
  * | [8]  | C33  | C32  | C31  | C30  | C23  | C22  | C21  | C20  |
+ *
+ * Where Cx is access bit for the block group y, for example:
+ *  - C10 is the access bit C1 for the block group 0,
+ *  - C20 is the access bit C2 for the block group 0,
+ *  - ...,
+ *  - C33 is the access bit C3 for the sector trailer.
  */
 static esp_err_t rc522_mifare_parse_sector_trailer(
     uint8_t *trailer_bytes, uint8_t trailer_bytes_size, rc522_mifare_sector_trailer_info_t *out_trailer_info)
