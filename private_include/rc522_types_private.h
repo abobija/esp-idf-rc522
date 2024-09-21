@@ -62,9 +62,10 @@ struct rc522
     }                                                                                                                  \
     while (0)
 
-#define RC522_RETURN_ON_FALSE(a, err_code) ESP_RETURN_ON_FALSE(a, err_code, TAG, "")
-#define RC522_CHECK_AND_RETURN(a, ret_val) ESP_RETURN_ON_FALSE(!(a), ret_val, TAG, #a)
-#define RC522_CHECK(a)                     RC522_CHECK_AND_RETURN(a, ESP_ERR_INVALID_ARG)
+#define RC522_RETURN_ON_FALSE(a, err_code)   ESP_RETURN_ON_FALSE(a, err_code, TAG, "")
+#define RC522_CHECK_WITH_MESSAGE(a, message) ESP_RETURN_ON_FALSE(!(a), ESP_ERR_INVALID_ARG, TAG, message)
+#define RC522_CHECK_AND_RETURN(a, ret_val)   ESP_RETURN_ON_FALSE(!(a), ret_val, TAG, #a)
+#define RC522_CHECK(a)                       ESP_RETURN_ON_FALSE(!(a), ESP_ERR_INVALID_ARG, TAG, #a)
 
 #define RC522_RETURN_ON_ERROR_SILENTLY(x)                                                                              \
     do {                                                                                                               \
