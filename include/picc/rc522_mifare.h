@@ -23,6 +23,13 @@ typedef struct
     uint8_t number_of_sectors;
 } rc522_mifare_desc_t;
 
+typedef struct
+{
+    uint8_t index;            // Zero-based index of Sector
+    uint8_t number_of_blocks; // Total number of blocks inside of Sector
+    uint8_t block_0_address;  // Zero-based index of the first Block inside of MIFARE memory
+} rc522_mifare_sector_desc_t;
+
 typedef enum
 {
     RC522_MIFARE_KEY_A = 0,
@@ -46,7 +53,6 @@ typedef enum
 
 typedef struct
 {
-    uint8_t group; // 3: Trailer, 2: Block 2, 1: Block 1, 0: Block 0
     uint8_t c1 :1;
     uint8_t c2 :1;
     uint8_t c3 :1;
@@ -54,32 +60,27 @@ typedef struct
 
 typedef struct
 {
-    uint8_t index;            // Zero-based index of Sector
-    uint8_t number_of_blocks; // Total number of blocks inside of Sector
-    uint8_t block_0_address;  // Zero-based index of the first Block inside of MIFARE memory
-} rc522_mifare_sector_desc_t;
-
-typedef struct
-{
-    uint8_t access_bit_groups[4]; // [3] = Trailer, [2] = Block 2, [1] = Block 1, [0] = Block 0
-    esp_err_t err;                // Parsing error
-} rc522_mifare_sector_trailer_data_t;
+    rc522_mifare_access_bits_t access_bits[4]; // [3] = Trailer, [2] = Block 2, [1] = Block 1, [0] = Block 0
+} rc522_mifare_sector_trailer_info_t;
 
 typedef struct
 {
     int32_t value; // Value stored in the block
     uint8_t addr;  // Value block address (this is not the memory address)
-    esp_err_t err; // Parsing error
-} rc522_mifare_value_block_data_t;
+} rc522_mifare_sector_value_block_info_t;
 
 typedef struct
 {
-    uint8_t address; // Zero-based index of Block inside of MIFARE memory
-    uint8_t bytes[RC522_MIFARE_BLOCK_SIZE];
+    uint8_t address;
     rc522_mifare_block_type_t type;
-    rc522_mifare_sector_trailer_data_t trailer_data; // Valid only if type == RC522_MIFARE_BLOCK_TRAILER
+    uint8_t bytes[RC522_MIFARE_BLOCK_SIZE];
+    union
+    {
+        rc522_mifare_sector_trailer_info_t trailer_info;   // Valid only if type == RC522_MIFARE_BLOCK_TRAILER
+        rc522_mifare_sector_value_block_info_t value_info; // Valid only if type == RC522_MIFARE_BLOCK_VALUE
+    };
     rc522_mifare_access_bits_t access_bits;
-    rc522_mifare_value_block_data_t value_data; // Valid only if type == RC522_MIFARE_BLOCK_VALUE
+    esp_err_t error;
 } rc522_mifare_sector_block_t;
 
 // {{ MIFARE_Specific_Functions
@@ -123,10 +124,17 @@ esp_err_t rc522_mifare_get_desc(rc522_picc_t *picc, rc522_mifare_desc_t *out_mif
 esp_err_t rc522_mifare_get_sector_desc(uint8_t sector_index, rc522_mifare_sector_desc_t *out_sector_desc);
 
 /**
- * @brief Read and parse MIFARE sector block
+ * @brief Read and parse MIFARE sector trailer block
+ */
+esp_err_t rc522_mifare_read_sector_trailer_block(rc522_handle_t rc522, rc522_picc_t *picc,
+    rc522_mifare_sector_desc_t *sector_desc, rc522_mifare_sector_block_t *out_trailer);
+
+/**
+ * @brief Read and parse MIFARE sector (non-trailer) block
  */
 esp_err_t rc522_mifare_read_sector_block(rc522_handle_t rc522, rc522_picc_t *picc,
-    rc522_mifare_sector_desc_t *sector_desc, uint8_t block_offset, rc522_mifare_sector_block_t *out_block);
+    rc522_mifare_sector_desc_t *sector_desc, rc522_mifare_sector_block_t *trailer, uint8_t block_offset,
+    rc522_mifare_sector_block_t *out_block);
 
 // }} MIFARE_Utility_Functions
 
