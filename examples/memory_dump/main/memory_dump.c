@@ -131,6 +131,7 @@ static esp_err_t dump_memory(rc522_handle_t rc522, rc522_picc_t *picc)
 
         dump_block(&trailer, sector_index);
 
+        // Start from the highest (non-trailer) block
         uint8_t block_offset = sector.number_of_blocks - 2;
 
         do {
