@@ -2,6 +2,41 @@
 
 #include "picc/rc522_mifare.c"
 
+TEST_CASE("test_Sector_block_group_index", "[mifare]")
+{
+    rc522_mifare_sector_desc_t sector;
+    uint8_t group;
+
+    sector.number_of_blocks = 4;
+    TEST_ASSERT_EQUAL(ESP_OK, rc522_mifare_get_sector_block_group_index(&sector, 3, &group));
+    TEST_ASSERT_EQUAL(3, group);
+    TEST_ASSERT_EQUAL(ESP_OK, rc522_mifare_get_sector_block_group_index(&sector, 2, &group));
+    TEST_ASSERT_EQUAL(2, group);
+    TEST_ASSERT_EQUAL(ESP_OK, rc522_mifare_get_sector_block_group_index(&sector, 1, &group));
+    TEST_ASSERT_EQUAL(1, group);
+    TEST_ASSERT_EQUAL(ESP_OK, rc522_mifare_get_sector_block_group_index(&sector, 0, &group));
+    TEST_ASSERT_EQUAL(0, group);
+
+    sector.number_of_blocks = 16;
+    TEST_ASSERT_EQUAL(ESP_OK, rc522_mifare_get_sector_block_group_index(&sector, 15, &group));
+    TEST_ASSERT_EQUAL(3, group);
+    TEST_ASSERT_EQUAL(ESP_OK, rc522_mifare_get_sector_block_group_index(&sector, 14, &group));
+    TEST_ASSERT_EQUAL(2, group);
+    TEST_ASSERT_EQUAL(ESP_OK, rc522_mifare_get_sector_block_group_index(&sector, 10, &group));
+    TEST_ASSERT_EQUAL(2, group);
+    TEST_ASSERT_EQUAL(ESP_OK, rc522_mifare_get_sector_block_group_index(&sector, 9, &group));
+    TEST_ASSERT_EQUAL(1, group);
+    TEST_ASSERT_EQUAL(ESP_OK, rc522_mifare_get_sector_block_group_index(&sector, 5, &group));
+    TEST_ASSERT_EQUAL(1, group);
+    TEST_ASSERT_EQUAL(ESP_OK, rc522_mifare_get_sector_block_group_index(&sector, 4, &group));
+    TEST_ASSERT_EQUAL(0, group);
+    TEST_ASSERT_EQUAL(ESP_OK, rc522_mifare_get_sector_block_group_index(&sector, 0, &group));
+    TEST_ASSERT_EQUAL(0, group);
+
+    sector.number_of_blocks = 4;
+    TEST_ASSERT_EQUAL(ESP_ERR_INVALID_ARG, rc522_mifare_get_sector_block_group_index(&sector, 5, &group));
+}
+
 TEST_CASE("test_Block_is_value_based_on_access_bits", "[mifare]")
 {
     rc522_mifare_access_bits_t access_bits;
