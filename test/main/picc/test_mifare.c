@@ -29,7 +29,7 @@ TEST_CASE("test_Sector_desc_contains_correct_info", "[mifare]")
 
 TEST_CASE("test_Sector_block_0_address", "[mifare]")
 {
-    uint8_t block_address;
+    uint8_t block_address = 0;
 
     for (uint8_t sector_index = 0; sector_index < 31; sector_index++) {
         TEST_ASSERT_EQUAL(ESP_OK, rc522_mifare_get_sector_block_0_address(sector_index, &block_address));
@@ -44,7 +44,7 @@ TEST_CASE("test_Sector_block_0_address", "[mifare]")
 
 TEST_CASE("test_Sector_number_of_blocks", "[mifare]")
 {
-    uint8_t number_of_blocks;
+    uint8_t number_of_blocks = 0;
 
     for (uint8_t sector_index = 0; sector_index < 31; sector_index++) {
         TEST_ASSERT_EQUAL(ESP_OK, rc522_mifare_get_sector_number_of_blocks(sector_index, &number_of_blocks));
