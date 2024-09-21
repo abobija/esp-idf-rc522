@@ -80,7 +80,7 @@ typedef struct
         rc522_mifare_sector_value_block_info_t value_info; // Valid only if type == RC522_MIFARE_BLOCK_VALUE
     };
     rc522_mifare_access_bits_t access_bits;
-    esp_err_t error;
+    esp_err_t error; // e.g. acces bits or value block integrity violation
 } rc522_mifare_sector_block_t;
 
 // {{ MIFARE_Specific_Functions
