@@ -514,8 +514,11 @@ esp_err_t rc522_mifare_read_sector_block(rc522_handle_t rc522, rc522_picc_t *pic
     RC522_CHECK(picc == NULL);
     RC522_CHECK(sector_desc == NULL);
     RC522_CHECK(trailer == NULL);
-    RC522_CHECK(block_offset >= (sector_desc->number_of_blocks - 1)); // use read_sector_trailer_block for trailer
+    RC522_CHECK(block_offset >= sector_desc->number_of_blocks);
     RC522_CHECK(out_block == NULL);
+    RC522_CHECK_WITH_MESSAGE(block_offset == sector_desc->number_of_blocks - 1,
+        "use rc522_mifare_read_sector_trailer_block() to read the sector trailer block");
+    RC522_CHECK(trailer->type != RC522_MIFARE_BLOCK_TRAILER);
 
     rc522_mifare_sector_block_t block;
     memset(&block, 0, sizeof(block));
