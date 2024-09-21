@@ -5,7 +5,7 @@
 TEST_CASE("test_Sector_block_group_index", "[mifare]")
 {
     rc522_mifare_sector_desc_t sector;
-    uint8_t group;
+    uint8_t group = 0;
 
     sector.number_of_blocks = 4;
     TEST_ASSERT_EQUAL(ESP_OK, rc522_mifare_get_sector_block_group_index(&sector, 3, &group));
