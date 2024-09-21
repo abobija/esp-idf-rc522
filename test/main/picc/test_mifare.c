@@ -2,6 +2,27 @@
 
 #include "picc/rc522_mifare.c"
 
+TEST_CASE("test_Block_is_value_based_on_access_bits", "[mifare]")
+{
+    rc522_mifare_access_bits_t access_bits;
+
+    access_bits.c1 = 0;
+    access_bits.c2 = 0;
+    access_bits.c3 = 0;
+    TEST_ASSERT_FALSE(rc522_mifare_block_is_value(access_bits));
+
+    access_bits.c3 = 1;
+    TEST_ASSERT_TRUE(rc522_mifare_block_is_value(access_bits));
+
+    access_bits.c1 = 1;
+    access_bits.c2 = 1;
+    access_bits.c3 = 0;
+    TEST_ASSERT_TRUE(rc522_mifare_block_is_value(access_bits));
+
+    access_bits.c1 = 0;
+    TEST_ASSERT_FALSE(rc522_mifare_block_is_value(access_bits));
+}
+
 TEST_CASE("test_Access_bits_after_parsing_sector_trailer", "[mifare]")
 {
     // +-----+----------------+----+----+----+
