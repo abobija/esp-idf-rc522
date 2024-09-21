@@ -41,28 +41,28 @@ TEST_CASE("test_Sector_number_by_block_address", "[mifare]")
 TEST_CASE("test_MIFAREMini_has_5_sectors", "[mifare]")
 {
     uint8_t result;
-    TEST_ASSERT_EQUAL(ESP_OK, rc522_mifare_number_of_sectors(RC522_PICC_TYPE_MIFARE_MINI, &result));
+    TEST_ASSERT_EQUAL(ESP_OK, rc522_mifare_get_number_of_sectors(RC522_PICC_TYPE_MIFARE_MINI, &result));
     TEST_ASSERT_EQUAL_UINT8(5, result);
 }
 
 TEST_CASE("test_MIFARE1K_has_16_sectors", "[mifare]")
 {
     uint8_t result;
-    TEST_ASSERT_EQUAL(ESP_OK, rc522_mifare_number_of_sectors(RC522_PICC_TYPE_MIFARE_1K, &result));
+    TEST_ASSERT_EQUAL(ESP_OK, rc522_mifare_get_number_of_sectors(RC522_PICC_TYPE_MIFARE_1K, &result));
     TEST_ASSERT_EQUAL_UINT8(16, result);
 }
 
 TEST_CASE("test_MIFARE4K_has_40_sectors", "[mifare]")
 {
     uint8_t result;
-    TEST_ASSERT_EQUAL(ESP_OK, rc522_mifare_number_of_sectors(RC522_PICC_TYPE_MIFARE_4K, &result));
+    TEST_ASSERT_EQUAL(ESP_OK, rc522_mifare_get_number_of_sectors(RC522_PICC_TYPE_MIFARE_4K, &result));
     TEST_ASSERT_EQUAL_UINT8(40, result);
 }
 
 TEST_CASE("test_Error_sector_numbers_for_no_MIFARE_picc", "[mifare]")
 {
     uint8_t result;
-    TEST_ASSERT_NOT_EQUAL(ESP_OK, rc522_mifare_number_of_sectors(RC522_PICC_TYPE_UNKNOWN, &result));
+    TEST_ASSERT_NOT_EQUAL(ESP_OK, rc522_mifare_get_number_of_sectors(RC522_PICC_TYPE_UNKNOWN, &result));
 }
 
 TEST_CASE("test_MIFARE1K_is_classic_compatible", "[mifare]")
