@@ -2,6 +2,54 @@
 
 #include "picc/rc522_mifare.c"
 
+TEST_CASE("test_Access_bits_after_parsing_sector_trailer", "[mifare]")
+{
+    // +-----+----------------+----+----+----+
+    // |     |                | c1 | c2 | c3 |
+    // +-----+----------------+----+----+----+
+    // | [3] | Sector trailer | 0  | 0  | 1  |
+    // | [2] | Block 2        | 1  | 0  | 1  |
+    // | [1] | Block 1        | 0  | 1  | 0  |
+    // | [0] | Block 0        | 1  | 1  | 1  |
+    // +-----+----------------+----+----+----+
+
+    uint8_t c3 = 0b1101;
+    uint8_t c2 = 0b0011;
+    uint8_t c1 = 0b0101;
+
+    uint8_t bytes[16];
+    memset(bytes, 0, 16);
+
+    bytes[6] = ((~c2) << 4) | ((~c1) & 0x0F);
+    bytes[7] = (c1 << 4) | ((~c3) & 0x0F);
+    bytes[8] = (c3 << 4) | (c2 & 0x0F);
+
+    rc522_mifare_sector_trailer_info_t trailer_info;
+    TEST_ASSERT_EQUAL(ESP_OK, rc522_mifare_parse_sector_trailer(bytes, 16, &trailer_info));
+
+    TEST_ASSERT_EQUAL(0, trailer_info.access_bits[3].c1);
+    TEST_ASSERT_EQUAL(0, trailer_info.access_bits[3].c2);
+    TEST_ASSERT_EQUAL(1, trailer_info.access_bits[3].c3);
+
+    TEST_ASSERT_EQUAL(1, trailer_info.access_bits[2].c1);
+    TEST_ASSERT_EQUAL(0, trailer_info.access_bits[2].c2);
+    TEST_ASSERT_EQUAL(1, trailer_info.access_bits[2].c3);
+
+    TEST_ASSERT_EQUAL(0, trailer_info.access_bits[1].c1);
+    TEST_ASSERT_EQUAL(1, trailer_info.access_bits[1].c2);
+    TEST_ASSERT_EQUAL(0, trailer_info.access_bits[1].c3);
+
+    TEST_ASSERT_EQUAL(1, trailer_info.access_bits[0].c1);
+    TEST_ASSERT_EQUAL(1, trailer_info.access_bits[0].c2);
+    TEST_ASSERT_EQUAL(1, trailer_info.access_bits[0].c3);
+
+    // Invert just one bit (C20)
+    // and expect integrity violation error
+    bytes[8] ^= 0x01;
+    TEST_ASSERT_EQUAL(RC522_ERR_MIFARE_ACCESS_BITS_INTEGRITY_VIOLATION,
+        rc522_mifare_parse_sector_trailer(bytes, 16, &trailer_info));
+}
+
 TEST_CASE("test_Sector_desc_contains_correct_info", "[mifare]")
 {
     rc522_mifare_sector_desc_t desc;
