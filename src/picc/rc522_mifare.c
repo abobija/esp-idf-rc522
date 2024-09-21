@@ -537,13 +537,10 @@ esp_err_t rc522_mifare_read_sector_block(rc522_handle_t rc522, rc522_picc_t *pic
     }
     else if (rc522_mifare_block_is_value(block.access_bits)) {
         block.type = RC522_MIFARE_BLOCK_VALUE;
+        block.error = rc522_mifare_parse_value_block(block.bytes, sizeof(block.bytes), &block.value_info);
     }
     else {
         block.type = RC522_MIFARE_BLOCK_DATA;
-    }
-
-    if (block.type == RC522_MIFARE_BLOCK_VALUE) {
-        block.error = rc522_mifare_parse_value_block(block.bytes, sizeof(block.bytes), &block.value_info);
     }
 
     memcpy(out_block, &block, sizeof(block));
