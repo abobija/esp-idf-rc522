@@ -2,6 +2,67 @@
 
 #include "picc/rc522_mifare.c"
 
+TEST_CASE("test_Sector_desc_contains_correct_info", "[mifare]")
+{
+    rc522_mifare_sector_desc_t desc;
+
+    TEST_ASSERT_EQUAL(ESP_OK, rc522_mifare_get_sector_desc(0, &desc));
+    TEST_ASSERT_EQUAL(0, desc.index);
+    TEST_ASSERT_EQUAL(0, desc.block_0_address);
+    TEST_ASSERT_EQUAL(4, desc.number_of_blocks);
+
+    TEST_ASSERT_EQUAL(ESP_OK, rc522_mifare_get_sector_desc(31, &desc));
+    TEST_ASSERT_EQUAL(31, desc.index);
+    TEST_ASSERT_EQUAL(124, desc.block_0_address);
+    TEST_ASSERT_EQUAL(4, desc.number_of_blocks);
+
+    TEST_ASSERT_EQUAL(ESP_OK, rc522_mifare_get_sector_desc(32, &desc));
+    TEST_ASSERT_EQUAL(32, desc.index);
+    TEST_ASSERT_EQUAL(128, desc.block_0_address);
+    TEST_ASSERT_EQUAL(16, desc.number_of_blocks);
+
+    TEST_ASSERT_EQUAL(ESP_OK, rc522_mifare_get_sector_desc(33, &desc));
+    TEST_ASSERT_EQUAL(33, desc.index);
+    TEST_ASSERT_EQUAL(144, desc.block_0_address);
+    TEST_ASSERT_EQUAL(16, desc.number_of_blocks);
+}
+
+TEST_CASE("test_Sector_block_0_address", "[mifare]")
+{
+    uint8_t block_address;
+
+    for (uint8_t sector_index = 0; sector_index < 31; sector_index++) {
+        TEST_ASSERT_EQUAL(ESP_OK, rc522_mifare_get_sector_block_0_address(sector_index, &block_address));
+        TEST_ASSERT_EQUAL(sector_index * 4, block_address);
+    }
+
+    for (uint8_t sector_index = 32; sector_index < 40; sector_index++) {
+        TEST_ASSERT_EQUAL(ESP_OK, rc522_mifare_get_sector_block_0_address(sector_index, &block_address));
+        TEST_ASSERT_EQUAL(128 + (sector_index - 32) * 16, block_address);
+    }
+}
+
+TEST_CASE("test_Sector_number_of_blocks", "[mifare]")
+{
+    uint8_t number_of_blocks;
+
+    for (uint8_t sector_index = 0; sector_index < 31; sector_index++) {
+        TEST_ASSERT_EQUAL(ESP_OK, rc522_mifare_get_sector_number_of_blocks(sector_index, &number_of_blocks));
+        TEST_ASSERT_EQUAL(4, number_of_blocks);
+    }
+
+    for (uint8_t sector_index = 32; sector_index < 40; sector_index++) {
+        TEST_ASSERT_EQUAL(ESP_OK, rc522_mifare_get_sector_number_of_blocks(sector_index, &number_of_blocks));
+        TEST_ASSERT_EQUAL(16, number_of_blocks);
+    }
+}
+
+TEST_CASE("test_Sector_number_of_blocks_returns_error_on_invalid_sector_index", "[mifare]")
+{
+    uint8_t number_of_blocks;
+    TEST_ASSERT_NOT_EQUAL(ESP_OK, rc522_mifare_get_sector_number_of_blocks(40, &number_of_blocks));
+}
+
 TEST_CASE("test_Sector_number_by_block_address", "[mifare]")
 {
     uint8_t addr = 0;
