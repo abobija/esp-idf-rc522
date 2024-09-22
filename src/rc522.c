@@ -17,7 +17,7 @@ RC522_LOG_DEFINE_BASE();
 
 ESP_EVENT_DEFINE_BASE(RC522_EVENTS);
 
-inline bool rc522_is_able_to_start(rc522_handle_t rc522)
+inline static bool rc522_is_able_to_start(const rc522_handle_t rc522)
 {
     return rc522->state >= RC522_STATE_CREATED && rc522->state != RC522_STATE_POLLING;
 }
@@ -25,7 +25,7 @@ inline bool rc522_is_able_to_start(rc522_handle_t rc522)
 static esp_err_t rc522_clone_config(const rc522_config_t *config, rc522_config_t **result)
 {
     rc522_config_t *config_clone = calloc(1, sizeof(rc522_config_t));
-    ESP_RETURN_ON_FALSE(config_clone != NULL, ESP_ERR_NO_MEM, TAG, "nomem");
+    RC522_CHECK_AND_RETURN(config_clone == NULL, ESP_ERR_NO_MEM);
 
     memcpy(config_clone, config, sizeof(rc522_config_t));
 
@@ -49,7 +49,7 @@ static esp_err_t rc522_clone_config(const rc522_config_t *config, rc522_config_t
 }
 
 esp_err_t rc522_register_events(
-    rc522_handle_t rc522, rc522_event_t event, esp_event_handler_t event_handler, void *event_handler_arg)
+    const rc522_handle_t rc522, rc522_event_t event, esp_event_handler_t event_handler, void *event_handler_arg)
 {
     RC522_CHECK(rc522 == NULL);
     RC522_CHECK(event_handler == NULL);
@@ -57,7 +57,7 @@ esp_err_t rc522_register_events(
     return esp_event_handler_register_with(rc522->event_handle, RC522_EVENTS, event, event_handler, event_handler_arg);
 }
 
-esp_err_t rc522_unregister_events(rc522_handle_t rc522, rc522_event_t event, esp_event_handler_t event_handler)
+esp_err_t rc522_unregister_events(const rc522_handle_t rc522, rc522_event_t event, esp_event_handler_t event_handler)
 {
     RC522_CHECK(rc522 == NULL);
     RC522_CHECK(event_handler == NULL);
@@ -107,9 +107,9 @@ esp_err_t rc522_pause(rc522_handle_t rc522)
 }
 
 /**
- * Exit and delete the task
+ * @brief Exit and delete the task
  */
-inline static void rc522_request_task_exit(rc522_handle_t rc522)
+inline static void rc522_request_task_to_exit(const rc522_handle_t rc522)
 {
     rc522->exit_requested = true; // task will delete itself
 }
@@ -171,7 +171,7 @@ esp_err_t rc522_destroy(rc522_handle_t rc522)
         TAG,
         "Cannot destroy from event handler");
 
-    rc522_request_task_exit(rc522);
+    rc522_request_task_to_exit(rc522);
 
     if (rc522->bits) {
         xEventGroupWaitBits(rc522->bits, RC522_TASK_STOPPED_BIT, pdFALSE, pdTRUE, portMAX_DELAY);
@@ -197,7 +197,7 @@ esp_err_t rc522_destroy(rc522_handle_t rc522)
     return ESP_OK;
 }
 
-esp_err_t rc522_dispatch_event(rc522_handle_t rc522, rc522_event_t event, const void *data, size_t data_size)
+esp_err_t rc522_dispatch_event(const rc522_handle_t rc522, rc522_event_t event, const void *data, size_t data_size)
 {
     RC522_RETURN_ON_ERROR(esp_event_post_to(rc522->event_handle, RC522_EVENTS, event, data, data_size, portMAX_DELAY));
 
