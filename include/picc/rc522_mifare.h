@@ -129,7 +129,7 @@ esp_err_t rc522_mifare_read(
 esp_err_t rc522_mifare_write(const rc522_handle_t rc522, const rc522_picc_t *picc, uint8_t block_address,
     const uint8_t *buffer, uint8_t buffer_size);
 
-// }} MIFARE_Specific_Functions
+// }}
 
 // {{ MIFARE_Utility_Functions
 
@@ -175,7 +175,7 @@ esp_err_t rc522_mifare_read_sector_block(const rc522_handle_t rc522, const rc522
     const rc522_mifare_sector_desc_t *sector_desc, const rc522_mifare_sector_block_t *trailer, uint8_t block_offset,
     rc522_mifare_sector_block_t *out_block);
 
-// }} MIFARE_Utility_Functions
+// }}
 
 #ifdef __cplusplus
 }
