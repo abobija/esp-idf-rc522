@@ -651,65 +651,6 @@ esp_err_t rc522_picc_heartbeat(rc522_handle_t rc522, rc522_picc_t *picc, rc522_p
     return ESP_OK;
 }
 
-rc522_picc_type_t rc522_picc_type(uint8_t sak)
-{
-    // http://www.nxp.com/documents/application_note/AN10833.pdf
-    // 3.2 Coding of Select Acknowledge (SAK)
-    // ignore 8-bit (iso14443 starts with LSBit = bit 1)
-    // fixes wrong type for manufacturer Infineon (http://nfc-tools.org/index.php?title=ISO14443A)
-    sak &= 0x7F;
-
-    switch (sak) {
-        case 0x09:
-            return RC522_PICC_TYPE_MIFARE_MINI;
-        case 0x08:
-            return RC522_PICC_TYPE_MIFARE_1K;
-        case 0x18:
-            return RC522_PICC_TYPE_MIFARE_4K;
-        case 0x00:
-            return RC522_PICC_TYPE_MIFARE_UL;
-        case 0x10:
-        case 0x11:
-            return RC522_PICC_TYPE_MIFARE_PLUS;
-        case 0x01:
-            return RC522_PICC_TYPE_TNP3XXX;
-        case 0x20:
-            return RC522_PICC_TYPE_ISO_14443_4;
-        case 0x40:
-            return RC522_PICC_TYPE_ISO_18092;
-        default:
-            return RC522_PICC_TYPE_UNKNOWN;
-    }
-}
-
-char *rc522_picc_type_name(rc522_picc_type_t type)
-{
-    switch (type) {
-        case RC522_PICC_TYPE_ISO_14443_4:
-            return "PICC compliant with ISO/IEC 14443-4";
-        case RC522_PICC_TYPE_ISO_18092:
-            return "PICC compliant with ISO/IEC 18092 (NFC)";
-        case RC522_PICC_TYPE_MIFARE_MINI:
-            return "MIFARE Mini, 320 bytes";
-        case RC522_PICC_TYPE_MIFARE_1K:
-            return "MIFARE 1K";
-        case RC522_PICC_TYPE_MIFARE_4K:
-            return "MIFARE 4K";
-        case RC522_PICC_TYPE_MIFARE_UL:
-            return "MIFARE Ultralight or Ultralight C";
-        case RC522_PICC_TYPE_MIFARE_PLUS:
-            return "MIFARE Plus";
-        case RC522_PICC_TYPE_MIFARE_DESFIRE:
-            return "MIFARE DESFire";
-        case RC522_PICC_TYPE_TNP3XXX:
-            return "MIFARE TNP3XXX";
-        case RC522_PICC_TYPE_UNDEFINED:
-        case RC522_PICC_TYPE_UNKNOWN:
-        default:
-            return "unknown";
-    }
-}
-
 esp_err_t rc522_picc_uid_to_str(rc522_picc_uid_t *uid, char *buffer, uint8_t buffer_size)
 {
     RC522_CHECK(uid == NULL);
@@ -787,6 +728,65 @@ esp_err_t rc522_picc_set_state(rc522_handle_t rc522, rc522_picc_t *picc, rc522_p
     }
 
     return ret;
+}
+
+rc522_picc_type_t rc522_picc_get_type_by_sak(uint8_t sak)
+{
+    // http://www.nxp.com/documents/application_note/AN10833.pdf
+    // 3.2 Coding of Select Acknowledge (SAK)
+    // ignore 8-bit (iso14443 starts with LSBit = bit 1)
+    // fixes wrong type for manufacturer Infineon (http://nfc-tools.org/index.php?title=ISO14443A)
+    sak &= 0x7F;
+
+    switch (sak) {
+        case 0x09:
+            return RC522_PICC_TYPE_MIFARE_MINI;
+        case 0x08:
+            return RC522_PICC_TYPE_MIFARE_1K;
+        case 0x18:
+            return RC522_PICC_TYPE_MIFARE_4K;
+        case 0x00:
+            return RC522_PICC_TYPE_MIFARE_UL;
+        case 0x10:
+        case 0x11:
+            return RC522_PICC_TYPE_MIFARE_PLUS;
+        case 0x01:
+            return RC522_PICC_TYPE_TNP3XXX;
+        case 0x20:
+            return RC522_PICC_TYPE_ISO_14443_4;
+        case 0x40:
+            return RC522_PICC_TYPE_ISO_18092;
+        default:
+            return RC522_PICC_TYPE_UNKNOWN;
+    }
+}
+
+char *rc522_picc_type_name(rc522_picc_type_t type)
+{
+    switch (type) {
+        case RC522_PICC_TYPE_ISO_14443_4:
+            return "PICC compliant with ISO/IEC 14443-4";
+        case RC522_PICC_TYPE_ISO_18092:
+            return "PICC compliant with ISO/IEC 18092 (NFC)";
+        case RC522_PICC_TYPE_MIFARE_MINI:
+            return "MIFARE Mini, 320 bytes";
+        case RC522_PICC_TYPE_MIFARE_1K:
+            return "MIFARE 1K";
+        case RC522_PICC_TYPE_MIFARE_4K:
+            return "MIFARE 4K";
+        case RC522_PICC_TYPE_MIFARE_UL:
+            return "MIFARE Ultralight or Ultralight C";
+        case RC522_PICC_TYPE_MIFARE_PLUS:
+            return "MIFARE Plus";
+        case RC522_PICC_TYPE_MIFARE_DESFIRE:
+            return "MIFARE DESFire";
+        case RC522_PICC_TYPE_TNP3XXX:
+            return "MIFARE TNP3XXX";
+        case RC522_PICC_TYPE_UNDEFINED:
+        case RC522_PICC_TYPE_UNKNOWN:
+        default:
+            return "unknown";
+    }
 }
 
 esp_err_t rc522_picc_print(rc522_picc_t *picc)
