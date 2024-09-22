@@ -45,7 +45,7 @@ static esp_err_t read_write(rc522_handle_t rc522, rc522_picc_t *picc)
     const char *data_to_write = "rc522 is dope";
     const uint8_t block_address = 4;
     rc522_mifare_key_t key = {
-        .value = { RC522_MIFARE_KEY_VALUE_DEFAULT },
+        .value = { 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0x00 },
     };
 
     if (strlen(data_to_write) > 14) {

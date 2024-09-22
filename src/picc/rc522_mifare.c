@@ -110,7 +110,7 @@ esp_err_t rc522_mifare_auth(
     memcpy(send_data + 8, picc->uid.value + picc->uid.length - 4, 4);
 
     // Start the authentication.
-    return rc522_picc_comm(rc522,
+    esp_err_t ret = rc522_picc_comm(rc522,
         RC522_PCD_MF_AUTH_CMD,
         RC522_PCD_IDLE_IRQ_BIT,
         send_data,
@@ -120,6 +120,22 @@ esp_err_t rc522_mifare_auth(
         NULL,
         0,
         false);
+
+    // 10.3.1.9
+    // "If an error occurs during authentication,
+    // the ErrorReg register’s ProtocolErr bit is set to logic 1
+    // and the Status2Reg register’s Crypto1On bit is set to logic 0"
+
+    // Timer interrupt fires before ProtocolErr bit is set to 1
+    // so we will only check for Crypto1On bit (even if ret == ESP_OK)
+    uint8_t status2;
+    RC522_RETURN_ON_ERROR(rc522_pcd_read(rc522, RC522_PCD_STATUS_2_REG, &status2));
+
+    if (!(status2 & RC522_PCD_MF_CRYPTO1_ON_BIT)) {
+        return RC522_ERR_MIFARE_AUTHENTICATION_FAILED;
+    }
+
+    return ret;
 }
 
 esp_err_t rc522_mifare_read(
