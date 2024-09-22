@@ -23,14 +23,14 @@ esp_err_t rc522_driver_init_rst_pin(gpio_num_t rst_io_num)
     return ESP_OK;
 }
 
-inline esp_err_t rc522_driver_install(rc522_driver_handle_t driver)
+inline esp_err_t rc522_driver_install(const rc522_driver_handle_t driver)
 {
     RC522_CHECK(driver == NULL);
 
     return driver->install(driver);
 }
 
-inline esp_err_t rc522_driver_send(rc522_driver_handle_t driver, uint8_t address, const rc522_bytes_t *bytes)
+inline esp_err_t rc522_driver_send(const rc522_driver_handle_t driver, uint8_t address, const rc522_bytes_t *bytes)
 {
     RC522_CHECK(driver == NULL);
     RC522_CHECK_BYTES(bytes);
@@ -38,7 +38,7 @@ inline esp_err_t rc522_driver_send(rc522_driver_handle_t driver, uint8_t address
     return driver->send(driver, address, bytes);
 }
 
-inline esp_err_t rc522_driver_receive(rc522_driver_handle_t driver, uint8_t address, rc522_bytes_t *bytes)
+inline esp_err_t rc522_driver_receive(const rc522_driver_handle_t driver, uint8_t address, rc522_bytes_t *bytes)
 {
     RC522_CHECK(driver == NULL);
     RC522_CHECK_BYTES(bytes);
@@ -46,21 +46,21 @@ inline esp_err_t rc522_driver_receive(rc522_driver_handle_t driver, uint8_t addr
     return driver->receive(driver, address, bytes);
 }
 
-inline esp_err_t rc522_driver_reset(rc522_driver_handle_t driver)
+inline esp_err_t rc522_driver_reset(const rc522_driver_handle_t driver)
 {
     RC522_CHECK(driver == NULL);
 
     return driver->reset(driver);
 }
 
-inline esp_err_t rc522_driver_uninstall(rc522_driver_handle_t driver)
+inline esp_err_t rc522_driver_uninstall(const rc522_driver_handle_t driver)
 {
     RC522_CHECK(driver == NULL);
 
     return driver->uninstall(driver);
 }
 
-esp_err_t rc522_driver_create(void *config, size_t config_size, rc522_driver_handle_t *driver)
+esp_err_t rc522_driver_create(const void *config, size_t config_size, rc522_driver_handle_t *driver)
 {
     RC522_CHECK(config == NULL);
     RC522_CHECK(config_size == 0);

@@ -6,7 +6,7 @@
 
 RC522_LOG_DEFINE_BASE();
 
-static esp_err_t rc522_i2c_install(rc522_driver_handle_t driver)
+static esp_err_t rc522_i2c_install(const rc522_driver_handle_t driver)
 {
     RC522_CHECK(driver == NULL);
     RC522_CHECK(driver->config == NULL);
@@ -26,7 +26,7 @@ static esp_err_t rc522_i2c_install(rc522_driver_handle_t driver)
     return ESP_OK;
 }
 
-static esp_err_t rc522_i2c_send(rc522_driver_handle_t driver, uint8_t address, const rc522_bytes_t *bytes)
+static esp_err_t rc522_i2c_send(const rc522_driver_handle_t driver, uint8_t address, const rc522_bytes_t *bytes)
 {
     RC522_CHECK(driver == NULL);
     RC522_CHECK(driver->config == NULL);
@@ -50,7 +50,7 @@ static esp_err_t rc522_i2c_send(rc522_driver_handle_t driver, uint8_t address, c
     return ESP_OK;
 }
 
-static esp_err_t rc522_i2c_receive(rc522_driver_handle_t driver, uint8_t address, rc522_bytes_t *bytes)
+static esp_err_t rc522_i2c_receive(const rc522_driver_handle_t driver, uint8_t address, rc522_bytes_t *bytes)
 {
     RC522_CHECK(driver == NULL);
     RC522_CHECK(driver->config == NULL);
@@ -69,7 +69,7 @@ static esp_err_t rc522_i2c_receive(rc522_driver_handle_t driver, uint8_t address
     return ESP_OK;
 }
 
-static esp_err_t rc522_i2c_reset(rc522_driver_handle_t driver)
+static esp_err_t rc522_i2c_reset(const rc522_driver_handle_t driver)
 {
     RC522_CHECK(driver == NULL);
     RC522_CHECK(driver->config == NULL);
@@ -88,7 +88,7 @@ static esp_err_t rc522_i2c_reset(rc522_driver_handle_t driver)
     return ESP_OK;
 }
 
-static esp_err_t rc522_i2c_uninstall(rc522_driver_handle_t driver)
+static esp_err_t rc522_i2c_uninstall(const rc522_driver_handle_t driver)
 {
     RC522_CHECK(driver == NULL);
     RC522_CHECK(driver->config == NULL);
@@ -100,7 +100,7 @@ static esp_err_t rc522_i2c_uninstall(rc522_driver_handle_t driver)
     return ESP_OK;
 }
 
-esp_err_t rc522_i2c_create(rc522_i2c_config_t *config, rc522_driver_handle_t *driver)
+esp_err_t rc522_i2c_create(const rc522_i2c_config_t *config, rc522_driver_handle_t *driver)
 {
     RC522_CHECK(config == NULL);
     RC522_CHECK(driver == NULL);
