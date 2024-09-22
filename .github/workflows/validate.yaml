@@ -54,6 +54,7 @@ jobs:
           - basic_i2c
           - memory_dump
           - read_write
+          - multiple_scanners
         idf_ver:
           - release-v5.0
           - release-v5.1
