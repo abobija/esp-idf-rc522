@@ -54,31 +54,39 @@ static esp_err_t rc522_spi_install(rc522_driver_handle_t driver)
     return ESP_OK;
 }
 
-static esp_err_t rc522_spi_send(rc522_driver_handle_t driver, uint8_t address, uint8_t *buffer, uint8_t length)
+static esp_err_t rc522_spi_send(rc522_driver_handle_t driver, uint8_t address, rc522_bytes_t *bytes)
 {
+    RC522_CHECK(driver == NULL);
+    RC522_CHECK(driver->device == NULL);
+    RC522_CHECK_BYTES(bytes);
+
     esp_err_t ret = spi_device_polling_transmit((spi_device_handle_t)(driver->device),
         &(spi_transaction_t) {
             .cmd = RC522_SPI_WRITE,
             .addr = address,
-            .length = 8 * length,
-            .tx_buffer = buffer,
+            .length = 8 * bytes->length,
+            .tx_buffer = bytes->ptr,
         });
 
     return ret;
 }
 
-static esp_err_t rc522_spi_receive(rc522_driver_handle_t driver, uint8_t address, uint8_t *buffer, uint8_t length)
+static esp_err_t rc522_spi_receive(rc522_driver_handle_t driver, uint8_t address, rc522_bytes_t *bytes)
 {
+    RC522_CHECK(driver == NULL);
+    RC522_CHECK(driver->device == NULL);
+    RC522_CHECK_BYTES(bytes);
+
     // TODO: Do transactions on higher level
     // RC522_RETURN_ON_ERROR(spi_device_acquire_bus((spi_device_handle_t)(driver->device), portMAX_DELAY));
 
-    for (uint8_t i = 0; i < length; i++) {
+    for (uint8_t i = 0; i < bytes->length; i++) {
         RC522_RETURN_ON_ERROR(spi_device_polling_transmit((spi_device_handle_t)(driver->device),
             &(spi_transaction_t) {
                 .cmd = RC522_SPI_READ,
                 .addr = address,
                 .rxlength = 8,
-                .rx_buffer = (buffer + i),
+                .rx_buffer = (bytes->ptr + i),
             }));
     }
 
@@ -89,6 +97,9 @@ static esp_err_t rc522_spi_receive(rc522_driver_handle_t driver, uint8_t address
 
 static esp_err_t rc522_spi_reset(rc522_driver_handle_t driver)
 {
+    RC522_CHECK(driver == NULL);
+    RC522_CHECK(driver->config == NULL);
+
     rc522_spi_config_t *conf = (rc522_spi_config_t *)(driver->config);
 
     if (conf->rst_io_num < 0) {
@@ -106,6 +117,8 @@ static esp_err_t rc522_spi_reset(rc522_driver_handle_t driver)
 static esp_err_t rc522_spi_uninstall(rc522_driver_handle_t driver)
 {
     RC522_CHECK(driver == NULL);
+    RC522_CHECK(driver->device == NULL);
+    RC522_CHECK(driver->config == NULL);
 
     RC522_RETURN_ON_ERROR(spi_bus_remove_device((spi_device_handle_t)(driver->device)));
     driver->device = NULL;

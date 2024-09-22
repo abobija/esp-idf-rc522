@@ -252,12 +252,17 @@ inline esp_err_t rc522_pcd_clear_all_com_interrupts(rc522_handle_t rc522)
 
 inline esp_err_t rc522_pcd_fifo_write(rc522_handle_t rc522, uint8_t *data, uint8_t data_length)
 {
-    return rc522_pcd_write_n(rc522, RC522_PCD_FIFO_DATA_REG, data_length, data);
+    return rc522_pcd_write_n(rc522,
+        RC522_PCD_FIFO_DATA_REG,
+        &(rc522_bytes_t) {
+            .ptr = data,
+            .length = data_length,
+        });
 }
 
 inline esp_err_t rc522_pcd_fifo_read(rc522_handle_t rc522, uint8_t *buffer, uint8_t length)
 {
-    return rc522_pcd_read_n(rc522, RC522_PCD_FIFO_DATA_REG, length, buffer);
+    return rc522_pcd_read_n(rc522, RC522_PCD_FIFO_DATA_REG, &(rc522_bytes_t) { .ptr = buffer, .length = length });
 }
 
 inline esp_err_t rc522_pcd_fifo_flush(rc522_handle_t rc522)
@@ -319,31 +324,31 @@ esp_err_t rc522_pcd_rw_test(rc522_handle_t rc522)
     return ESP_OK;
 }
 
-inline esp_err_t rc522_pcd_write_n(rc522_handle_t rc522, rc522_pcd_register_t addr, uint8_t n, uint8_t *data)
+inline esp_err_t rc522_pcd_write_n(rc522_handle_t rc522, rc522_pcd_register_t addr, rc522_bytes_t *bytes)
 {
     if (RC522_LOG_LEVEL >= ESP_LOG_VERBOSE) {
         char debug_buffer[64];
-        rc522_buffer_to_hex_str(data, n, debug_buffer, sizeof(debug_buffer));
+        rc522_buffer_to_hex_str(bytes->ptr, bytes->length, debug_buffer, sizeof(debug_buffer));
         RC522_LOGV("pcd [0x%02" RC522_X "] <<< %s", addr, debug_buffer);
     }
 
-    RC522_RETURN_ON_ERROR(rc522_driver_send(rc522->config->driver, addr, data, n));
+    RC522_RETURN_ON_ERROR(rc522_driver_send(rc522->config->driver, addr, bytes));
 
     return ESP_OK;
 }
 
 inline esp_err_t rc522_pcd_write(rc522_handle_t rc522, rc522_pcd_register_t addr, uint8_t val)
 {
-    return rc522_pcd_write_n(rc522, addr, 1, &val);
+    return rc522_pcd_write_n(rc522, addr, &(rc522_bytes_t) { .ptr = &val, .length = 1 });
 }
 
-inline esp_err_t rc522_pcd_read_n(rc522_handle_t rc522, rc522_pcd_register_t addr, uint8_t n, uint8_t *buffer)
+inline esp_err_t rc522_pcd_read_n(rc522_handle_t rc522, rc522_pcd_register_t addr, rc522_bytes_t *bytes)
 {
-    esp_err_t ret = rc522_driver_receive(rc522->config->driver, addr, buffer, n);
+    esp_err_t ret = rc522_driver_receive(rc522->config->driver, addr, bytes);
 
     if (RC522_LOG_LEVEL >= ESP_LOG_VERBOSE) {
         char debug_buffer[64];
-        rc522_buffer_to_hex_str(buffer, n, debug_buffer, sizeof(debug_buffer));
+        rc522_buffer_to_hex_str(bytes->ptr, bytes->length, debug_buffer, sizeof(debug_buffer));
         RC522_LOGV("pcd [0x%02" RC522_X "] >>> %s", addr, debug_buffer);
     }
 
@@ -352,7 +357,7 @@ inline esp_err_t rc522_pcd_read_n(rc522_handle_t rc522, rc522_pcd_register_t add
 
 inline esp_err_t rc522_pcd_read(rc522_handle_t rc522, rc522_pcd_register_t addr, uint8_t *value_ref)
 {
-    return rc522_pcd_read_n(rc522, addr, 1, value_ref);
+    return rc522_pcd_read_n(rc522, addr, &(rc522_bytes_t) { .ptr = value_ref, .length = 1 });
 }
 
 inline esp_err_t rc522_pcd_set_bits(rc522_handle_t rc522, rc522_pcd_register_t addr, uint8_t bits)

@@ -30,22 +30,20 @@ inline esp_err_t rc522_driver_install(rc522_driver_handle_t driver)
     return driver->install(driver);
 }
 
-inline esp_err_t rc522_driver_send(rc522_driver_handle_t driver, uint8_t address, uint8_t *buffer, uint8_t length)
+inline esp_err_t rc522_driver_send(rc522_driver_handle_t driver, uint8_t address, rc522_bytes_t *bytes)
 {
     RC522_CHECK(driver == NULL);
-    RC522_CHECK(buffer == NULL);
-    RC522_CHECK(length < 1);
+    RC522_CHECK_BYTES(bytes);
 
-    return driver->send(driver, address, buffer, length);
+    return driver->send(driver, address, bytes);
 }
 
-inline esp_err_t rc522_driver_receive(rc522_driver_handle_t driver, uint8_t address, uint8_t *buffer, uint8_t length)
+inline esp_err_t rc522_driver_receive(rc522_driver_handle_t driver, uint8_t address, rc522_bytes_t *bytes)
 {
     RC522_CHECK(driver == NULL);
-    RC522_CHECK(buffer == NULL);
-    RC522_CHECK(length < 1);
+    RC522_CHECK_BYTES(bytes);
 
-    return driver->receive(driver, address, buffer, length);
+    return driver->receive(driver, address, bytes);
 }
 
 inline esp_err_t rc522_driver_reset(rc522_driver_handle_t driver)

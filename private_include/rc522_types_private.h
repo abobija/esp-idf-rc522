@@ -42,6 +42,12 @@ struct rc522
     EventGroupHandle_t bits;
 };
 
+typedef struct
+{
+    uint8_t *ptr;
+    uint8_t length;
+} rc522_bytes_t;
+
 #define RC522_LOG_DEFINE_BASE() static const char *TAG = RC522_LOG_TAG
 
 #define RC522_LOG(esp_log_foo, format, ...) esp_log_foo(TAG, "%s(%d): " format, __FUNCTION__, __LINE__, ##__VA_ARGS__)
@@ -66,6 +72,7 @@ struct rc522
 #define RC522_CHECK_WITH_MESSAGE(a, message) ESP_RETURN_ON_FALSE(!(a), ESP_ERR_INVALID_ARG, TAG, message)
 #define RC522_CHECK_AND_RETURN(a, ret_val)   ESP_RETURN_ON_FALSE(!(a), ret_val, TAG, #a)
 #define RC522_CHECK(a)                       ESP_RETURN_ON_FALSE(!(a), ESP_ERR_INVALID_ARG, TAG, #a)
+#define RC522_CHECK_BYTES(b)                 RC522_CHECK(b == NULL || (b)->ptr == NULL || (b)->length < 1)
 
 #define RC522_RETURN_ON_ERROR_SILENTLY(x)                                                                              \
     do {                                                                                                               \
