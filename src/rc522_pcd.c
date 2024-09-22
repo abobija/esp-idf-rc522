@@ -10,24 +10,18 @@
 RC522_LOG_DEFINE_BASE();
 
 /**
- * Buffer should be at least 2 bytes long
- * Only first 2 elements will be used where the result will be stored
- *
- * TODO: Use uint16_t type for the result instead of buffer array?
- *
  * @see https://stackoverflow.com/a/48705557
  */
-esp_err_t rc522_pcd_calculate_crc(rc522_handle_t rc522, uint8_t *data, uint8_t n, uint8_t *buffer)
+esp_err_t rc522_pcd_calculate_crc(rc522_handle_t rc522, const rc522_bytes_t *bytes, uint16_t *result)
 {
     RC522_CHECK(rc522 == NULL);
-    RC522_CHECK(data == NULL);
-    RC522_CHECK(n < 1);
-    RC522_CHECK(buffer == NULL);
+    RC522_CHECK_BYTES(bytes);
+    RC522_CHECK(result == NULL);
 
     RC522_RETURN_ON_ERROR(rc522_pcd_stop_active_command(rc522));
     RC522_RETURN_ON_ERROR(rc522_pcd_clear_bits(rc522, RC522_PCD_DIV_INT_REQ_REG, RC522_PCD_CRC_IRQ_BIT));
     RC522_RETURN_ON_ERROR(rc522_pcd_fifo_flush(rc522));
-    RC522_RETURN_ON_ERROR(rc522_pcd_fifo_write(rc522, &(rc522_bytes_t) { .ptr = data, .length = n }));
+    RC522_RETURN_ON_ERROR(rc522_pcd_fifo_write(rc522, bytes));
     RC522_RETURN_ON_ERROR(rc522_pcd_write(rc522, RC522_PCD_COMMAND_REG, RC522_PCD_CALC_CRC_CMD));
 
     uint32_t deadline_ms = rc522_millis() + 90;
@@ -50,20 +44,18 @@ esp_err_t rc522_pcd_calculate_crc(rc522_handle_t rc522, uint8_t *data, uint8_t n
         return ESP_ERR_TIMEOUT;
     }
 
-    uint8_t lo;
-    uint8_t hi;
-
+    uint8_t msb;
+    uint8_t lsb;
     RC522_RETURN_ON_ERROR(rc522_pcd_stop_active_command(rc522));
-    RC522_RETURN_ON_ERROR(rc522_pcd_read(rc522, RC522_PCD_CRC_RESULT_LSB_REG, &lo));
-    RC522_RETURN_ON_ERROR(rc522_pcd_read(rc522, RC522_PCD_CRC_RESULT_MSB_REG, &hi));
+    RC522_RETURN_ON_ERROR(rc522_pcd_read(rc522, RC522_PCD_CRC_RESULT_MSB_REG, &msb));
+    RC522_RETURN_ON_ERROR(rc522_pcd_read(rc522, RC522_PCD_CRC_RESULT_LSB_REG, &lsb));
 
-    buffer[0] = lo;
-    buffer[1] = hi;
+    *result = (msb << 8) | lsb;
 
     if (RC522_LOG_LEVEL >= ESP_LOG_DEBUG) {
         char debug_buffer[64];
-        rc522_buffer_to_hex_str(data, n, debug_buffer, sizeof(debug_buffer));
-        RC522_LOGD("crc(%s) = 0x%02" RC522_X "%02" RC522_X, debug_buffer, hi, lo);
+        rc522_buffer_to_hex_str(bytes->ptr, bytes->length, debug_buffer, sizeof(debug_buffer));
+        RC522_LOGD("crc(%s) = 0x%04" RC522_X, debug_buffer, *result);
     }
 
     return ESP_OK;
