@@ -419,9 +419,6 @@ esp_err_t rc522_pcd_calculate_crc(rc522_handle_t rc522, uint8_t *data, uint8_t n
 
 esp_err_t rc522_pcd_init(rc522_handle_t rc522);
 
-esp_err_t rc522_pcd_wait_for_any_bit(rc522_handle_t rc522, rc522_pcd_register_t addr, uint8_t bits, uint8_t stop_bits,
-    uint32_t timeout_ms, uint8_t *ret_state);
-
 esp_err_t rc522_pcd_firmware(rc522_handle_t rc522, rc522_pcd_firmware_t *result);
 
 char *rc522_pcd_firmware_name(rc522_pcd_firmware_t firmware);
