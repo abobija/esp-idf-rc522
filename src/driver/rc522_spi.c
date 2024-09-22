@@ -9,15 +9,36 @@ RC522_LOG_DEFINE_BASE();
 static esp_err_t rc522_spi_install(rc522_driver_handle_t driver)
 {
     RC522_CHECK(driver == NULL);
+    RC522_CHECK(driver->config == NULL);
 
     rc522_spi_config_t *conf = (rc522_spi_config_t *)(driver->config);
 
     if (conf->bus_config) {
+        // overwrite bus config
+        conf->bus_config->quadwp_io_num = -1;
+        conf->bus_config->quadhd_io_num = -1;
+
         RC522_RETURN_ON_ERROR(spi_bus_initialize(conf->host_id, conf->bus_config, conf->dma_chan));
     }
     else {
-        RC522_LOGD("Skips SPI bus initialization");
+        RC522_LOGD("skips spi bus initialization");
     }
+
+    // {{ overwrite device config
+    if (conf->dev_config.clock_speed_hz == 0) {
+        conf->dev_config.clock_speed_hz = 5000000;
+    }
+
+    conf->dev_config.mode = 0;
+
+    if (conf->dev_config.queue_size == 0) {
+        conf->dev_config.queue_size = 7;
+    }
+
+    if (conf->dev_config.flags == 0) {
+        conf->dev_config.flags = SPI_DEVICE_HALFDUPLEX;
+    }
+    // }}
 
     RC522_RETURN_ON_ERROR(
         spi_bus_add_device(conf->host_id, &conf->dev_config, (spi_device_handle_t *)(&driver->device)));
