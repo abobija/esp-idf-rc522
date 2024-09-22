@@ -413,45 +413,45 @@ typedef enum
     RC522_PCD_FIRMWARE_COUNTERFEIT = 0x12, // counterfeit chip
 } rc522_pcd_firmware_t;
 
-esp_err_t rc522_pcd_reset(rc522_handle_t rc522, uint32_t timeout_ms);
+esp_err_t rc522_pcd_reset(const rc522_handle_t rc522, uint32_t timeout_ms);
 
-esp_err_t rc522_pcd_calculate_crc(rc522_handle_t rc522, const rc522_bytes_t *bytes, uint16_t *result);
+esp_err_t rc522_pcd_calculate_crc(const rc522_handle_t rc522, const rc522_bytes_t *bytes, uint16_t *result);
 
-esp_err_t rc522_pcd_init(rc522_handle_t rc522);
+esp_err_t rc522_pcd_init(const rc522_handle_t rc522);
 
-esp_err_t rc522_pcd_firmware(rc522_handle_t rc522, rc522_pcd_firmware_t *result);
+esp_err_t rc522_pcd_firmware(const rc522_handle_t rc522, rc522_pcd_firmware_t *result);
 
 char *rc522_pcd_firmware_name(rc522_pcd_firmware_t firmware);
 
-esp_err_t rc522_pcd_stop_active_command(rc522_handle_t rc522);
+esp_err_t rc522_pcd_stop_active_command(const rc522_handle_t rc522);
 
-esp_err_t rc522_pcd_clear_all_com_interrupts(rc522_handle_t rc522);
+esp_err_t rc522_pcd_clear_all_com_interrupts(const rc522_handle_t rc522);
 
-esp_err_t rc522_pcd_fifo_write(rc522_handle_t rc522, const rc522_bytes_t *bytes);
+esp_err_t rc522_pcd_fifo_write(const rc522_handle_t rc522, const rc522_bytes_t *bytes);
 
-esp_err_t rc522_pcd_fifo_read(rc522_handle_t rc522, rc522_bytes_t *bytes);
+esp_err_t rc522_pcd_fifo_read(const rc522_handle_t rc522, rc522_bytes_t *bytes);
 
-esp_err_t rc522_pcd_fifo_flush(rc522_handle_t rc522);
+esp_err_t rc522_pcd_fifo_flush(const rc522_handle_t rc522);
 
-esp_err_t rc522_pcd_start_data_transmission(rc522_handle_t rc522);
+esp_err_t rc522_pcd_start_data_transmission(const rc522_handle_t rc522);
 
-esp_err_t rc522_pcd_stop_data_transmission(rc522_handle_t rc522);
+esp_err_t rc522_pcd_stop_data_transmission(const rc522_handle_t rc522);
 
-esp_err_t rc522_pcd_stop_crypto1(rc522_handle_t rc522);
+esp_err_t rc522_pcd_stop_crypto1(const rc522_handle_t rc522);
 
-esp_err_t rc522_pcd_rw_test(rc522_handle_t rc522);
+esp_err_t rc522_pcd_rw_test(const rc522_handle_t rc522);
 
-esp_err_t rc522_pcd_write_n(rc522_handle_t rc522, rc522_pcd_register_t addr, const rc522_bytes_t *bytes);
+esp_err_t rc522_pcd_write_n(const rc522_handle_t rc522, rc522_pcd_register_t addr, const rc522_bytes_t *bytes);
 
-esp_err_t rc522_pcd_write(rc522_handle_t rc522, rc522_pcd_register_t addr, uint8_t val);
+esp_err_t rc522_pcd_write(const rc522_handle_t rc522, rc522_pcd_register_t addr, uint8_t val);
 
-esp_err_t rc522_pcd_read_n(rc522_handle_t rc522, rc522_pcd_register_t addr, rc522_bytes_t *bytes);
+esp_err_t rc522_pcd_read_n(const rc522_handle_t rc522, rc522_pcd_register_t addr, rc522_bytes_t *bytes);
 
-esp_err_t rc522_pcd_read(rc522_handle_t rc522, rc522_pcd_register_t addr, uint8_t *value_ref);
+esp_err_t rc522_pcd_read(const rc522_handle_t rc522, rc522_pcd_register_t addr, uint8_t *value_ref);
 
-esp_err_t rc522_pcd_set_bits(rc522_handle_t rc522, rc522_pcd_register_t addr, uint8_t bits);
+esp_err_t rc522_pcd_set_bits(const rc522_handle_t rc522, rc522_pcd_register_t addr, uint8_t bits);
 
-esp_err_t rc522_pcd_clear_bits(rc522_handle_t rc522, rc522_pcd_register_t addr, uint8_t bits);
+esp_err_t rc522_pcd_clear_bits(const rc522_handle_t rc522, rc522_pcd_register_t addr, uint8_t bits);
 
 #ifdef __cplusplus
 }

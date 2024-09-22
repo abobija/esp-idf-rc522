@@ -85,28 +85,67 @@ typedef struct
 
 // {{ MIFARE_Specific_Functions
 
-esp_err_t rc522_mifare_auth(rc522_handle_t rc522, rc522_picc_t *picc, uint8_t block_addr, rc522_mifare_key_t *key);
+/**
+ * @brief Authenticate a block read/write operations.
+ *
+ * Once when read/write operations are authenticated for one block inside of a sector,
+ * read/write operations are authenticated for all blocks inside of that sector as well.
+ *
+ * @note After read/write operations are done, the PICC must be deauthenticated using @c rc522_mifare_deauth().
+ *
+ * @param rc522 RC522 handle
+ * @param picc PICC that is currently selected
+ * @param block_address Address of the block to authenticate
+ * @param key Key to authenticate with
+ */
+esp_err_t rc522_mifare_auth(
+    const rc522_handle_t rc522, const rc522_picc_t *picc, uint8_t block_address, const rc522_mifare_key_t *key);
 
+/**
+ * @brief Read from a block at the given @c block_address on the PICC.
+ *
+ * @note The block must be authenticated before calling this function.
+ *
+ * @param rc522 RC522 handle
+ * @param picc PICC that is currently selected
+ * @param block_address Address of the block to read
+ * @param[out] buffer Buffer to store the retrived data in
+ * @param buffer_size Size of the buffer (should be at least @c RC522_MIFARE_BLOCK_SIZE)
+ */
 esp_err_t rc522_mifare_read(
-    rc522_handle_t rc522, rc522_picc_t *picc, uint8_t block_addr, uint8_t *buffer, uint8_t buffer_size);
+    const rc522_handle_t rc522, const rc522_picc_t *picc, uint8_t block_address, uint8_t *buffer, uint8_t buffer_size);
 
-esp_err_t rc522_mifare_write(
-    rc522_handle_t rc522, rc522_picc_t *picc, uint8_t block_addr, uint8_t *buffer, uint8_t buffer_size);
+/**
+ * @brief Write to a block at the given @c block_address on the PICC.
+ *
+ * @note The block must be authenticated before calling this function.
+ *
+ * @param rc522 RC522 handle
+ * @param picc PICC that is currently selected
+ * @param block_address Address of the block to write
+ * @param[in] buffer Buffer containing the data to write
+ * @param buffer_size Size of the buffer (should be at least @c RC522_MIFARE_BLOCK_SIZE)
+ */
+esp_err_t rc522_mifare_write(const rc522_handle_t rc522, const rc522_picc_t *picc, uint8_t block_address,
+    const uint8_t *buffer, uint8_t buffer_size);
 
 // }} MIFARE_Specific_Functions
 
 // {{ MIFARE_Utility_Functions
 
 /**
- * @brief Authenticates read/write operations
+ * @brief Deauthenticates read/write operations and allows PCD to perform other commands
+ *
+ * @param rc522 RC522 handle
+ * @param picc PICC that is currently selected
  */
-esp_err_t rc522_mifare_auth_sector(
-    rc522_handle_t rc522, rc522_picc_t *picc, rc522_mifare_sector_desc_t *sector_desc, rc522_mifare_key_t *key);
+esp_err_t rc522_mifare_deauth(const rc522_handle_t rc522, const rc522_picc_t *picc);
 
 /**
- * @brief Deauthenticates read/write operations and allows PCD to perform other commands
+ * @brief Authenticates read/write operations
  */
-esp_err_t rc522_mifare_deauth(rc522_handle_t rc522, rc522_picc_t *picc);
+esp_err_t rc522_mifare_auth_sector(const rc522_handle_t rc522, const rc522_picc_t *picc,
+    const rc522_mifare_sector_desc_t *sector_desc, const rc522_mifare_key_t *key);
 
 /**
  * @brief Checks if the PICC is MIFARE Classic
@@ -116,7 +155,7 @@ bool rc522_mifare_type_is_classic_compatible(rc522_picc_type_t type);
 /**
  * @brief Get MIFARE description (e.g number of sectors)
  */
-esp_err_t rc522_mifare_get_desc(rc522_picc_t *picc, rc522_mifare_desc_t *out_mifare_desc);
+esp_err_t rc522_mifare_get_desc(const rc522_picc_t *picc, rc522_mifare_desc_t *out_mifare_desc);
 
 /**
  * @brief Get MIFARE sector description (e.g number of blocks, block 0 address)
@@ -126,14 +165,14 @@ esp_err_t rc522_mifare_get_sector_desc(uint8_t sector_index, rc522_mifare_sector
 /**
  * @brief Read and parse MIFARE sector trailer block
  */
-esp_err_t rc522_mifare_read_sector_trailer_block(rc522_handle_t rc522, rc522_picc_t *picc,
-    rc522_mifare_sector_desc_t *sector_desc, rc522_mifare_sector_block_t *out_trailer);
+esp_err_t rc522_mifare_read_sector_trailer_block(const rc522_handle_t rc522, const rc522_picc_t *picc,
+    const rc522_mifare_sector_desc_t *sector_desc, rc522_mifare_sector_block_t *out_trailer);
 
 /**
  * @brief Read and parse MIFARE sector (non-trailer) block
  */
-esp_err_t rc522_mifare_read_sector_block(rc522_handle_t rc522, rc522_picc_t *picc,
-    rc522_mifare_sector_desc_t *sector_desc, rc522_mifare_sector_block_t *trailer, uint8_t block_offset,
+esp_err_t rc522_mifare_read_sector_block(const rc522_handle_t rc522, const rc522_picc_t *picc,
+    const rc522_mifare_sector_desc_t *sector_desc, const rc522_mifare_sector_block_t *trailer, uint8_t block_offset,
     rc522_mifare_sector_block_t *out_block);
 
 // }} MIFARE_Utility_Functions
