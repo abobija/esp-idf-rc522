@@ -323,6 +323,9 @@ esp_err_t rc522_pcd_rw_test(rc522_handle_t rc522)
 
 inline esp_err_t rc522_pcd_write_n(rc522_handle_t rc522, rc522_pcd_register_t addr, const rc522_bytes_t *bytes)
 {
+    RC522_CHECK(rc522 == NULL);
+    RC522_CHECK_BYTES(bytes);
+
     if (RC522_LOG_LEVEL >= ESP_LOG_VERBOSE) {
         char debug_buffer[64];
         rc522_buffer_to_hex_str(bytes->ptr, bytes->length, debug_buffer, sizeof(debug_buffer));
@@ -341,6 +344,9 @@ inline esp_err_t rc522_pcd_write(rc522_handle_t rc522, rc522_pcd_register_t addr
 
 inline esp_err_t rc522_pcd_read_n(rc522_handle_t rc522, rc522_pcd_register_t addr, rc522_bytes_t *bytes)
 {
+    RC522_CHECK(rc522 == NULL);
+    RC522_CHECK_BYTES(bytes);
+
     esp_err_t ret = rc522_driver_receive(rc522->config->driver, addr, bytes);
 
     if (RC522_LOG_LEVEL >= ESP_LOG_VERBOSE) {
