@@ -38,6 +38,10 @@ static esp_err_t rc522_spi_install(rc522_driver_handle_t driver)
     if (conf->dev_config.flags == 0) {
         conf->dev_config.flags = SPI_DEVICE_HALFDUPLEX;
     }
+
+    conf->dev_config.command_bits = 1;
+    conf->dev_config.address_bits = 6;
+    conf->dev_config.dummy_bits = 1;
     // }}
 
     RC522_RETURN_ON_ERROR(
@@ -52,20 +56,12 @@ static esp_err_t rc522_spi_install(rc522_driver_handle_t driver)
 
 static esp_err_t rc522_spi_send(rc522_driver_handle_t driver, uint8_t address, uint8_t *buffer, uint8_t length)
 {
-    address <<= 1;
-    address &= (~0x80);
-
-    // FIXME: Find a way to send [address + buffer]
-    //        without need for second buffer
-    uint8_t buffer2[64];
-
-    buffer2[0] = address;
-    memcpy(buffer2 + 1, buffer, length);
-
     esp_err_t ret = spi_device_polling_transmit((spi_device_handle_t)(driver->device),
         &(spi_transaction_t) {
-            .length = 8 * (length + 1),
-            .tx_buffer = buffer2,
+            .cmd = RC522_SPI_WRITE,
+            .addr = address,
+            .length = 8 * length,
+            .tx_buffer = buffer,
         });
 
     return ret;
@@ -73,17 +69,14 @@ static esp_err_t rc522_spi_send(rc522_driver_handle_t driver, uint8_t address, u
 
 static esp_err_t rc522_spi_receive(rc522_driver_handle_t driver, uint8_t address, uint8_t *buffer, uint8_t length)
 {
-    address <<= 1;
-    address |= 0x80;
-
     // TODO: Do transactions on higher level
     // RC522_RETURN_ON_ERROR(spi_device_acquire_bus((spi_device_handle_t)(driver->device), portMAX_DELAY));
 
     for (uint8_t i = 0; i < length; i++) {
         RC522_RETURN_ON_ERROR(spi_device_polling_transmit((spi_device_handle_t)(driver->device),
             &(spi_transaction_t) {
-                .length = 8,
-                .tx_buffer = &address,
+                .cmd = RC522_SPI_READ,
+                .addr = address,
                 .rxlength = 8,
                 .rx_buffer = (buffer + i),
             }));
