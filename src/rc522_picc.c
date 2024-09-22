@@ -730,11 +730,16 @@ esp_err_t rc522_picc_set_state(rc522_handle_t rc522, rc522_picc_t *picc, rc522_p
     return ret;
 }
 
-rc522_picc_type_t rc522_picc_get_type_by_sak(uint8_t sak)
+rc522_picc_type_t rc522_picc_get_type(const rc522_picc_t *picc)
 {
+    RC522_CHECK(picc == NULL);
+
+    uint8_t sak = picc->sak;
+
     // http://www.nxp.com/documents/application_note/AN10833.pdf
-    // 3.2 Coding of Select Acknowledge (SAK)
-    // ignore 8-bit (iso14443 starts with LSBit = bit 1)
+    // Section: Coding of Select Acknowledge (SAK)
+
+    // ignore 8th (iso14443 starts with LSBit = bit 1)
     // fixes wrong type for manufacturer Infineon (http://nfc-tools.org/index.php?title=ISO14443A)
     sak &= 0x7F;
 
@@ -753,7 +758,7 @@ rc522_picc_type_t rc522_picc_get_type_by_sak(uint8_t sak)
         case 0x01:
             return RC522_PICC_TYPE_TNP3XXX;
         case 0x20:
-            return RC522_PICC_TYPE_ISO_14443_4;
+            return picc->atqa.source == 0x4400 ? RC522_PICC_TYPE_MIFARE_DESFIRE : RC522_PICC_TYPE_ISO_14443_4;
         case 0x40:
             return RC522_PICC_TYPE_ISO_18092;
         default:

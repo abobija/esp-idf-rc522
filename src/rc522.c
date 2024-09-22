@@ -270,7 +270,7 @@ void rc522_task(void *arg)
 
             memcpy(&rc522->picc.uid, &uid, sizeof(rc522_picc_uid_t));
             rc522->picc.sak = sak;
-            rc522->picc.type = rc522_picc_get_type_by_sak(sak);
+            rc522->picc.type = rc522_picc_get_type(&rc522->picc);
 
             if (rc522->picc.state == RC522_PICC_STATE_READY) {
                 rc522_picc_set_state(rc522, &rc522->picc, RC522_PICC_STATE_ACTIVE, true);

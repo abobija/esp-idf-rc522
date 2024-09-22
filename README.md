@@ -80,9 +80,10 @@ idf.py build && ./build/test.elf
 | [ISO/IEC 14443-3](http://www.emutag.com/iso/14443-3.pdf) | Initialization and anticollision |
 | [ISO/IEC 14443-4](http://www.emutag.com/iso/14443-4.pdf) | Transmission protocol |
 | [MFRC522](https://www.nxp.com/docs/en/data-sheet/MFRC522.pdf) | MFRC522 - Standard performance MIFARE and NTAG frontend |
+| [AN10833](https://www.nxp.com/docs/en/application-note/AN10833.pdf) | MIFARE type identification procedure |
+| [AN10834](https://www.nxp.com/docs/en/application-note/AN10834.pdf) | MIFARE ISO/IEC 14443 PICC selection |
 | [MF1S50YYX_V1](https://www.nxp.com/docs/en/data-sheet/MF1S50YYX_V1.pdf) | MIFARE Classic EV1 1K |
 | [MF1S70YYX_V1](https://www.nxp.com/docs/en/data-sheet/MF1S70YYX_V1.pdf) | MIFARE Classic EV1 4K |
-
 
 ## License
 
