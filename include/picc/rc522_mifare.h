@@ -11,6 +11,7 @@ extern "C" {
 #define RC522_ERR_MIFARE_ACCESS_BITS_INTEGRITY_VIOLATION (RC522_ERR_MIFARE_BASE + 1)
 #define RC522_ERR_MIFARE_VALUE_BLOCK_INTEGRITY_VIOLATION (RC522_ERR_MIFARE_BASE + 2)
 #define RC522_ERR_MIFARE_NACK                            (RC522_ERR_MIFARE_BASE + 3)
+#define RC522_ERR_MIFARE_AUTHENTICATION_FAILED           (RC522_ERR_MIFARE_BASE + 4)
 
 #define RC522_MIFARE_SECTOR_INDEX_MAX  (39) // No MIFARE Classic has more than 40 sectors
 #define RC522_MIFARE_BLOCK_SIZE        (16)
@@ -87,6 +88,9 @@ typedef struct
 
 /**
  * @brief Authenticate a block read/write operations.
+ *
+ * After a successful authentication, communication between
+ * the PCD and the PICC is secured with MF1xxS20, MF1xxS70 or MF1xxS50 encryption.
  *
  * Once when read/write operations are authenticated for one block inside of a sector,
  * read/write operations are authenticated for all blocks inside of that sector as well.

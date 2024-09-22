@@ -110,7 +110,7 @@ esp_err_t rc522_mifare_auth(
     memcpy(send_data + 8, picc->uid.value + picc->uid.length - 4, 4);
 
     // Start the authentication.
-    return rc522_picc_comm(rc522,
+    esp_err_t ret = rc522_picc_comm(rc522,
         RC522_PCD_MF_AUTH_CMD,
         RC522_PCD_IDLE_IRQ_BIT,
         send_data,
@@ -120,6 +120,22 @@ esp_err_t rc522_mifare_auth(
         NULL,
         0,
         false);
+
+    // 10.3.1.9
+    // "If an error occurs during authentication,
+    // the ErrorReg register’s ProtocolErr bit is set to logic 1
+    // and the Status2Reg register’s Crypto1On bit is set to logic 0"
+
+    // Timer interrupt fires before ProtocolErr bit is set to 1
+    // so we will only check for Crypto1On bit (even if ret == ESP_OK)
+    uint8_t status2;
+    RC522_RETURN_ON_ERROR(rc522_pcd_read(rc522, RC522_PCD_STATUS_2_REG, &status2));
+
+    if (!(status2 & RC522_PCD_MF_CRYPTO1_ON_BIT)) {
+        return RC522_ERR_MIFARE_AUTHENTICATION_FAILED;
+    }
+
+    return ret;
 }
 
 esp_err_t rc522_mifare_read(
@@ -248,7 +264,7 @@ inline static uint8_t rc522_mifare_get_sector_index_by_block_address(uint8_t blo
     }
 }
 
-inline static esp_err_t rc522_mifare_get_sector_number_of_blocks(uint8_t sector_index, uint8_t *out_result)
+inline static esp_err_t rc522_mifare_get_number_of_blocks_in_sector(uint8_t sector_index, uint8_t *out_result)
 {
     RC522_CHECK(sector_index > RC522_MIFARE_SECTOR_INDEX_MAX);
     RC522_CHECK(out_result == NULL);
@@ -287,7 +303,7 @@ esp_err_t rc522_mifare_get_sector_desc(uint8_t sector_index, rc522_mifare_sector
     memset(&desc, 0, sizeof(desc));
 
     desc.index = sector_index;
-    RC522_RETURN_ON_ERROR(rc522_mifare_get_sector_number_of_blocks(sector_index, &desc.number_of_blocks));
+    RC522_RETURN_ON_ERROR(rc522_mifare_get_number_of_blocks_in_sector(sector_index, &desc.number_of_blocks));
     RC522_RETURN_ON_ERROR(rc522_mifare_get_sector_block_0_address(sector_index, &desc.block_0_address));
 
     memcpy(out_sector_desc, &desc, sizeof(rc522_mifare_sector_desc_t));
