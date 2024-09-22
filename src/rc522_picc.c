@@ -11,9 +11,9 @@
 RC522_LOG_DEFINE_BASE();
 
 // TODO: Refactor this mess, use structs
-esp_err_t rc522_picc_comm(rc522_handle_t rc522, rc522_pcd_command_t command, uint8_t wait_irq, uint8_t *send_data,
-    uint8_t send_data_len, uint8_t *back_data, uint8_t *back_data_len, uint8_t *valid_bits, uint8_t rx_align,
-    bool check_crc)
+esp_err_t rc522_picc_comm(const rc522_handle_t rc522, rc522_pcd_command_t command, uint8_t wait_irq,
+    const uint8_t *send_data, uint8_t send_data_len, uint8_t *back_data, uint8_t *back_data_len, uint8_t *valid_bits,
+    uint8_t rx_align, bool check_crc)
 {
     RC522_CHECK(rc522 == NULL);
     RC522_CHECK(wait_irq == 0x00);
@@ -36,10 +36,15 @@ esp_err_t rc522_picc_comm(rc522_handle_t rc522, rc522_pcd_command_t command, uin
         RC522_LOGD("picc << %s", debug_buffer);
     }
 
+// not sure why compiler complains about explicit cast here
+#pragma GCC diagnostic ignored "-Wcast-qual"
+    uint8_t *sdata = (uint8_t *)send_data;
+#pragma GCC diagnostic pop
+
     RC522_RETURN_ON_ERROR(rc522_pcd_stop_active_command(rc522));
     RC522_RETURN_ON_ERROR(rc522_pcd_clear_all_com_interrupts(rc522));
     RC522_RETURN_ON_ERROR(rc522_pcd_fifo_flush(rc522));
-    RC522_RETURN_ON_ERROR(rc522_pcd_fifo_write(rc522, &(rc522_bytes_t) { .ptr = send_data, .length = send_data_len }));
+    RC522_RETURN_ON_ERROR(rc522_pcd_fifo_write(rc522, &(rc522_bytes_t) { .ptr = sdata, .length = send_data_len }));
     RC522_RETURN_ON_ERROR(rc522_pcd_write(rc522, RC522_PCD_BIT_FRAMING_REG, bit_framing)); // Bit adjustments
     RC522_RETURN_ON_ERROR(rc522_pcd_write(rc522, RC522_PCD_COMMAND_REG, command));         // Execute the command
 
@@ -187,7 +192,7 @@ esp_err_t rc522_picc_comm(rc522_handle_t rc522, rc522_pcd_command_t command, uin
     return ESP_OK;
 }
 
-inline esp_err_t rc522_picc_transceive(rc522_handle_t rc522, uint8_t *send_data, uint8_t send_data_len,
+inline esp_err_t rc522_picc_transceive(const rc522_handle_t rc522, const uint8_t *send_data, uint8_t send_data_len,
     uint8_t *back_data, uint8_t *back_data_len, uint8_t *valid_bits, uint8_t rx_align, bool check_crc)
 {
     return rc522_picc_comm(rc522,
@@ -216,7 +221,7 @@ inline static esp_err_t rc522_picc_parse_atqa(uint16_t atqa, rc522_picc_atqa_des
     return ESP_OK;
 }
 
-static esp_err_t rc522_picc_reqa_or_wupa(rc522_handle_t rc522, uint8_t picc_cmd, rc522_picc_atqa_desc_t *out_atqa)
+static esp_err_t rc522_picc_reqa_or_wupa(const rc522_handle_t rc522, uint8_t picc_cmd, rc522_picc_atqa_desc_t *out_atqa)
 {
     RC522_CHECK(rc522 == NULL);
     RC522_CHECK(out_atqa == NULL);
@@ -252,7 +257,7 @@ static esp_err_t rc522_picc_reqa_or_wupa(rc522_handle_t rc522, uint8_t picc_cmd,
     return ESP_OK;
 }
 
-inline esp_err_t rc522_picc_reqa(rc522_handle_t rc522, rc522_picc_atqa_desc_t *out_atqa)
+inline esp_err_t rc522_picc_reqa(const rc522_handle_t rc522, rc522_picc_atqa_desc_t *out_atqa)
 {
     RC522_CHECK(rc522 == NULL);
     RC522_CHECK(out_atqa == NULL);
@@ -261,7 +266,7 @@ inline esp_err_t rc522_picc_reqa(rc522_handle_t rc522, rc522_picc_atqa_desc_t *o
     return rc522_picc_reqa_or_wupa(rc522, RC522_PICC_CMD_REQA, out_atqa);
 }
 
-inline esp_err_t rc522_picc_wupa(rc522_handle_t rc522, rc522_picc_atqa_desc_t *out_atqa)
+inline esp_err_t rc522_picc_wupa(const rc522_handle_t rc522, rc522_picc_atqa_desc_t *out_atqa)
 {
     RC522_CHECK(rc522 == NULL);
     RC522_CHECK(out_atqa == NULL);
@@ -273,7 +278,7 @@ inline esp_err_t rc522_picc_wupa(rc522_handle_t rc522, rc522_picc_atqa_desc_t *o
 /**
  * Resolve collision and SELECT a PICC
  */
-esp_err_t rc522_picc_select(rc522_handle_t rc522, rc522_picc_uid_t *out_uid, uint8_t *out_sak, bool skip_anticoll)
+esp_err_t rc522_picc_select(const rc522_handle_t rc522, rc522_picc_uid_t *out_uid, uint8_t *out_sak, bool skip_anticoll)
 {
     RC522_CHECK(rc522 == NULL);
     RC522_CHECK(skip_anticoll && (out_uid == NULL || out_uid->length < RC522_PICC_UID_SIZE_MIN));
@@ -579,7 +584,8 @@ esp_err_t rc522_picc_select(rc522_handle_t rc522, rc522_picc_uid_t *out_uid, uin
 /**
  * Checks if PICC is still in the PCD field
  */
-esp_err_t rc522_picc_heartbeat(rc522_handle_t rc522, rc522_picc_t *picc, rc522_picc_uid_t *out_uid, uint8_t *out_sak)
+esp_err_t rc522_picc_heartbeat(
+    const rc522_handle_t rc522, const rc522_picc_t *picc, rc522_picc_uid_t *out_uid, uint8_t *out_sak)
 {
     RC522_CHECK(rc522 == NULL);
     RC522_CHECK(picc == NULL);
@@ -651,7 +657,7 @@ esp_err_t rc522_picc_heartbeat(rc522_handle_t rc522, rc522_picc_t *picc, rc522_p
     return ESP_OK;
 }
 
-esp_err_t rc522_picc_uid_to_str(rc522_picc_uid_t *uid, char *buffer, uint8_t buffer_size)
+esp_err_t rc522_picc_uid_to_str(const rc522_picc_uid_t *uid, char *buffer, uint8_t buffer_size)
 {
     RC522_CHECK(uid == NULL);
     RC522_CHECK(buffer == NULL);
@@ -660,7 +666,7 @@ esp_err_t rc522_picc_uid_to_str(rc522_picc_uid_t *uid, char *buffer, uint8_t buf
     return rc522_buffer_to_hex_str(uid->value, uid->length, buffer, buffer_size);
 }
 
-esp_err_t rc522_picc_halta(rc522_handle_t rc522, rc522_picc_t *picc)
+esp_err_t rc522_picc_halta(const rc522_handle_t rc522, rc522_picc_t *picc)
 {
     RC522_CHECK(rc522 == NULL);
     RC522_CHECK(picc == NULL);
@@ -698,7 +704,8 @@ esp_err_t rc522_picc_halta(rc522_handle_t rc522, rc522_picc_t *picc)
     return ret;
 }
 
-esp_err_t rc522_picc_set_state(rc522_handle_t rc522, rc522_picc_t *picc, rc522_picc_state_t new_state, bool fire_event)
+esp_err_t rc522_picc_set_state(
+    const rc522_handle_t rc522, rc522_picc_t *picc, rc522_picc_state_t new_state, bool fire_event)
 {
     RC522_CHECK(rc522 == NULL);
     RC522_CHECK(picc == NULL);
@@ -794,7 +801,7 @@ char *rc522_picc_type_name(rc522_picc_type_t type)
     }
 }
 
-esp_err_t rc522_picc_print(rc522_picc_t *picc)
+esp_err_t rc522_picc_print(const rc522_picc_t *picc)
 {
     RC522_CHECK(picc == NULL);
 

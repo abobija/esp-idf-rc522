@@ -62,8 +62,8 @@ bool rc522_mifare_type_is_classic_compatible(rc522_picc_type_t type)
            || type == RC522_PICC_TYPE_MIFARE_4K;
 }
 
-inline esp_err_t rc522_mifare_auth_sector(
-    rc522_handle_t rc522, rc522_picc_t *picc, rc522_mifare_sector_desc_t *sector_desc, rc522_mifare_key_t *key)
+inline esp_err_t rc522_mifare_auth_sector(const rc522_handle_t rc522, const rc522_picc_t *picc,
+    const rc522_mifare_sector_desc_t *sector_desc, const rc522_mifare_key_t *key)
 {
     RC522_CHECK(sector_desc == NULL);
 
@@ -72,15 +72,16 @@ inline esp_err_t rc522_mifare_auth_sector(
     return ESP_OK;
 }
 
-esp_err_t rc522_mifare_auth(rc522_handle_t rc522, rc522_picc_t *picc, uint8_t block_addr, rc522_mifare_key_t *key)
+esp_err_t rc522_mifare_auth(
+    const rc522_handle_t rc522, const rc522_picc_t *picc, uint8_t block_address, const rc522_mifare_key_t *key)
 {
     RC522_CHECK(rc522 == NULL);
     RC522_CHECK(picc == NULL);
     RC522_CHECK(key == NULL);
 
-    // TODO: Validate block_addr
+    // TODO: Validate block_address
 
-    RC522_LOGD("MIFARE AUTH (block_addr=%02" RC522_X ")", block_addr);
+    RC522_LOGD("MIFARE AUTH (block_address=%02" RC522_X ")", block_address);
 
     uint8_t auth_cmd;
 
@@ -99,7 +100,7 @@ esp_err_t rc522_mifare_auth(rc522_handle_t rc522, rc522_picc_t *picc, uint8_t bl
     // Build command buffer
     uint8_t send_data[12];
     send_data[0] = auth_cmd;
-    send_data[1] = block_addr;
+    send_data[1] = block_address;
     memcpy(send_data + 2, key->value, RC522_MIFARE_KEY_SIZE);
 
     // Use the last uid bytes
@@ -122,14 +123,14 @@ esp_err_t rc522_mifare_auth(rc522_handle_t rc522, rc522_picc_t *picc, uint8_t bl
 }
 
 esp_err_t rc522_mifare_read(
-    rc522_handle_t rc522, rc522_picc_t *picc, uint8_t block_addr, uint8_t *buffer, uint8_t buffer_size)
+    const rc522_handle_t rc522, const rc522_picc_t *picc, uint8_t block_address, uint8_t *buffer, uint8_t buffer_size)
 {
     RC522_CHECK(rc522 == NULL);
     RC522_CHECK(picc == NULL);
     RC522_CHECK(buffer == NULL);
     RC522_CHECK(buffer_size < RC522_MIFARE_BLOCK_SIZE);
 
-    RC522_LOGD("MIFARE READ (block_addr=%02" RC522_X ")", block_addr);
+    RC522_LOGD("MIFARE READ (block_address=%02" RC522_X ")", block_address);
 
     // FIXME: Cloning the buffer since picc_transceive uses +2 bytes buffer
     //        to store some extra data (crc i think). Refactor picc_transceive
@@ -138,7 +139,7 @@ esp_err_t rc522_mifare_read(
 
     // Build command buffer
     buffer_clone[0] = RC522_MIFARE_READ_CMD;
-    buffer_clone[1] = block_addr;
+    buffer_clone[1] = block_address;
 
     // Calculate CRC_A
     uint16_t crc = 0;
@@ -159,8 +160,8 @@ esp_err_t rc522_mifare_read(
     return ESP_OK;
 }
 
-static esp_err_t rc522_mifare_transceive(
-    rc522_handle_t rc522, uint8_t *send_data, uint8_t send_length, bool accept_timeout)
+static esp_err_t rc522_mifare_send(
+    const rc522_handle_t rc522, const uint8_t *send_data, uint8_t send_length, bool accept_timeout)
 {
     RC522_CHECK(send_data == NULL);
     RC522_CHECK(send_length > RC522_MIFARE_BLOCK_SIZE);
@@ -327,24 +328,24 @@ static esp_err_t rc522_mifare_confirm_sector_trailer_write_permission_config(uin
     return ESP_OK;
 }
 
-esp_err_t rc522_mifare_write(
-    rc522_handle_t rc522, rc522_picc_t *picc, uint8_t block_addr, uint8_t *buffer, uint8_t buffer_size)
+esp_err_t rc522_mifare_write(const rc522_handle_t rc522, const rc522_picc_t *picc, uint8_t block_address,
+    const uint8_t *buffer, uint8_t buffer_size)
 {
     RC522_CHECK(rc522 == NULL);
     RC522_CHECK(picc == NULL);
     RC522_CHECK(buffer == NULL);
     RC522_CHECK(buffer_size < RC522_MIFARE_BLOCK_SIZE);
     RC522_CHECK(!rc522_mifare_type_is_classic_compatible(picc->type));
-    RC522_CHECK(rc522_mifare_confirm_sector_trailer_write_permission_config(block_addr) != ESP_OK);
+    RC522_CHECK(rc522_mifare_confirm_sector_trailer_write_permission_config(block_address) != ESP_OK);
 
-    RC522_LOGD("MIFARE WRITE (block_addr=%02" RC522_X ")", block_addr);
+    RC522_LOGD("MIFARE WRITE (block_address=%02" RC522_X ")", block_address);
 
     // Step 1: Tell the PICC we want to write to block blockAddr.
-    uint8_t cmd_buffer[] = { RC522_MIFARE_WRITE_CMD, block_addr };
+    uint8_t cmd_buffer[] = { RC522_MIFARE_WRITE_CMD, block_address };
     RC522_RETURN_ON_ERROR(
-        rc522_mifare_transceive(rc522, cmd_buffer, 2, false)); // Adds CRC_A and checks that the response is MF_ACK.
+        rc522_mifare_send(rc522, cmd_buffer, 2, false)); // Adds CRC_A and checks that the response is MF_ACK.
 
-    RC522_RETURN_ON_ERROR(rc522_mifare_transceive(rc522,
+    RC522_RETURN_ON_ERROR(rc522_mifare_send(rc522,
         buffer,
         RC522_MIFARE_BLOCK_SIZE,
         false)); // Adds CRC_A and checks that the response is MF_ACK.
@@ -352,7 +353,7 @@ esp_err_t rc522_mifare_write(
     return ESP_OK;
 }
 
-inline esp_err_t rc522_mifare_deauth(rc522_handle_t rc522, rc522_picc_t *picc)
+inline esp_err_t rc522_mifare_deauth(const rc522_handle_t rc522, const rc522_picc_t *picc)
 {
     RC522_CHECK(rc522 == NULL);
     RC522_CHECK(picc == NULL);
@@ -362,7 +363,7 @@ inline esp_err_t rc522_mifare_deauth(rc522_handle_t rc522, rc522_picc_t *picc)
     return ESP_OK;
 }
 
-esp_err_t rc522_mifare_get_desc(rc522_picc_t *picc, rc522_mifare_desc_t *out_mifare_desc)
+esp_err_t rc522_mifare_get_desc(const rc522_picc_t *picc, rc522_mifare_desc_t *out_mifare_desc)
 {
     RC522_CHECK(picc == NULL);
     RC522_CHECK(out_mifare_desc == NULL);
@@ -394,7 +395,7 @@ esp_err_t rc522_mifare_get_desc(rc522_picc_t *picc, rc522_mifare_desc_t *out_mif
  *  - C33 is the access bit C3 for the sector trailer.
  */
 static esp_err_t rc522_mifare_parse_sector_trailer(
-    uint8_t *trailer_bytes, uint8_t trailer_bytes_size, rc522_mifare_sector_trailer_info_t *out_trailer_info)
+    const uint8_t *trailer_bytes, uint8_t trailer_bytes_size, rc522_mifare_sector_trailer_info_t *out_trailer_info)
 {
     RC522_CHECK(trailer_bytes == NULL);
     RC522_CHECK(trailer_bytes_size != RC522_MIFARE_BLOCK_SIZE);
@@ -450,7 +451,7 @@ inline static bool rc522_mifare_block_is_value(rc522_mifare_access_bits_t access
 }
 
 static esp_err_t rc522_mifare_parse_value_block(
-    uint8_t *bytes, uint8_t bytes_size, rc522_mifare_sector_value_block_info_t *out_value_block_info)
+    const uint8_t *bytes, uint8_t bytes_size, rc522_mifare_sector_value_block_info_t *out_value_block_info)
 {
     RC522_CHECK(bytes == NULL);
     RC522_CHECK(bytes_size != RC522_MIFARE_BLOCK_SIZE);
@@ -477,7 +478,7 @@ static esp_err_t rc522_mifare_parse_value_block(
 }
 
 inline static esp_err_t rc522_mifare_get_sector_block_group_index(
-    rc522_mifare_sector_desc_t *sector, uint8_t block_offset, uint8_t *out_group)
+    const rc522_mifare_sector_desc_t *sector, uint8_t block_offset, uint8_t *out_group)
 {
     RC522_CHECK(sector == NULL);
     RC522_CHECK(out_group == NULL);
@@ -492,8 +493,8 @@ inline static esp_err_t rc522_mifare_get_sector_block_group_index(
     return ESP_OK;
 }
 
-esp_err_t rc522_mifare_read_sector_trailer_block(rc522_handle_t rc522, rc522_picc_t *picc,
-    rc522_mifare_sector_desc_t *sector_desc, rc522_mifare_sector_block_t *out_trailer)
+esp_err_t rc522_mifare_read_sector_trailer_block(const rc522_handle_t rc522, const rc522_picc_t *picc,
+    const rc522_mifare_sector_desc_t *sector_desc, rc522_mifare_sector_block_t *out_trailer)
 {
     RC522_CHECK(rc522 == NULL);
     RC522_CHECK(picc == NULL);
@@ -515,8 +516,8 @@ esp_err_t rc522_mifare_read_sector_trailer_block(rc522_handle_t rc522, rc522_pic
     return ESP_OK;
 }
 
-esp_err_t rc522_mifare_read_sector_block(rc522_handle_t rc522, rc522_picc_t *picc,
-    rc522_mifare_sector_desc_t *sector_desc, rc522_mifare_sector_block_t *trailer, uint8_t block_offset,
+esp_err_t rc522_mifare_read_sector_block(const rc522_handle_t rc522, const rc522_picc_t *picc,
+    const rc522_mifare_sector_desc_t *sector_desc, const rc522_mifare_sector_block_t *trailer, uint8_t block_offset,
     rc522_mifare_sector_block_t *out_block)
 {
     RC522_CHECK(rc522 == NULL);

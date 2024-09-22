@@ -58,26 +58,29 @@ typedef enum
     RC522_PICC_CMD_RATS = 0xE0,
 } rc522_picc_command_t;
 
-esp_err_t rc522_picc_comm(rc522_handle_t rc522, rc522_pcd_command_t command, uint8_t wait_irq, uint8_t *send_data,
-    uint8_t send_data_len, uint8_t *back_data, uint8_t *back_data_len, uint8_t *valid_bits, uint8_t rx_align,
-    bool check_crc);
+esp_err_t rc522_picc_comm(const rc522_handle_t rc522, rc522_pcd_command_t command, uint8_t wait_irq,
+    const uint8_t *send_data, uint8_t send_data_len, uint8_t *back_data, uint8_t *back_data_len, uint8_t *valid_bits,
+    uint8_t rx_align, bool check_crc);
 
-esp_err_t rc522_picc_transceive(rc522_handle_t rc522, uint8_t *send_data, uint8_t send_data_len, uint8_t *back_data,
-    uint8_t *back_data_len, uint8_t *valid_bits, uint8_t rx_align, bool check_crc);
+esp_err_t rc522_picc_transceive(const rc522_handle_t rc522, const uint8_t *send_data, uint8_t send_data_len,
+    uint8_t *back_data, uint8_t *back_data_len, uint8_t *valid_bits, uint8_t rx_align, bool check_crc);
 
-esp_err_t rc522_picc_reqa(rc522_handle_t rc522, rc522_picc_atqa_desc_t *out_atqa);
+esp_err_t rc522_picc_reqa(const rc522_handle_t rc522, rc522_picc_atqa_desc_t *out_atqa);
 
-esp_err_t rc522_picc_wupa(rc522_handle_t rc522, rc522_picc_atqa_desc_t *out_atqa);
+esp_err_t rc522_picc_wupa(const rc522_handle_t rc522, rc522_picc_atqa_desc_t *out_atqa);
 
-esp_err_t rc522_picc_select(rc522_handle_t rc522, rc522_picc_uid_t *out_uid, uint8_t *out_sak, bool skip_anticoll);
+esp_err_t rc522_picc_select(
+    const rc522_handle_t rc522, rc522_picc_uid_t *out_uid, uint8_t *out_sak, bool skip_anticoll);
 
-esp_err_t rc522_picc_halta(rc522_handle_t rc522, rc522_picc_t *picc);
+esp_err_t rc522_picc_halta(const rc522_handle_t rc522, rc522_picc_t *picc);
 
-esp_err_t rc522_picc_heartbeat(rc522_handle_t rc522, rc522_picc_t *picc, rc522_picc_uid_t *out_uid, uint8_t *out_sak);
+esp_err_t rc522_picc_heartbeat(
+    const rc522_handle_t rc522, const rc522_picc_t *picc, rc522_picc_uid_t *out_uid, uint8_t *out_sak);
 
 rc522_picc_type_t rc522_picc_get_type(const rc522_picc_t *picc);
 
-esp_err_t rc522_picc_set_state(rc522_handle_t rc522, rc522_picc_t *picc, rc522_picc_state_t new_state, bool fire_event);
+esp_err_t rc522_picc_set_state(
+    const rc522_handle_t rc522, rc522_picc_t *picc, rc522_picc_state_t new_state, bool fire_event);
 
 #ifdef __cplusplus
 }

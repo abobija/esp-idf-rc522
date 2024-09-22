@@ -22,7 +22,7 @@ inline bool rc522_is_able_to_start(rc522_handle_t rc522)
     return rc522->state >= RC522_STATE_CREATED && rc522->state != RC522_STATE_POLLING;
 }
 
-static esp_err_t rc522_clone_config(rc522_config_t *config, rc522_config_t **result)
+static esp_err_t rc522_clone_config(const rc522_config_t *config, rc522_config_t **result)
 {
     rc522_config_t *config_clone = calloc(1, sizeof(rc522_config_t));
     ESP_RETURN_ON_FALSE(config_clone != NULL, ESP_ERR_NO_MEM, TAG, "nomem");
@@ -114,7 +114,7 @@ inline static void rc522_request_task_exit(rc522_handle_t rc522)
     rc522->exit_requested = true; // task will delete itself
 }
 
-esp_err_t rc522_create(rc522_config_t *config, rc522_handle_t *out_rc522)
+esp_err_t rc522_create(const rc522_config_t *config, rc522_handle_t *out_rc522)
 {
     RC522_CHECK(config == NULL);
     RC522_CHECK(out_rc522 == NULL);

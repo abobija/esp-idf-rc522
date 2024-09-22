@@ -12,7 +12,7 @@ RC522_LOG_DEFINE_BASE();
 /**
  * @see https://stackoverflow.com/a/48705557
  */
-esp_err_t rc522_pcd_calculate_crc(rc522_handle_t rc522, const rc522_bytes_t *bytes, uint16_t *result)
+esp_err_t rc522_pcd_calculate_crc(const rc522_handle_t rc522, const rc522_bytes_t *bytes, uint16_t *result)
 {
     RC522_CHECK(rc522 == NULL);
     RC522_CHECK_BYTES(bytes);
@@ -61,7 +61,7 @@ esp_err_t rc522_pcd_calculate_crc(rc522_handle_t rc522, const rc522_bytes_t *byt
     return ESP_OK;
 }
 
-static esp_err_t rc522_pcd_wait_for_reset(rc522_handle_t rc522, uint32_t timeout_ms)
+static esp_err_t rc522_pcd_wait_for_reset(const rc522_handle_t rc522, uint32_t timeout_ms)
 {
     RC522_CHECK(rc522 == NULL);
 
@@ -88,7 +88,7 @@ static esp_err_t rc522_pcd_wait_for_reset(rc522_handle_t rc522, uint32_t timeout
     return power_down_bit ? ESP_ERR_TIMEOUT : ESP_OK;
 }
 
-inline static esp_err_t rc522_pcd_hard_reset(rc522_handle_t rc522, uint32_t timeout_ms)
+inline static esp_err_t rc522_pcd_hard_reset(const rc522_handle_t rc522, uint32_t timeout_ms)
 {
     RC522_CHECK(rc522 == NULL);
     RC522_LOGD("hard reset");
@@ -98,7 +98,7 @@ inline static esp_err_t rc522_pcd_hard_reset(rc522_handle_t rc522, uint32_t time
     return ret == ESP_OK ? rc522_pcd_wait_for_reset(rc522, timeout_ms) : ret;
 }
 
-inline static esp_err_t rc522_pcd_soft_reset(rc522_handle_t rc522, uint32_t timeout_ms)
+inline static esp_err_t rc522_pcd_soft_reset(const rc522_handle_t rc522, uint32_t timeout_ms)
 {
     RC522_CHECK(rc522 == NULL);
     RC522_LOGD("soft reset");
@@ -108,7 +108,7 @@ inline static esp_err_t rc522_pcd_soft_reset(rc522_handle_t rc522, uint32_t time
     return rc522_pcd_wait_for_reset(rc522, timeout_ms);
 }
 
-esp_err_t rc522_pcd_reset(rc522_handle_t rc522, uint32_t timeout_ms)
+esp_err_t rc522_pcd_reset(const rc522_handle_t rc522, uint32_t timeout_ms)
 {
     esp_err_t ret = ESP_OK;
 
@@ -123,12 +123,12 @@ esp_err_t rc522_pcd_reset(rc522_handle_t rc522, uint32_t timeout_ms)
     return ret;
 }
 
-inline static esp_err_t rc522_pcd_tx_enable(rc522_handle_t rc522)
+inline static esp_err_t rc522_pcd_tx_enable(const rc522_handle_t rc522)
 {
     return rc522_pcd_set_bits(rc522, RC522_PCD_TX_CONTROL_REG, (RC522_PCD_TX2_RF_EN_BIT | RC522_PCD_TX1_RF_EN_BIT));
 }
 
-static esp_err_t rc522_pcd_configure_timer(rc522_handle_t rc522, uint8_t mode, uint16_t prescaler)
+static esp_err_t rc522_pcd_configure_timer(const rc522_handle_t rc522, uint8_t mode, uint16_t prescaler)
 {
     uint8_t prescaler_hi = (prescaler >> 8) & 0x0F;
     uint8_t timer_mode = (mode & 0xF0) | prescaler_hi;
@@ -140,7 +140,7 @@ static esp_err_t rc522_pcd_configure_timer(rc522_handle_t rc522, uint8_t mode, u
     return ESP_OK;
 }
 
-inline static esp_err_t rc522_pcd_set_timer_reload_value(rc522_handle_t rc522, uint16_t value)
+inline static esp_err_t rc522_pcd_set_timer_reload_value(const rc522_handle_t rc522, uint16_t value)
 {
     RC522_RETURN_ON_ERROR(rc522_pcd_write(rc522, RC522_PCD_TIMER_RELOAD_MSB_REG, (value >> 8) & 0xFF));
     RC522_RETURN_ON_ERROR(rc522_pcd_write(rc522, RC522_PCD_TIMER_RELOAD_LSB_REG, value & 0xFF));
@@ -148,12 +148,12 @@ inline static esp_err_t rc522_pcd_set_timer_reload_value(rc522_handle_t rc522, u
     return ESP_OK;
 }
 
-inline static esp_err_t rc522_pcd_set_rx_gain(rc522_handle_t rc522, rc522_pcd_rx_gain_t gain)
+inline static esp_err_t rc522_pcd_set_rx_gain(const rc522_handle_t rc522, rc522_pcd_rx_gain_t gain)
 {
     return rc522_pcd_set_bits(rc522, RC522_PCD_RF_CFG_REG, gain);
 }
 
-esp_err_t rc522_pcd_init(rc522_handle_t rc522)
+esp_err_t rc522_pcd_init(const rc522_handle_t rc522)
 {
     RC522_CHECK(rc522 == NULL);
 
@@ -201,7 +201,7 @@ esp_err_t rc522_pcd_init(rc522_handle_t rc522)
     return ESP_OK;
 }
 
-esp_err_t rc522_pcd_firmware(rc522_handle_t rc522, rc522_pcd_firmware_t *fw)
+esp_err_t rc522_pcd_firmware(const rc522_handle_t rc522, rc522_pcd_firmware_t *fw)
 {
     RC522_CHECK(rc522 == NULL);
     RC522_CHECK(fw == NULL);
@@ -232,47 +232,47 @@ char *rc522_pcd_firmware_name(rc522_pcd_firmware_t firmware)
     }
 }
 
-inline esp_err_t rc522_pcd_stop_active_command(rc522_handle_t rc522)
+inline esp_err_t rc522_pcd_stop_active_command(const rc522_handle_t rc522)
 {
     return rc522_pcd_write(rc522, RC522_PCD_COMMAND_REG, RC522_PCD_IDLE_CMD);
 }
 
-inline esp_err_t rc522_pcd_clear_all_com_interrupts(rc522_handle_t rc522)
+inline esp_err_t rc522_pcd_clear_all_com_interrupts(const rc522_handle_t rc522)
 {
     return rc522_pcd_write(rc522, RC522_PCD_COM_INT_REQ_REG, (uint8_t)(~RC522_PCD_SET_1_BIT));
 }
 
-inline esp_err_t rc522_pcd_fifo_write(rc522_handle_t rc522, const rc522_bytes_t *bytes)
+inline esp_err_t rc522_pcd_fifo_write(const rc522_handle_t rc522, const rc522_bytes_t *bytes)
 {
     return rc522_pcd_write_n(rc522, RC522_PCD_FIFO_DATA_REG, bytes);
 }
 
-inline esp_err_t rc522_pcd_fifo_read(rc522_handle_t rc522, rc522_bytes_t *bytes)
+inline esp_err_t rc522_pcd_fifo_read(const rc522_handle_t rc522, rc522_bytes_t *bytes)
 {
     return rc522_pcd_read_n(rc522, RC522_PCD_FIFO_DATA_REG, bytes);
 }
 
-inline esp_err_t rc522_pcd_fifo_flush(rc522_handle_t rc522)
+inline esp_err_t rc522_pcd_fifo_flush(const rc522_handle_t rc522)
 {
     return rc522_pcd_write(rc522, RC522_PCD_FIFO_LEVEL_REG, RC522_PCD_FLUSH_BUFFER_BIT);
 }
 
-inline esp_err_t rc522_pcd_start_data_transmission(rc522_handle_t rc522)
+inline esp_err_t rc522_pcd_start_data_transmission(const rc522_handle_t rc522)
 {
     return rc522_pcd_set_bits(rc522, RC522_PCD_BIT_FRAMING_REG, RC522_PCD_START_SEND_BIT);
 }
 
-inline esp_err_t rc522_pcd_stop_data_transmission(rc522_handle_t rc522)
+inline esp_err_t rc522_pcd_stop_data_transmission(const rc522_handle_t rc522)
 {
     return rc522_pcd_clear_bits(rc522, RC522_PCD_BIT_FRAMING_REG, RC522_PCD_START_SEND_BIT);
 }
 
-inline esp_err_t rc522_pcd_stop_crypto1(rc522_handle_t rc522)
+inline esp_err_t rc522_pcd_stop_crypto1(const rc522_handle_t rc522)
 {
     return rc522_pcd_clear_bits(rc522, RC522_PCD_STATUS_2_REG, RC522_PCD_MK_CRYPTO1_ON_BIT);
 }
 
-esp_err_t rc522_pcd_rw_test(rc522_handle_t rc522)
+esp_err_t rc522_pcd_rw_test(const rc522_handle_t rc522)
 {
     RC522_CHECK(rc522 == NULL);
 
@@ -313,7 +313,7 @@ esp_err_t rc522_pcd_rw_test(rc522_handle_t rc522)
     return ESP_OK;
 }
 
-inline esp_err_t rc522_pcd_write_n(rc522_handle_t rc522, rc522_pcd_register_t addr, const rc522_bytes_t *bytes)
+inline esp_err_t rc522_pcd_write_n(const rc522_handle_t rc522, rc522_pcd_register_t addr, const rc522_bytes_t *bytes)
 {
     RC522_CHECK(rc522 == NULL);
     RC522_CHECK_BYTES(bytes);
@@ -329,12 +329,12 @@ inline esp_err_t rc522_pcd_write_n(rc522_handle_t rc522, rc522_pcd_register_t ad
     return ESP_OK;
 }
 
-inline esp_err_t rc522_pcd_write(rc522_handle_t rc522, rc522_pcd_register_t addr, uint8_t val)
+inline esp_err_t rc522_pcd_write(const rc522_handle_t rc522, rc522_pcd_register_t addr, uint8_t val)
 {
     return rc522_pcd_write_n(rc522, addr, &(rc522_bytes_t) { .ptr = &val, .length = 1 });
 }
 
-inline esp_err_t rc522_pcd_read_n(rc522_handle_t rc522, rc522_pcd_register_t addr, rc522_bytes_t *bytes)
+inline esp_err_t rc522_pcd_read_n(const rc522_handle_t rc522, rc522_pcd_register_t addr, rc522_bytes_t *bytes)
 {
     RC522_CHECK(rc522 == NULL);
     RC522_CHECK_BYTES(bytes);
@@ -350,12 +350,12 @@ inline esp_err_t rc522_pcd_read_n(rc522_handle_t rc522, rc522_pcd_register_t add
     return ret;
 }
 
-inline esp_err_t rc522_pcd_read(rc522_handle_t rc522, rc522_pcd_register_t addr, uint8_t *value_ref)
+inline esp_err_t rc522_pcd_read(const rc522_handle_t rc522, rc522_pcd_register_t addr, uint8_t *value_ref)
 {
     return rc522_pcd_read_n(rc522, addr, &(rc522_bytes_t) { .ptr = value_ref, .length = 1 });
 }
 
-inline esp_err_t rc522_pcd_set_bits(rc522_handle_t rc522, rc522_pcd_register_t addr, uint8_t bits)
+inline esp_err_t rc522_pcd_set_bits(const rc522_handle_t rc522, rc522_pcd_register_t addr, uint8_t bits)
 {
     uint8_t value;
     RC522_RETURN_ON_ERROR(rc522_pcd_read(rc522, addr, &value));
@@ -363,7 +363,7 @@ inline esp_err_t rc522_pcd_set_bits(rc522_handle_t rc522, rc522_pcd_register_t a
     return rc522_pcd_write(rc522, addr, value | bits);
 }
 
-inline esp_err_t rc522_pcd_clear_bits(rc522_handle_t rc522, rc522_pcd_register_t addr, uint8_t bits)
+inline esp_err_t rc522_pcd_clear_bits(const rc522_handle_t rc522, rc522_pcd_register_t addr, uint8_t bits)
 {
     uint8_t value;
     ESP_RETURN_ON_ERROR(rc522_pcd_read(rc522, addr, &value), TAG, "");
