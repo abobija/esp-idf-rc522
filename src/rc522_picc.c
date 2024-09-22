@@ -171,11 +171,11 @@ esp_err_t rc522_picc_comm(const rc522_handle_t rc522, rc522_pcd_command_t comman
         }
 
         // Verify CRC_A
-        uint16_t crc = 0;
+        rc522_pcd_crc_t crc = { 0 };
         RC522_RETURN_ON_ERROR(
             rc522_pcd_calculate_crc(rc522, &(rc522_bytes_t) { .ptr = back_data, .length = *back_data_len - 2 }, &crc));
 
-        if ((back_data[*back_data_len - 2] != (crc & 0xFF)) || (back_data[*back_data_len - 1] != (crc >> 8))) {
+        if ((back_data[*back_data_len - 2] != crc.lsb) || (back_data[*back_data_len - 1] != crc.msb)) {
             return RC522_ERR_CRC_WRONG;
         }
     }
@@ -421,12 +421,12 @@ esp_err_t rc522_picc_select(const rc522_handle_t rc522, rc522_picc_uid_t *out_ui
                 buffer[6] = buffer[2] ^ buffer[3] ^ buffer[4] ^ buffer[5];
                 // Calculate CRC_A
 
-                uint16_t crc = 0;
+                rc522_pcd_crc_t crc = { 0 };
                 RC522_RETURN_ON_ERROR(
                     rc522_pcd_calculate_crc(rc522, &(rc522_bytes_t) { .ptr = buffer, .length = 7 }, &crc));
 
-                buffer[7] = crc & 0xFF;
-                buffer[8] = crc >> 8;
+                buffer[7] = crc.lsb;
+                buffer[8] = crc.msb;
 
                 tx_last_bits = 0; // 0 => All 8 bits are valid.
                 buffer_used = 9;
@@ -544,12 +544,12 @@ esp_err_t rc522_picc_select(const rc522_handle_t rc522, rc522_picc_uid_t *out_ui
 // compiler complains about uninitialized response_buffer even is
 // no chance that response_buffer is NULL here, so ignore warning here
 #pragma GCC diagnostic ignored "-Wmaybe-uninitialized"
-        uint16_t crc = 0;
+        rc522_pcd_crc_t crc = { 0 };
         RC522_RETURN_ON_ERROR(
             rc522_pcd_calculate_crc(rc522, &(rc522_bytes_t) { .ptr = response_buffer, .length = 1 }, &crc));
 
-        buffer[2] = crc & 0xFF;
-        buffer[3] = crc >> 8;
+        buffer[2] = crc.lsb;
+        buffer[3] = crc.msb;
 
         if ((buffer[2] != response_buffer[1]) || (buffer[3] != response_buffer[2])) {
             RC522_LOGD("crc wrong");
@@ -679,11 +679,11 @@ esp_err_t rc522_picc_halta(const rc522_handle_t rc522, rc522_picc_t *picc)
     buffer[0] = RC522_PICC_CMD_HLTA;
     buffer[1] = 0;
     // Calculate CRC_A
-    uint16_t crc = 0;
+    rc522_pcd_crc_t crc = { 0 };
     RC522_RETURN_ON_ERROR(rc522_pcd_calculate_crc(rc522, &(rc522_bytes_t) { .ptr = buffer, .length = 2 }, &crc));
 
-    buffer[2] = crc & 0xFF;
-    buffer[3] = crc >> 8;
+    buffer[2] = crc.lsb;
+    buffer[3] = crc.msb;
 
     // Send the command.
     // The standard says:

@@ -413,9 +413,19 @@ typedef enum
     RC522_PCD_FIRMWARE_COUNTERFEIT = 0x12, // counterfeit chip
 } rc522_pcd_firmware_t;
 
+typedef union
+{
+    uint16_t value;
+    struct
+    {
+        uint8_t lsb;
+        uint8_t msb;
+    };
+} rc522_pcd_crc_t;
+
 esp_err_t rc522_pcd_reset(const rc522_handle_t rc522, uint32_t timeout_ms);
 
-esp_err_t rc522_pcd_calculate_crc(const rc522_handle_t rc522, const rc522_bytes_t *bytes, uint16_t *result);
+esp_err_t rc522_pcd_calculate_crc(const rc522_handle_t rc522, const rc522_bytes_t *bytes, rc522_pcd_crc_t *result);
 
 esp_err_t rc522_pcd_init(const rc522_handle_t rc522);
 
