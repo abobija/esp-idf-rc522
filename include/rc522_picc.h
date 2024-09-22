@@ -139,12 +139,12 @@ char *rc522_picc_type_name(rc522_picc_type_t type);
 /**
  * @brief Convert PICC UID to (null-terminated) string
  */
-esp_err_t rc522_picc_uid_to_str(rc522_picc_uid_t *uid, char *buffer, uint8_t buffer_size);
+esp_err_t rc522_picc_uid_to_str(const rc522_picc_uid_t *uid, char *buffer, uint8_t buffer_size);
 
 /**
- * @brief Print PICC information in fancy way
+ * @brief Print PICC information in a fancy way
  */
-esp_err_t rc522_picc_print(rc522_picc_t *picc);
+esp_err_t rc522_picc_print(const rc522_picc_t *picc);
 
 #ifdef __cplusplus
 }
