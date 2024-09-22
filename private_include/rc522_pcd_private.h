@@ -392,7 +392,7 @@ enum // RC522_PCD_STATUS_2_REG
      * Only valid in Read/Write mode for MIFARE standard cards.
      * This bit is cleared by software.
      */
-    RC522_PCD_MK_CRYPTO1_ON_BIT = BIT3,
+    RC522_PCD_MF_CRYPTO1_ON_BIT = BIT3,
 };
 
 enum // RC522_PCD_RX_MODE_REG

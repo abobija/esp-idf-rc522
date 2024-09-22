@@ -269,7 +269,7 @@ inline esp_err_t rc522_pcd_stop_data_transmission(const rc522_handle_t rc522)
 
 inline esp_err_t rc522_pcd_stop_crypto1(const rc522_handle_t rc522)
 {
-    return rc522_pcd_clear_bits(rc522, RC522_PCD_STATUS_2_REG, RC522_PCD_MK_CRYPTO1_ON_BIT);
+    return rc522_pcd_clear_bits(rc522, RC522_PCD_STATUS_2_REG, RC522_PCD_MF_CRYPTO1_ON_BIT);
 }
 
 esp_err_t rc522_pcd_rw_test(const rc522_handle_t rc522)
