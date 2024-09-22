@@ -1,5 +1,6 @@
 #pragma once
 
+#include "rc522_types_private.h"
 #include "rc522_pcd.h"
 
 #ifdef __cplusplus
@@ -414,12 +415,9 @@ typedef enum
 
 esp_err_t rc522_pcd_reset(rc522_handle_t rc522, uint32_t timeout_ms);
 
-esp_err_t rc522_pcd_calculate_crc(rc522_handle_t rc522, uint8_t *data, uint8_t n, uint8_t *buffer);
+esp_err_t rc522_pcd_calculate_crc(rc522_handle_t rc522, const rc522_bytes_t *bytes, uint16_t *result);
 
 esp_err_t rc522_pcd_init(rc522_handle_t rc522);
-
-esp_err_t rc522_pcd_wait_for_any_bit(rc522_handle_t rc522, rc522_pcd_register_t addr, uint8_t bits, uint8_t stop_bits,
-    uint32_t timeout_ms, uint8_t *ret_state);
 
 esp_err_t rc522_pcd_firmware(rc522_handle_t rc522, rc522_pcd_firmware_t *result);
 
@@ -429,9 +427,9 @@ esp_err_t rc522_pcd_stop_active_command(rc522_handle_t rc522);
 
 esp_err_t rc522_pcd_clear_all_com_interrupts(rc522_handle_t rc522);
 
-esp_err_t rc522_pcd_fifo_write(rc522_handle_t rc522, uint8_t *data, uint8_t data_length);
+esp_err_t rc522_pcd_fifo_write(rc522_handle_t rc522, const rc522_bytes_t *bytes);
 
-esp_err_t rc522_pcd_fifo_read(rc522_handle_t rc522, uint8_t *buffer, uint8_t length);
+esp_err_t rc522_pcd_fifo_read(rc522_handle_t rc522, rc522_bytes_t *bytes);
 
 esp_err_t rc522_pcd_fifo_flush(rc522_handle_t rc522);
 
@@ -443,11 +441,11 @@ esp_err_t rc522_pcd_stop_crypto1(rc522_handle_t rc522);
 
 esp_err_t rc522_pcd_rw_test(rc522_handle_t rc522);
 
-esp_err_t rc522_pcd_write_n(rc522_handle_t rc522, rc522_pcd_register_t addr, uint8_t n, uint8_t *data);
+esp_err_t rc522_pcd_write_n(rc522_handle_t rc522, rc522_pcd_register_t addr, const rc522_bytes_t *bytes);
 
 esp_err_t rc522_pcd_write(rc522_handle_t rc522, rc522_pcd_register_t addr, uint8_t val);
 
-esp_err_t rc522_pcd_read_n(rc522_handle_t rc522, rc522_pcd_register_t addr, uint8_t n, uint8_t *buffer);
+esp_err_t rc522_pcd_read_n(rc522_handle_t rc522, rc522_pcd_register_t addr, rc522_bytes_t *bytes);
 
 esp_err_t rc522_pcd_read(rc522_handle_t rc522, rc522_pcd_register_t addr, uint8_t *value_ref);
 

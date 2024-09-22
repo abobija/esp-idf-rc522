@@ -39,7 +39,7 @@ esp_err_t rc522_picc_comm(rc522_handle_t rc522, rc522_pcd_command_t command, uin
     RC522_RETURN_ON_ERROR(rc522_pcd_stop_active_command(rc522));
     RC522_RETURN_ON_ERROR(rc522_pcd_clear_all_com_interrupts(rc522));
     RC522_RETURN_ON_ERROR(rc522_pcd_fifo_flush(rc522));
-    RC522_RETURN_ON_ERROR(rc522_pcd_fifo_write(rc522, send_data, send_data_len));
+    RC522_RETURN_ON_ERROR(rc522_pcd_fifo_write(rc522, &(rc522_bytes_t) { .ptr = send_data, .length = send_data_len }));
     RC522_RETURN_ON_ERROR(rc522_pcd_write(rc522, RC522_PCD_BIT_FRAMING_REG, bit_framing)); // Bit adjustments
     RC522_RETURN_ON_ERROR(rc522_pcd_write(rc522, RC522_PCD_COMMAND_REG, command));         // Execute the command
 
@@ -122,7 +122,7 @@ esp_err_t rc522_picc_comm(rc522_handle_t rc522, rc522_pcd_command_t command, uin
         *back_data_len = fifo_level; // Number of bytes returned
 
         uint8_t b0_orig = back_data[0];
-        RC522_RETURN_ON_ERROR(rc522_pcd_fifo_read(rc522, back_data, fifo_level));
+        RC522_RETURN_ON_ERROR(rc522_pcd_fifo_read(rc522, &(rc522_bytes_t) { .ptr = back_data, .length = fifo_level }));
 
         if (RC522_LOG_LEVEL >= ESP_LOG_DEBUG) {
             char debug_buffer[64];
@@ -165,11 +165,12 @@ esp_err_t rc522_picc_comm(rc522_handle_t rc522, rc522_pcd_command_t command, uin
             return ESP_ERR_INVALID_ARG;
         }
 
-        // Verify CRC_A - do our own calculation and store the control in controlBuffer.
-        uint8_t crc[2];
-        RC522_RETURN_ON_ERROR(rc522_pcd_calculate_crc(rc522, back_data, *back_data_len - 2, crc));
+        // Verify CRC_A
+        uint16_t crc = 0;
+        RC522_RETURN_ON_ERROR(
+            rc522_pcd_calculate_crc(rc522, &(rc522_bytes_t) { .ptr = back_data, .length = *back_data_len - 2 }, &crc));
 
-        if ((back_data[*back_data_len - 2] != crc[0]) || (back_data[*back_data_len - 1] != crc[1])) {
+        if ((back_data[*back_data_len - 2] != (crc & 0xFF)) || (back_data[*back_data_len - 1] != (crc >> 8))) {
             return RC522_ERR_CRC_WRONG;
         }
     }
@@ -415,7 +416,12 @@ esp_err_t rc522_picc_select(rc522_handle_t rc522, rc522_picc_uid_t *out_uid, uin
                 buffer[6] = buffer[2] ^ buffer[3] ^ buffer[4] ^ buffer[5];
                 // Calculate CRC_A
 
-                RC522_RETURN_ON_ERROR(rc522_pcd_calculate_crc(rc522, buffer, 7, &buffer[7]));
+                uint16_t crc = 0;
+                RC522_RETURN_ON_ERROR(
+                    rc522_pcd_calculate_crc(rc522, &(rc522_bytes_t) { .ptr = buffer, .length = 7 }, &crc));
+
+                buffer[7] = crc & 0xFF;
+                buffer[8] = crc >> 8;
 
                 tx_last_bits = 0; // 0 => All 8 bits are valid.
                 buffer_used = 9;
@@ -533,7 +539,12 @@ esp_err_t rc522_picc_select(rc522_handle_t rc522, rc522_picc_uid_t *out_uid, uin
 // compiler complains about uninitialized response_buffer even is
 // no chance that response_buffer is NULL here, so ignore warning here
 #pragma GCC diagnostic ignored "-Wmaybe-uninitialized"
-        RC522_RETURN_ON_ERROR(rc522_pcd_calculate_crc(rc522, response_buffer, 1, buffer + 2));
+        uint16_t crc = 0;
+        RC522_RETURN_ON_ERROR(
+            rc522_pcd_calculate_crc(rc522, &(rc522_bytes_t) { .ptr = response_buffer, .length = 1 }, &crc));
+
+        buffer[2] = crc & 0xFF;
+        buffer[3] = crc >> 8;
 
         if ((buffer[2] != response_buffer[1]) || (buffer[3] != response_buffer[2])) {
             RC522_LOGD("crc wrong");
@@ -640,65 +651,6 @@ esp_err_t rc522_picc_heartbeat(rc522_handle_t rc522, rc522_picc_t *picc, rc522_p
     return ESP_OK;
 }
 
-rc522_picc_type_t rc522_picc_type(uint8_t sak)
-{
-    // http://www.nxp.com/documents/application_note/AN10833.pdf
-    // 3.2 Coding of Select Acknowledge (SAK)
-    // ignore 8-bit (iso14443 starts with LSBit = bit 1)
-    // fixes wrong type for manufacturer Infineon (http://nfc-tools.org/index.php?title=ISO14443A)
-    sak &= 0x7F;
-
-    switch (sak) {
-        case 0x09:
-            return RC522_PICC_TYPE_MIFARE_MINI;
-        case 0x08:
-            return RC522_PICC_TYPE_MIFARE_1K;
-        case 0x18:
-            return RC522_PICC_TYPE_MIFARE_4K;
-        case 0x00:
-            return RC522_PICC_TYPE_MIFARE_UL;
-        case 0x10:
-        case 0x11:
-            return RC522_PICC_TYPE_MIFARE_PLUS;
-        case 0x01:
-            return RC522_PICC_TYPE_TNP3XXX;
-        case 0x20:
-            return RC522_PICC_TYPE_ISO_14443_4;
-        case 0x40:
-            return RC522_PICC_TYPE_ISO_18092;
-        default:
-            return RC522_PICC_TYPE_UNKNOWN;
-    }
-}
-
-char *rc522_picc_type_name(rc522_picc_type_t type)
-{
-    switch (type) {
-        case RC522_PICC_TYPE_ISO_14443_4:
-            return "PICC compliant with ISO/IEC 14443-4";
-        case RC522_PICC_TYPE_ISO_18092:
-            return "PICC compliant with ISO/IEC 18092 (NFC)";
-        case RC522_PICC_TYPE_MIFARE_MINI:
-            return "MIFARE Mini, 320 bytes";
-        case RC522_PICC_TYPE_MIFARE_1K:
-            return "MIFARE 1K";
-        case RC522_PICC_TYPE_MIFARE_4K:
-            return "MIFARE 4K";
-        case RC522_PICC_TYPE_MIFARE_UL:
-            return "MIFARE Ultralight or Ultralight C";
-        case RC522_PICC_TYPE_MIFARE_PLUS:
-            return "MIFARE Plus";
-        case RC522_PICC_TYPE_MIFARE_DESFIRE:
-            return "MIFARE DESFire";
-        case RC522_PICC_TYPE_TNP3XXX:
-            return "MIFARE TNP3XXX";
-        case RC522_PICC_TYPE_UNDEFINED:
-        case RC522_PICC_TYPE_UNKNOWN:
-        default:
-            return "unknown";
-    }
-}
-
 esp_err_t rc522_picc_uid_to_str(rc522_picc_uid_t *uid, char *buffer, uint8_t buffer_size)
 {
     RC522_CHECK(uid == NULL);
@@ -721,7 +673,11 @@ esp_err_t rc522_picc_halta(rc522_handle_t rc522, rc522_picc_t *picc)
     buffer[0] = RC522_PICC_CMD_HLTA;
     buffer[1] = 0;
     // Calculate CRC_A
-    RC522_RETURN_ON_ERROR(rc522_pcd_calculate_crc(rc522, buffer, 2, &buffer[2]));
+    uint16_t crc = 0;
+    RC522_RETURN_ON_ERROR(rc522_pcd_calculate_crc(rc522, &(rc522_bytes_t) { .ptr = buffer, .length = 2 }, &crc));
+
+    buffer[2] = crc & 0xFF;
+    buffer[3] = crc >> 8;
 
     // Send the command.
     // The standard says:
@@ -772,6 +728,70 @@ esp_err_t rc522_picc_set_state(rc522_handle_t rc522, rc522_picc_t *picc, rc522_p
     }
 
     return ret;
+}
+
+rc522_picc_type_t rc522_picc_get_type(const rc522_picc_t *picc)
+{
+    RC522_CHECK(picc == NULL);
+
+    uint8_t sak = picc->sak;
+
+    // http://www.nxp.com/documents/application_note/AN10833.pdf
+    // Section: Coding of Select Acknowledge (SAK)
+
+    // ignore 8th (iso14443 starts with LSBit = bit 1)
+    // fixes wrong type for manufacturer Infineon (http://nfc-tools.org/index.php?title=ISO14443A)
+    sak &= 0x7F;
+
+    switch (sak) {
+        case 0x09:
+            return RC522_PICC_TYPE_MIFARE_MINI;
+        case 0x08:
+            return RC522_PICC_TYPE_MIFARE_1K;
+        case 0x18:
+            return RC522_PICC_TYPE_MIFARE_4K;
+        case 0x00:
+            return RC522_PICC_TYPE_MIFARE_UL;
+        case 0x10:
+        case 0x11:
+            return RC522_PICC_TYPE_MIFARE_PLUS;
+        case 0x01:
+            return RC522_PICC_TYPE_TNP3XXX;
+        case 0x20:
+            return picc->atqa.source == 0x4400 ? RC522_PICC_TYPE_MIFARE_DESFIRE : RC522_PICC_TYPE_ISO_14443_4;
+        case 0x40:
+            return RC522_PICC_TYPE_ISO_18092;
+        default:
+            return RC522_PICC_TYPE_UNKNOWN;
+    }
+}
+
+char *rc522_picc_type_name(rc522_picc_type_t type)
+{
+    switch (type) {
+        case RC522_PICC_TYPE_ISO_14443_4:
+            return "PICC compliant with ISO/IEC 14443-4";
+        case RC522_PICC_TYPE_ISO_18092:
+            return "PICC compliant with ISO/IEC 18092 (NFC)";
+        case RC522_PICC_TYPE_MIFARE_MINI:
+            return "MIFARE Mini, 320 bytes";
+        case RC522_PICC_TYPE_MIFARE_1K:
+            return "MIFARE 1K";
+        case RC522_PICC_TYPE_MIFARE_4K:
+            return "MIFARE 4K";
+        case RC522_PICC_TYPE_MIFARE_UL:
+            return "MIFARE Ultralight or Ultralight C";
+        case RC522_PICC_TYPE_MIFARE_PLUS:
+            return "MIFARE Plus";
+        case RC522_PICC_TYPE_MIFARE_DESFIRE:
+            return "MIFARE DESFire";
+        case RC522_PICC_TYPE_TNP3XXX:
+            return "MIFARE TNP3XXX";
+        case RC522_PICC_TYPE_UNDEFINED:
+        case RC522_PICC_TYPE_UNKNOWN:
+        default:
+            return "unknown";
+    }
 }
 
 esp_err_t rc522_picc_print(rc522_picc_t *picc)
