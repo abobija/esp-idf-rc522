@@ -158,11 +158,11 @@ esp_err_t rc522_mifare_read(
     buffer_clone[1] = block_address;
 
     // Calculate CRC_A
-    uint16_t crc = 0;
+    rc522_pcd_crc_t crc = { 0 };
     RC522_RETURN_ON_ERROR(rc522_pcd_calculate_crc(rc522, &(rc522_bytes_t) { .ptr = buffer_clone, .length = 2 }, &crc));
 
-    buffer_clone[2] = crc & 0xFF;
-    buffer_clone[3] = crc >> 8;
+    buffer_clone[2] = crc.lsb;
+    buffer_clone[3] = crc.msb;
 
     // Transmit the buffer and receive the response, validate CRC_A.
     uint8_t _ = sizeof(buffer_clone);
@@ -187,12 +187,12 @@ static esp_err_t rc522_mifare_send(
     // Copy sendData[] to cmdBuffer[] and add CRC_A
     memcpy(cmd_buffer, send_data, send_length);
 
-    uint16_t crc = 0;
+    rc522_pcd_crc_t crc = { 0 };
     RC522_RETURN_ON_ERROR(
         rc522_pcd_calculate_crc(rc522, &(rc522_bytes_t) { .ptr = cmd_buffer, .length = send_length }, &crc));
 
-    cmd_buffer[send_length] = crc & 0xFF;
-    cmd_buffer[send_length + 1] = crc >> 8;
+    cmd_buffer[send_length] = crc.lsb;
+    cmd_buffer[send_length + 1] = crc.msb;
 
     send_length += 2;
 

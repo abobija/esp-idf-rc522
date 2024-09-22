@@ -12,7 +12,7 @@ RC522_LOG_DEFINE_BASE();
 /**
  * @see https://stackoverflow.com/a/48705557
  */
-esp_err_t rc522_pcd_calculate_crc(const rc522_handle_t rc522, const rc522_bytes_t *bytes, uint16_t *result)
+esp_err_t rc522_pcd_calculate_crc(const rc522_handle_t rc522, const rc522_bytes_t *bytes, rc522_pcd_crc_t *result)
 {
     RC522_CHECK(rc522 == NULL);
     RC522_CHECK_BYTES(bytes);
@@ -44,19 +44,19 @@ esp_err_t rc522_pcd_calculate_crc(const rc522_handle_t rc522, const rc522_bytes_
         return ESP_ERR_TIMEOUT;
     }
 
-    uint8_t msb;
-    uint8_t lsb;
-    RC522_RETURN_ON_ERROR(rc522_pcd_stop_active_command(rc522));
-    RC522_RETURN_ON_ERROR(rc522_pcd_read(rc522, RC522_PCD_CRC_RESULT_MSB_REG, &msb));
-    RC522_RETURN_ON_ERROR(rc522_pcd_read(rc522, RC522_PCD_CRC_RESULT_LSB_REG, &lsb));
+    rc522_pcd_crc_t crc = { 0 };
 
-    *result = (msb << 8) | lsb;
+    RC522_RETURN_ON_ERROR(rc522_pcd_stop_active_command(rc522));
+    RC522_RETURN_ON_ERROR(rc522_pcd_read(rc522, RC522_PCD_CRC_RESULT_MSB_REG, &crc.msb));
+    RC522_RETURN_ON_ERROR(rc522_pcd_read(rc522, RC522_PCD_CRC_RESULT_LSB_REG, &crc.lsb));
 
     if (RC522_LOG_LEVEL >= ESP_LOG_DEBUG) {
         char debug_buffer[64];
         rc522_buffer_to_hex_str(bytes->ptr, bytes->length, debug_buffer, sizeof(debug_buffer));
-        RC522_LOGD("crc(%s) = 0x%04" RC522_X, debug_buffer, *result);
+        RC522_LOGD("crc(%s) = 0x%04" RC522_X, debug_buffer, crc.value);
     }
+
+    *result = crc;
 
     return ESP_OK;
 }
