@@ -8,6 +8,9 @@
 extern "C" {
 #endif
 
+#define RC522_SPI_WRITE (0)
+#define RC522_SPI_READ  (1)
+
 typedef struct
 {
     spi_host_device_t host_id;
