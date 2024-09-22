@@ -24,7 +24,8 @@ void rc522_delay_ms(uint32_t ms)
     vTaskDelay(pdMS_TO_TICKS(ms));
 }
 
-esp_err_t rc522_buffer_to_hex_str(uint8_t *buffer, uint8_t buffer_length, char *str_buffer, uint8_t str_buffer_length)
+esp_err_t rc522_buffer_to_hex_str(
+    const uint8_t *buffer, uint8_t buffer_length, char *str_buffer, uint8_t str_buffer_length)
 {
     RC522_CHECK(buffer == NULL);
     RC522_CHECK(buffer_length < 1);

@@ -324,7 +324,7 @@ esp_err_t rc522_pcd_rw_test(rc522_handle_t rc522)
     return ESP_OK;
 }
 
-inline esp_err_t rc522_pcd_write_n(rc522_handle_t rc522, rc522_pcd_register_t addr, rc522_bytes_t *bytes)
+inline esp_err_t rc522_pcd_write_n(rc522_handle_t rc522, rc522_pcd_register_t addr, const rc522_bytes_t *bytes)
 {
     if (RC522_LOG_LEVEL >= ESP_LOG_VERBOSE) {
         char debug_buffer[64];
