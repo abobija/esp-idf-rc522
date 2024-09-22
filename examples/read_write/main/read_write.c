@@ -9,11 +9,11 @@
 
 static const char *TAG = "rc522-read-write-example";
 
-#define RC522_SPI_BUS_GPIO_MISO   (25)
-#define RC522_SPI_BUS_GPIO_MOSI   (23)
-#define RC522_SPI_BUS_GPIO_SCLK   (19)
-#define RC522_SPI_READER_GPIO_SDA (22)
-#define RC522_READER_GPIO_RST     (-1) // soft-reset
+#define RC522_SPI_BUS_GPIO_MISO    (25)
+#define RC522_SPI_BUS_GPIO_MOSI    (23)
+#define RC522_SPI_BUS_GPIO_SCLK    (19)
+#define RC522_SPI_SCANNER_GPIO_SDA (22)
+#define RC522_SCANNER_GPIO_RST     (-1) // soft-reset
 
 static rc522_spi_config_t driver_config = {
     .host_id = VSPI_HOST,
@@ -23,13 +23,13 @@ static rc522_spi_config_t driver_config = {
         .sclk_io_num = RC522_SPI_BUS_GPIO_SCLK,
     },
     .dev_config = {
-        .spics_io_num = RC522_SPI_READER_GPIO_SDA,
+        .spics_io_num = RC522_SPI_SCANNER_GPIO_SDA,
     },
-    .rst_io_num = RC522_READER_GPIO_RST,
+    .rst_io_num = RC522_SCANNER_GPIO_RST,
 };
 
 static rc522_driver_handle_t driver;
-static rc522_handle_t reader;
+static rc522_handle_t scanner;
 
 static void dump_block(uint8_t buffer[16])
 {
@@ -40,7 +40,7 @@ static void dump_block(uint8_t buffer[16])
     esp_log_write(ESP_LOG_INFO, TAG, "\n");
 }
 
-static esp_err_t read_write(rc522_handle_t reader, rc522_picc_t *picc)
+static esp_err_t read_write(rc522_handle_t scanner, rc522_picc_t *picc)
 {
     const char *data_to_write = "rc522 is dope";
     const uint8_t block_address = 4;
@@ -55,14 +55,14 @@ static esp_err_t read_write(rc522_handle_t reader, rc522_picc_t *picc)
         return ESP_ERR_INVALID_ARG;
     }
 
-    ESP_RETURN_ON_ERROR(rc522_mifare_auth(reader, picc, block_address, &key), TAG, "auth fail");
+    ESP_RETURN_ON_ERROR(rc522_mifare_auth(scanner, picc, block_address, &key), TAG, "auth fail");
 
     uint8_t read_buffer[16];
     uint8_t write_buffer[16];
 
     // Read
     ESP_LOGI(TAG, "Reading data from the block %d", block_address);
-    ESP_RETURN_ON_ERROR(rc522_mifare_read(reader, picc, block_address, read_buffer, sizeof(read_buffer)),
+    ESP_RETURN_ON_ERROR(rc522_mifare_read(scanner, picc, block_address, read_buffer, sizeof(read_buffer)),
         TAG,
         "read fail");
     ESP_LOGI(TAG, "Current data:");
@@ -80,14 +80,14 @@ static esp_err_t read_write(rc522_handle_t reader, rc522_picc_t *picc)
 
     ESP_LOGI(TAG, "Writing data (%s) to the block %d:", data_to_write, block_address);
     dump_block(write_buffer);
-    ESP_RETURN_ON_ERROR(rc522_mifare_write(reader, picc, block_address, write_buffer, sizeof(write_buffer)),
+    ESP_RETURN_ON_ERROR(rc522_mifare_write(scanner, picc, block_address, write_buffer, sizeof(write_buffer)),
         TAG,
         "write fail");
     // ~Write
 
     // Read again
     ESP_LOGI(TAG, "Write done. Verifying...");
-    ESP_RETURN_ON_ERROR(rc522_mifare_read(reader, picc, block_address, read_buffer, sizeof(read_buffer)),
+    ESP_RETURN_ON_ERROR(rc522_mifare_read(scanner, picc, block_address, read_buffer, sizeof(read_buffer)),
         TAG,
         "read fail");
     ESP_LOGI(TAG, "New data in the block %d:", block_address);
@@ -140,14 +140,14 @@ static void on_picc_state_changed(void *arg, esp_event_base_t base, int32_t even
         return;
     }
 
-    if (read_write(reader, picc) == ESP_OK) {
+    if (read_write(scanner, picc) == ESP_OK) {
         ESP_LOGI(TAG, "Read/Write success");
     }
     else {
         ESP_LOGE(TAG, "Read/Write failed");
     }
 
-    if (rc522_mifare_deauth(reader, picc) != ESP_OK) {
+    if (rc522_mifare_deauth(scanner, picc) != ESP_OK) {
         ESP_LOGW(TAG, "Deauth failed");
     }
 }
@@ -159,11 +159,11 @@ void app_main()
     rc522_spi_create(&driver_config, &driver);
     rc522_driver_install(driver);
 
-    rc522_config_t reader_config = {
+    rc522_config_t scanner_config = {
         .driver = driver,
     };
 
-    rc522_create(&reader_config, &reader);
-    rc522_register_events(reader, RC522_EVENT_PICC_STATE_CHANGED, on_picc_state_changed, NULL);
-    rc522_start(reader);
+    rc522_create(&scanner_config, &scanner);
+    rc522_register_events(scanner, RC522_EVENT_PICC_STATE_CHANGED, on_picc_state_changed, NULL);
+    rc522_start(scanner);
 }

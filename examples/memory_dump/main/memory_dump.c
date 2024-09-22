@@ -7,11 +7,11 @@
 
 static const char *TAG = "rc522-memory-dump-example";
 
-#define RC522_SPI_BUS_GPIO_MISO   (25)
-#define RC522_SPI_BUS_GPIO_MOSI   (23)
-#define RC522_SPI_BUS_GPIO_SCLK   (19)
-#define RC522_SPI_READER_GPIO_SDA (22)
-#define RC522_READER_GPIO_RST     (-1) // soft-reset
+#define RC522_SPI_BUS_GPIO_MISO    (25)
+#define RC522_SPI_BUS_GPIO_MOSI    (23)
+#define RC522_SPI_BUS_GPIO_SCLK    (19)
+#define RC522_SPI_SCANNER_GPIO_SDA (22)
+#define RC522_SCANNER_GPIO_RST     (-1) // soft-reset
 
 static rc522_spi_config_t driver_config = {
     .host_id = VSPI_HOST,
@@ -21,13 +21,13 @@ static rc522_spi_config_t driver_config = {
         .sclk_io_num = RC522_SPI_BUS_GPIO_SCLK,
     },
     .dev_config = {
-        .spics_io_num = RC522_SPI_READER_GPIO_SDA,
+        .spics_io_num = RC522_SPI_SCANNER_GPIO_SDA,
     },
-    .rst_io_num = RC522_READER_GPIO_RST,
+    .rst_io_num = RC522_SCANNER_GPIO_RST,
 };
 
 static rc522_driver_handle_t driver;
-static rc522_handle_t reader;
+static rc522_handle_t scanner;
 
 #define DUMP(format, ...) esp_log_write(ESP_LOG_INFO, TAG, format, ##__VA_ARGS__)
 
@@ -99,7 +99,7 @@ static void dump_block(rc522_mifare_sector_block_t *block, uint8_t sector_index)
     DUMP("\n");
 }
 
-static esp_err_t dump_memory(rc522_handle_t reader, rc522_picc_t *picc)
+static esp_err_t dump_memory(rc522_handle_t scanner, rc522_picc_t *picc)
 {
     rc522_mifare_key_t key = {
         .value = { RC522_MIFARE_KEY_VALUE_DEFAULT },
@@ -117,10 +117,10 @@ static esp_err_t dump_memory(rc522_handle_t reader, rc522_picc_t *picc)
     do {
         rc522_mifare_sector_desc_t sector;
         ESP_RETURN_ON_ERROR(rc522_mifare_get_sector_desc(sector_index, &sector), TAG, "");
-        ESP_RETURN_ON_ERROR(rc522_mifare_auth_sector(reader, picc, &sector, &key), TAG, "");
+        ESP_RETURN_ON_ERROR(rc522_mifare_auth_sector(scanner, picc, &sector, &key), TAG, "");
 
         rc522_mifare_sector_block_t trailer;
-        ESP_RETURN_ON_ERROR(rc522_mifare_read_sector_trailer_block(reader, picc, &sector, &trailer), TAG, "");
+        ESP_RETURN_ON_ERROR(rc522_mifare_read_sector_trailer_block(scanner, picc, &sector, &trailer), TAG, "");
 
         dump_block(&trailer, sector_index);
 
@@ -129,7 +129,7 @@ static esp_err_t dump_memory(rc522_handle_t reader, rc522_picc_t *picc)
 
         do {
             rc522_mifare_sector_block_t block;
-            ESP_RETURN_ON_ERROR(rc522_mifare_read_sector_block(reader, picc, &sector, &trailer, block_offset, &block),
+            ESP_RETURN_ON_ERROR(rc522_mifare_read_sector_block(scanner, picc, &sector, &trailer, block_offset, &block),
                 TAG,
                 "");
 
@@ -160,14 +160,14 @@ static void on_picc_state_changed(void *arg, esp_event_base_t base, int32_t even
         return;
     }
 
-    if (dump_memory(reader, picc) == ESP_OK) {
+    if (dump_memory(scanner, picc) == ESP_OK) {
         ESP_LOGI(TAG, "Memory dump success");
     }
     else {
         ESP_LOGE(TAG, "Memory dump failed");
     }
 
-    if (rc522_mifare_deauth(reader, picc) != ESP_OK) {
+    if (rc522_mifare_deauth(scanner, picc) != ESP_OK) {
         ESP_LOGW(TAG, "Deauth failed");
     }
 }
@@ -177,11 +177,11 @@ void app_main()
     rc522_spi_create(&driver_config, &driver);
     rc522_driver_install(driver);
 
-    rc522_config_t reader_config = {
+    rc522_config_t scanner_config = {
         .driver = driver,
     };
 
-    rc522_create(&reader_config, &reader);
-    rc522_register_events(reader, RC522_EVENT_PICC_STATE_CHANGED, on_picc_state_changed, NULL);
-    rc522_start(reader);
+    rc522_create(&scanner_config, &scanner);
+    rc522_register_events(scanner, RC522_EVENT_PICC_STATE_CHANGED, on_picc_state_changed, NULL);
+    rc522_start(scanner);
 }
