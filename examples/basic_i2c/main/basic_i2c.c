@@ -5,10 +5,10 @@
 
 static const char *TAG = "rc522-basic-i2c-example";
 
-#define RC522_I2C_ADDRESS     (0x28)
-#define RC522_I2C_GPIO_SDA    (18)
-#define RC522_I2C_GPIO_SCL    (21)
-#define RC522_READER_GPIO_RST (-1) // soft-reset
+#define RC522_I2C_ADDRESS      (0x28)
+#define RC522_I2C_GPIO_SDA     (18)
+#define RC522_I2C_GPIO_SCL     (21)
+#define RC522_SCANNER_GPIO_RST (-1) // soft-reset
 
 static rc522_i2c_config_t driver_config = {
     .port = I2C_NUM_0,
@@ -22,11 +22,11 @@ static rc522_i2c_config_t driver_config = {
         .scl_pullup_en = GPIO_PULLUP_ENABLE,
         .master.clk_speed = 100000,
     },
-    .rst_io_num = RC522_READER_GPIO_RST,
+    .rst_io_num = RC522_SCANNER_GPIO_RST,
 };
 
 static rc522_driver_handle_t driver;
-static rc522_handle_t reader;
+static rc522_handle_t scanner;
 
 static void on_picc_state_changed(void *arg, esp_event_base_t base, int32_t event_id, void *data)
 {
@@ -44,11 +44,11 @@ void app_main()
     rc522_i2c_create(&driver_config, &driver);
     rc522_driver_install(driver);
 
-    rc522_config_t reader_config = {
+    rc522_config_t scanner_config = {
         .driver = driver,
     };
 
-    rc522_create(&reader_config, &reader);
-    rc522_register_events(reader, RC522_EVENT_PICC_STATE_CHANGED, on_picc_state_changed, NULL);
-    rc522_start(reader);
+    rc522_create(&scanner_config, &scanner);
+    rc522_register_events(scanner, RC522_EVENT_PICC_STATE_CHANGED, on_picc_state_changed, NULL);
+    rc522_start(scanner);
 }
