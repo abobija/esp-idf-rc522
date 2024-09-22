@@ -39,7 +39,7 @@ esp_err_t rc522_picc_comm(rc522_handle_t rc522, rc522_pcd_command_t command, uin
     RC522_RETURN_ON_ERROR(rc522_pcd_stop_active_command(rc522));
     RC522_RETURN_ON_ERROR(rc522_pcd_clear_all_com_interrupts(rc522));
     RC522_RETURN_ON_ERROR(rc522_pcd_fifo_flush(rc522));
-    RC522_RETURN_ON_ERROR(rc522_pcd_fifo_write(rc522, send_data, send_data_len));
+    RC522_RETURN_ON_ERROR(rc522_pcd_fifo_write(rc522, &(rc522_bytes_t) { .ptr = send_data, .length = send_data_len }));
     RC522_RETURN_ON_ERROR(rc522_pcd_write(rc522, RC522_PCD_BIT_FRAMING_REG, bit_framing)); // Bit adjustments
     RC522_RETURN_ON_ERROR(rc522_pcd_write(rc522, RC522_PCD_COMMAND_REG, command));         // Execute the command
 
@@ -122,7 +122,7 @@ esp_err_t rc522_picc_comm(rc522_handle_t rc522, rc522_pcd_command_t command, uin
         *back_data_len = fifo_level; // Number of bytes returned
 
         uint8_t b0_orig = back_data[0];
-        RC522_RETURN_ON_ERROR(rc522_pcd_fifo_read(rc522, back_data, fifo_level));
+        RC522_RETURN_ON_ERROR(rc522_pcd_fifo_read(rc522, &(rc522_bytes_t) { .ptr = back_data, .length = fifo_level }));
 
         if (RC522_LOG_LEVEL >= ESP_LOG_DEBUG) {
             char debug_buffer[64];

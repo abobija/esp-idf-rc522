@@ -27,7 +27,7 @@ esp_err_t rc522_pcd_calculate_crc(rc522_handle_t rc522, uint8_t *data, uint8_t n
     RC522_RETURN_ON_ERROR(rc522_pcd_stop_active_command(rc522));
     RC522_RETURN_ON_ERROR(rc522_pcd_clear_bits(rc522, RC522_PCD_DIV_INT_REQ_REG, RC522_PCD_CRC_IRQ_BIT));
     RC522_RETURN_ON_ERROR(rc522_pcd_fifo_flush(rc522));
-    RC522_RETURN_ON_ERROR(rc522_pcd_fifo_write(rc522, data, n));
+    RC522_RETURN_ON_ERROR(rc522_pcd_fifo_write(rc522, &(rc522_bytes_t) { .ptr = data, .length = n }));
     RC522_RETURN_ON_ERROR(rc522_pcd_write(rc522, RC522_PCD_COMMAND_REG, RC522_PCD_CALC_CRC_CMD));
 
     uint32_t deadline_ms = rc522_millis() + 90;
@@ -250,19 +250,14 @@ inline esp_err_t rc522_pcd_clear_all_com_interrupts(rc522_handle_t rc522)
     return rc522_pcd_write(rc522, RC522_PCD_COM_INT_REQ_REG, (uint8_t)(~RC522_PCD_SET_1_BIT));
 }
 
-inline esp_err_t rc522_pcd_fifo_write(rc522_handle_t rc522, uint8_t *data, uint8_t data_length)
+inline esp_err_t rc522_pcd_fifo_write(rc522_handle_t rc522, const rc522_bytes_t *bytes)
 {
-    return rc522_pcd_write_n(rc522,
-        RC522_PCD_FIFO_DATA_REG,
-        &(rc522_bytes_t) {
-            .ptr = data,
-            .length = data_length,
-        });
+    return rc522_pcd_write_n(rc522, RC522_PCD_FIFO_DATA_REG, bytes);
 }
 
-inline esp_err_t rc522_pcd_fifo_read(rc522_handle_t rc522, uint8_t *buffer, uint8_t length)
+inline esp_err_t rc522_pcd_fifo_read(rc522_handle_t rc522, rc522_bytes_t *bytes)
 {
-    return rc522_pcd_read_n(rc522, RC522_PCD_FIFO_DATA_REG, &(rc522_bytes_t) { .ptr = buffer, .length = length });
+    return rc522_pcd_read_n(rc522, RC522_PCD_FIFO_DATA_REG, bytes);
 }
 
 inline esp_err_t rc522_pcd_fifo_flush(rc522_handle_t rc522)
@@ -298,10 +293,12 @@ esp_err_t rc522_pcd_rw_test(rc522_handle_t rc522)
     const uint8_t buffer_size = sizeof(buffer1);
     uint8_t buffer2[buffer_size];
 
-    ESP_RETURN_ON_ERROR(rc522_pcd_fifo_write(rc522, buffer1, buffer_size), TAG, "Cannot write to FIFO");
+    ESP_RETURN_ON_ERROR(rc522_pcd_fifo_write(rc522, &(rc522_bytes_t) { .ptr = buffer1, .length = buffer_size }),
+        TAG,
+        "Cannot write to FIFO");
     RC522_RETURN_ON_ERROR(rc522_pcd_read(rc522, RC522_PCD_FIFO_LEVEL_REG, &tmp));
     ESP_RETURN_ON_FALSE(tmp == buffer_size, ESP_FAIL, TAG, "FIFO length missmatch after write");
-    RC522_RETURN_ON_ERROR(rc522_pcd_fifo_read(rc522, buffer2, buffer_size));
+    RC522_RETURN_ON_ERROR(rc522_pcd_fifo_read(rc522, &(rc522_bytes_t) { .ptr = buffer2, .length = buffer_size }));
 
     bool buffers_content_equal = true;
     for (uint8_t i = 0; i < buffer_size; i++) {

@@ -430,9 +430,9 @@ esp_err_t rc522_pcd_stop_active_command(rc522_handle_t rc522);
 
 esp_err_t rc522_pcd_clear_all_com_interrupts(rc522_handle_t rc522);
 
-esp_err_t rc522_pcd_fifo_write(rc522_handle_t rc522, uint8_t *data, uint8_t data_length);
+esp_err_t rc522_pcd_fifo_write(rc522_handle_t rc522, const rc522_bytes_t *bytes);
 
-esp_err_t rc522_pcd_fifo_read(rc522_handle_t rc522, uint8_t *buffer, uint8_t length);
+esp_err_t rc522_pcd_fifo_read(rc522_handle_t rc522, rc522_bytes_t *bytes);
 
 esp_err_t rc522_pcd_fifo_flush(rc522_handle_t rc522);
 
