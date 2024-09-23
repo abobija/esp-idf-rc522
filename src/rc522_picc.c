@@ -108,6 +108,88 @@ static esp_err_t rc522_picc_send(const rc522_handle_t rc522, const rc522_picc_tr
     return ESP_OK;
 }
 
+static esp_err_t rc522_picc_receive(const rc522_handle_t rc522, const rc522_picc_transaction_context_t *context,
+    bool check_crc, rc522_picc_transaction_result_t *out_result)
+{
+    RC522_CHECK(rc522 == NULL);
+    RC522_CHECK(context == NULL);
+    RC522_CHECK(context->transaction == NULL);
+    RC522_CHECK(out_result == NULL);
+    RC522_CHECK_BYTES(&context->transaction->bytes);
+
+    uint8_t fifo_level = 0;
+    RC522_RETURN_ON_ERROR(rc522_pcd_read(rc522, RC522_PCD_FIFO_LEVEL_REG, &fifo_level));
+
+    if (fifo_level < 1) {
+        RC522_LOGW("fifo empty (irq=0x%02" RC522_X ")", context->interrupts);
+
+        return RC522_ERR_PCD_FIFO_EMPTY;
+    }
+
+    RC522_CHECK(fifo_level > out_result->bytes.length);
+
+    rc522_picc_transaction_result_t result = {
+        .bytes = { 
+            .ptr = out_result->bytes.ptr, // Use buffer provided by caller
+            .length = fifo_level,
+        },
+    };
+
+    RC522_RETURN_ON_ERROR(rc522_pcd_fifo_read(rc522, &result.bytes));
+
+    if (RC522_LOG_LEVEL >= ESP_LOG_DEBUG) {
+        char debug_buffer[64];
+        rc522_buffer_to_hex_str(result.bytes.ptr, result.bytes.length, debug_buffer, sizeof(debug_buffer));
+        RC522_LOGD("picc >> %s", debug_buffer);
+    }
+
+    if (context->transaction->rx_align) {
+        RC522_LOGD("applying mask (rx_align=%d)", context->transaction->rx_align);
+
+        // Apply mask for rx_align..7 of the first byte
+        result.bytes.ptr[0] &= (0xFF << context->transaction->rx_align);
+    }
+
+    // RxLastBits[2:0] indicates the number of valid bits in the last received byte.
+    // If this value is 0, the whole byte is valid.
+    RC522_RETURN_ON_ERROR(rc522_pcd_read(rc522, RC522_PCD_CONTROL_REG, &result.valid_bits));
+    result.valid_bits &= 0x07;
+
+    if (result.valid_bits) {
+        RC522_LOGD("not full byte received, valid_bits=%d", result.valid_bits);
+    }
+
+    if (context->error_reg & RC522_PCD_COLL_ERR_BIT) {
+        return RC522_ERR_COLLISION;
+    }
+
+    // Perform CRC_A validation
+    if (check_crc) {
+        // We need at least the CRC_A value and all 8 bits of the last byte must be received.
+        if (result.bytes.length < 2 || result.valid_bits != 0) {
+            RC522_LOGD("crc cannot be performed (len=%d, valid_bits=%d)", result.bytes.length, result.valid_bits);
+            return ESP_ERR_INVALID_STATE;
+        }
+
+        // TODO: Check if ((result.bytes.length - 2) > 0) before CRC calculation
+
+        // Verify CRC_A
+        rc522_pcd_crc_t crc = { 0 };
+        RC522_RETURN_ON_ERROR(rc522_pcd_calculate_crc(rc522,
+            &(rc522_bytes_t) { .ptr = result.bytes.ptr, .length = result.bytes.length - 2 },
+            &crc));
+
+        if ((result.bytes.ptr[result.bytes.length - 2] != crc.lsb)
+            || (result.bytes.ptr[result.bytes.length - 1] != crc.msb)) {
+            return RC522_ERR_CRC_WRONG;
+        }
+    }
+
+    memcpy(out_result, &result, sizeof(result));
+
+    return ESP_OK;
+}
+
 // TODO: Refactor this mess, use structs
 esp_err_t rc522_picc_comm_deprecated(const rc522_handle_t rc522, rc522_pcd_command_t command, uint8_t wait_irq,
     const uint8_t *send_data, uint8_t send_data_len, uint8_t *back_data, uint8_t *back_data_len, uint8_t *valid_bits,
@@ -131,89 +213,20 @@ esp_err_t rc522_picc_comm_deprecated(const rc522_handle_t rc522, rc522_pcd_comma
     rc522_picc_transaction_context_t context;
     RC522_RETURN_ON_ERROR_SILENTLY(rc522_picc_send(rc522, &transaction, &context));
 
-    uint8_t fifo_level = 0;
-
-    if (context.interrupts & RC522_PCD_RX_IRQ_BIT) {
-        RC522_RETURN_ON_ERROR(rc522_pcd_read(rc522, RC522_PCD_FIFO_LEVEL_REG, &fifo_level));
-
-        if (fifo_level < 1) {
-            RC522_LOGW("unexpectedly, fifo is empty (irq=0x%02" RC522_X ")", context.interrupts);
-        }
+    if (!back_data || !back_data_len) {
+        return ESP_OK;
     }
 
-    uint8_t _valid_bits = 0;
+    rc522_picc_transaction_result_t result = {
+        .bytes = { .ptr = back_data, .length = *back_data_len },
+    };
 
-    // If the caller wants data back, get it from the MFRC522.
-    if (back_data && back_data_len) {
-        if (fifo_level > *back_data_len) {
-            RC522_LOGW("buffer no space");
+    RC522_RETURN_ON_ERROR(rc522_picc_receive(rc522, &context, check_crc, &result));
 
-            return ESP_ERR_NO_MEM;
-        }
+    *back_data_len = result.bytes.length;
 
-        *back_data_len = fifo_level; // Number of bytes returned
-
-        uint8_t b0_orig = back_data[0];
-        RC522_RETURN_ON_ERROR(rc522_pcd_fifo_read(rc522, &(rc522_bytes_t) { .ptr = back_data, .length = fifo_level }));
-
-        if (RC522_LOG_LEVEL >= ESP_LOG_DEBUG) {
-            char debug_buffer[64];
-            rc522_buffer_to_hex_str(back_data, *back_data_len, debug_buffer, sizeof(debug_buffer));
-            RC522_LOGD("picc >> %s", debug_buffer);
-        }
-
-        if (rx_align) { // Only update bit positions rxAlign..7 in values[0]
-            RC522_LOGD("applying mask based on rx_align=%d", rx_align);
-
-            // Create bit mask for bit positions rxAlign..7
-            uint8_t mask = (0xFF << rx_align) & 0xFF;
-            // Apply mask to both current value of values[0] and the new data in value.
-            back_data[0] = (b0_orig & ~mask) | (back_data[0] & mask);
-        }
-
-        // RxLastBits[2:0] indicates the number of valid bits in the last
-        // received byte. If this value is 000b, the whole byte is valid.
-        RC522_RETURN_ON_ERROR(rc522_pcd_read(rc522, RC522_PCD_CONTROL_REG, &_valid_bits));
-        _valid_bits &= 0x07;
-
-        if (_valid_bits) {
-            RC522_LOGD("not full byte received, valid_bits=%d", _valid_bits);
-        }
-
-        if (valid_bits) {
-            *valid_bits = _valid_bits;
-        }
-    }
-
-    if (context.error_reg & RC522_PCD_COLL_ERR_BIT) {
-        return RC522_ERR_COLLISION;
-    }
-
-    // Perform CRC_A validation if requested.
-    if (check_crc && back_data && back_data_len) {
-        // We need at least the CRC_A value and all 8 bits of the last byte must be received.
-        if (*back_data_len < 2 || _valid_bits != 0) {
-            RC522_LOGD("crc cannot be performed (len=%d, valid_bits=%d)", *back_data_len, _valid_bits);
-            return ESP_ERR_INVALID_ARG;
-        }
-
-        // Verify CRC_A
-        rc522_pcd_crc_t crc = { 0 };
-        RC522_RETURN_ON_ERROR(
-            rc522_pcd_calculate_crc(rc522, &(rc522_bytes_t) { .ptr = back_data, .length = *back_data_len - 2 }, &crc));
-
-        if ((back_data[*back_data_len - 2] != crc.lsb) || (back_data[*back_data_len - 1] != crc.msb)) {
-            return RC522_ERR_CRC_WRONG;
-        }
-    }
-
-    if (RC522_LOG_LEVEL >= ESP_LOG_DEBUG) {
-        if (!back_data || !back_data_len) {
-            // TODO: Read from PICC above even if back_data is null so we can log.
-            //        But then we would need local buffer. Hmm...
-
-            RC522_LOGD("cannot log rx data, back_data buffer is null");
-        }
+    if (valid_bits) {
+        *valid_bits = result.valid_bits;
     }
 
     return ESP_OK;
