@@ -83,23 +83,20 @@ esp_err_t rc522_mifare_auth(
 
     RC522_LOGD("MIFARE AUTH (block_address=%02" RC522_X ")", block_address);
 
-    uint8_t auth_cmd;
+    uint8_t send_data[12];
 
     switch (key->type) {
         case RC522_MIFARE_KEY_A:
-            auth_cmd = RC522_MIFARE_AUTH_KEY_A_CMD;
+            send_data[0] = RC522_MIFARE_AUTH_KEY_A_CMD;
             break;
         case RC522_MIFARE_KEY_B:
-            auth_cmd = RC522_MIFARE_AUTH_KEY_B_CMD;
+            send_data[0] = RC522_MIFARE_AUTH_KEY_B_CMD;
             break;
         default:
             RC522_LOGE("Invalid key type");
             return ESP_ERR_INVALID_ARG;
     }
 
-    // Build command buffer
-    uint8_t send_data[12];
-    send_data[0] = auth_cmd;
     send_data[1] = block_address;
     memcpy(send_data + 2, key->value, RC522_MIFARE_KEY_SIZE);
 
@@ -110,18 +107,17 @@ esp_err_t rc522_mifare_auth(
     memcpy(send_data + 8, picc->uid.value + picc->uid.length - 4, 4);
 
     // Start the authentication.
-    esp_err_t ret = rc522_picc_comm(rc522,
-        RC522_PCD_MF_AUTH_CMD,
-        RC522_PCD_IDLE_IRQ_BIT,
-        send_data,
-        sizeof(send_data),
-        NULL,
-        NULL,
-        NULL,
-        0,
-        false);
+
+    rc522_picc_transaction_t transaction = {
+        .pcd_command = RC522_PCD_MF_AUTH_CMD,
+        .expected_interrupts = RC522_PCD_IDLE_IRQ_BIT,
+        .bytes = { .ptr = send_data, .length = sizeof(send_data) },
+    };
+
+    esp_err_t ret = rc522_picc_send(rc522, &transaction, NULL);
 
     // 10.3.1.9
+    //
     // "If an error occurs during authentication,
     // the ErrorReg register’s ProtocolErr bit is set to logic 1
     // and the Status2Reg register’s Crypto1On bit is set to logic 0"
@@ -138,97 +134,90 @@ esp_err_t rc522_mifare_auth(
     return ret;
 }
 
-esp_err_t rc522_mifare_read(
-    const rc522_handle_t rc522, const rc522_picc_t *picc, uint8_t block_address, uint8_t *buffer, uint8_t buffer_size)
+esp_err_t rc522_mifare_read(const rc522_handle_t rc522, const rc522_picc_t *picc, uint8_t block_address,
+    uint8_t *out_buffer, uint8_t buffer_size)
 {
     RC522_CHECK(rc522 == NULL);
     RC522_CHECK(picc == NULL);
-    RC522_CHECK(buffer == NULL);
+    RC522_CHECK(out_buffer == NULL);
     RC522_CHECK(buffer_size < RC522_MIFARE_BLOCK_SIZE);
 
     RC522_LOGD("MIFARE READ (block_address=%02" RC522_X ")", block_address);
 
-    // FIXME: Cloning the buffer since picc_transceive uses +2 bytes buffer
-    //        to store some extra data (crc i think). Refactor picc_transceive
-    //        and picc_comm functions!
-    uint8_t buffer_clone[RC522_MIFARE_BLOCK_SIZE + 2];
+    uint8_t cmd_buffer[4] = { 0 };
 
     // Build command buffer
-    buffer_clone[0] = RC522_MIFARE_READ_CMD;
-    buffer_clone[1] = block_address;
+    cmd_buffer[0] = RC522_MIFARE_READ_CMD;
+    cmd_buffer[1] = block_address;
 
     // Calculate CRC_A
     rc522_pcd_crc_t crc = { 0 };
-    RC522_RETURN_ON_ERROR(rc522_pcd_calculate_crc(rc522, &(rc522_bytes_t) { .ptr = buffer_clone, .length = 2 }, &crc));
+    RC522_RETURN_ON_ERROR(rc522_pcd_calculate_crc(rc522, &(rc522_bytes_t) { .ptr = cmd_buffer, .length = 2 }, &crc));
 
-    buffer_clone[2] = crc.lsb;
-    buffer_clone[3] = crc.msb;
+    cmd_buffer[2] = crc.lsb;
+    cmd_buffer[3] = crc.msb;
 
-    // Transmit the buffer and receive the response, validate CRC_A.
-    uint8_t _ = sizeof(buffer_clone);
-    RC522_RETURN_ON_ERROR(rc522_picc_transceive(rc522, buffer_clone, 4, buffer_clone, &_, NULL, 0, true));
+    uint8_t block_buffer[RC522_MIFARE_BLOCK_SIZE + 2] = { 0 }; // +2 for CRC_A
 
-    RC522_CHECK(_ != (RC522_MIFARE_BLOCK_SIZE + 2));
+    rc522_picc_transaction_t transaction = {
+        .bytes = { .ptr = cmd_buffer, .length = sizeof(cmd_buffer) },
+        .check_crc = true,
+    };
 
-    // FIXME: Move data back to the original buffer
-    memcpy(buffer, buffer_clone, RC522_MIFARE_BLOCK_SIZE);
+    rc522_picc_transaction_result_t result = {
+        .bytes = { .ptr = block_buffer, .length = sizeof(block_buffer) },
+    };
+
+    RC522_RETURN_ON_ERROR(rc522_picc_transceive(rc522, &transaction, &result));
+    RC522_CHECK_AND_RETURN((result.bytes.length - 2) != RC522_MIFARE_BLOCK_SIZE, ESP_FAIL);
+
+    memcpy(out_buffer, block_buffer, sizeof(block_buffer) - 2); // -2 cuz of CRC_A
 
     return ESP_OK;
 }
 
-static esp_err_t rc522_mifare_send(
-    const rc522_handle_t rc522, const uint8_t *send_data, uint8_t send_length, bool accept_timeout)
+static esp_err_t rc522_mifare_send(const rc522_handle_t rc522, const uint8_t *send_data, uint8_t send_length)
 {
     RC522_CHECK(send_data == NULL);
     RC522_CHECK(send_length > RC522_MIFARE_BLOCK_SIZE);
 
-    uint8_t cmd_buffer[RC522_MIFARE_BLOCK_SIZE + 2]; // We need room for data + 2 bytes CRC_A
-
-    // Copy sendData[] to cmdBuffer[] and add CRC_A
-    memcpy(cmd_buffer, send_data, send_length);
+#pragma GCC diagnostic ignored "-Wcast-qual"
+    uint8_t *sdata = (uint8_t *)send_data;
+#pragma GCC diagnostic pop
 
     rc522_pcd_crc_t crc = { 0 };
     RC522_RETURN_ON_ERROR(
-        rc522_pcd_calculate_crc(rc522, &(rc522_bytes_t) { .ptr = cmd_buffer, .length = send_length }, &crc));
+        rc522_pcd_calculate_crc(rc522, &(rc522_bytes_t) { .ptr = sdata, .length = send_length }, &crc));
 
-    cmd_buffer[send_length] = crc.lsb;
-    cmd_buffer[send_length + 1] = crc.msb;
+    uint8_t buffer[RC522_MIFARE_BLOCK_SIZE + 2]; // +2 for CRC_A
+
+    memcpy(buffer, send_data, send_length);
+
+    buffer[send_length] = crc.lsb;
+    buffer[send_length + 1] = crc.msb;
 
     send_length += 2;
 
-    // Transceive the data, store the reply in cmdBuffer[]
-    uint8_t cmd_buffer_size = sizeof(cmd_buffer);
-    uint8_t valid_bits = 0;
+    rc522_picc_transaction_t transaction = {
+        .bytes = { .ptr = buffer, .length = send_length },
+    };
 
-    esp_err_t ret = rc522_picc_comm(rc522,
-        RC522_PCD_TRANSCEIVE_CMD,
-        RC522_PCD_RX_IRQ_BIT | RC522_PCD_IDLE_IRQ_BIT,
-        cmd_buffer,
-        send_length,
-        cmd_buffer,
-        &cmd_buffer_size,
-        &valid_bits,
-        0,
-        false);
+    rc522_picc_transaction_result_t result = {
+        .bytes = { .ptr = buffer, .length = sizeof(buffer) },
+    };
 
-    if (accept_timeout && ret == ESP_ERR_TIMEOUT) {
-        return ESP_OK;
-    }
-
-    if (ret != ESP_OK) {
-        return ret;
-    }
+    RC522_RETURN_ON_ERROR(rc522_picc_transceive(rc522, &transaction, &result));
 
     // The PICC must reply with a 4 bit ACK
-    if (cmd_buffer_size != 1 || valid_bits != 4) {
+    if (result.bytes.length != 1 || result.valid_bits != 4) {
         return ESP_FAIL; // TODO: use custom err
     }
 
-    if (cmd_buffer[0] != RC522_MIFARE_ACK) {
+    if (result.bytes.ptr[0] != RC522_MIFARE_ACK) {
         return RC522_ERR_MIFARE_NACK;
     }
 
-    return ret;
+    return ESP_OK;
 }
 
 static esp_err_t rc522_mifare_get_number_of_sectors(rc522_picc_type_t type, uint8_t *out_result)
@@ -356,15 +345,10 @@ esp_err_t rc522_mifare_write(const rc522_handle_t rc522, const rc522_picc_t *pic
 
     RC522_LOGD("MIFARE WRITE (block_address=%02" RC522_X ")", block_address);
 
-    // Step 1: Tell the PICC we want to write to block blockAddr.
     uint8_t cmd_buffer[] = { RC522_MIFARE_WRITE_CMD, block_address };
-    RC522_RETURN_ON_ERROR(
-        rc522_mifare_send(rc522, cmd_buffer, 2, false)); // Adds CRC_A and checks that the response is MF_ACK.
 
-    RC522_RETURN_ON_ERROR(rc522_mifare_send(rc522,
-        buffer,
-        RC522_MIFARE_BLOCK_SIZE,
-        false)); // Adds CRC_A and checks that the response is MF_ACK.
+    RC522_RETURN_ON_ERROR(rc522_mifare_send(rc522, cmd_buffer, sizeof(cmd_buffer)));
+    RC522_RETURN_ON_ERROR(rc522_mifare_send(rc522, buffer, RC522_MIFARE_BLOCK_SIZE));
 
     return ESP_OK;
 }
@@ -396,17 +380,23 @@ esp_err_t rc522_mifare_get_desc(const rc522_picc_t *picc, rc522_mifare_desc_t *o
 
 /**
  * Bytes 6, 7 and 8 of sector trailer block are bytes that holds access bits.
- * Next table shows bit descriptions for each of those bytes.
+ * Next table shows descriptions for each bit of those bytes.
  *
- * |      |   7  |   6  |   5  |   4  |   3  |   2  |   1  |   0  |
- * | ---- | ---- | ---- | ---- | ---- | ---- | ---- | ---- | ---- |
- * | [6]  | C23_ | C22_ | C21_ | C20_ | C13_ | C12_ | C11_ | C10_ |
- * | [7]  | C13  | C12  | C11  | C10  | C33_ | C32_ | C31_ | C30_ |
- * | [8]  | C33  | C32  | C31  | C30  | C23  | C22  | C21  | C20  |
  *
- * Where Cx is access bit for the block group y, for example:
- *  - C10 is the access bit C1 for the block group 0,
- *  - C20 is the access bit C2 for the block group 0,
+ * +-----+------+------+------+------+------+------+------+------+
+ * |     |   7  |   6  |   5  |   4  |   3  |   2  |   1  |   0  |
+ * +-----+------+------+------+------+------+------+------+------+
+ * | [6] | ~C23 | ~C22 | ~C21 | ~C20 | ~C13 | ~C12 | ~C11 | ~C10 |
+ * +-----+------+------+------+------+------+------+------+------+
+ * | [7] |  C13 |  C12 |  C11 |  C10 | ~C33 | ~C32 | ~C31 | ~C30 |
+ * +-----+------+------+------+------+------+------+------+------+
+ * | [8] |  C33 |  C32 |  C31 |  C30 |  C23 |  C22 |  C21 |  C20 |
+ * +-----+------+------+------+------+------+------+------+------+
+ *
+ *
+ * Where Cxy is access bit Cx for the block (group) y, for example:
+ *  - C10 is the access bit C1 for the block (group) 0,
+ *  - C20 is the access bit C2 for the block (group) 0,
  *  - ...,
  *  - C33 is the access bit C3 for the sector trailer.
  */

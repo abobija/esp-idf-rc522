@@ -292,15 +292,7 @@ esp_err_t rc522_pcd_rw_test(const rc522_handle_t rc522)
     ESP_RETURN_ON_FALSE(tmp == buffer_size, ESP_FAIL, TAG, "FIFO length missmatch after write");
     RC522_RETURN_ON_ERROR(rc522_pcd_fifo_read(rc522, &(rc522_bytes_t) { .ptr = buffer2, .length = buffer_size }));
 
-    bool buffers_content_equal = true;
-    for (uint8_t i = 0; i < buffer_size; i++) {
-        if (buffer1[i] != buffer2[i]) {
-            buffers_content_equal = false;
-            break;
-        }
-    }
-
-    if (!buffers_content_equal) {
+    if (memcmp(buffer1, buffer2, buffer_size) != 0) {
         RC522_LOGE("Buffers content missmatch");
         RC522_LOGE("Buffer1: ");
         ESP_LOG_BUFFER_HEX_LEVEL(TAG, buffer1, buffer_size, ESP_LOG_ERROR);

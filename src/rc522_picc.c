@@ -10,71 +10,69 @@
 
 RC522_LOG_DEFINE_BASE();
 
-// TODO: Refactor this mess, use structs
-esp_err_t rc522_picc_comm(const rc522_handle_t rc522, rc522_pcd_command_t command, uint8_t wait_irq,
-    const uint8_t *send_data, uint8_t send_data_len, uint8_t *back_data, uint8_t *back_data_len, uint8_t *valid_bits,
-    uint8_t rx_align, bool check_crc)
+struct rc522_picc_transaction_context
+{
+    const rc522_picc_transaction_t *transaction;
+    uint8_t interrupts;
+    bool completed;
+    uint8_t error_reg;
+};
+
+esp_err_t rc522_picc_send(const rc522_handle_t rc522, const rc522_picc_transaction_t *transaction,
+    rc522_picc_transaction_context_t *out_context)
 {
     RC522_CHECK(rc522 == NULL);
-    RC522_CHECK(wait_irq == 0x00);
-    RC522_CHECK(send_data == NULL);
-    RC522_CHECK(send_data_len < 1);
+    RC522_CHECK(transaction == NULL);
+    RC522_CHECK_BYTES(&transaction->bytes);
+    RC522_CHECK(
+        transaction->pcd_command != RC522_PCD_TRANSCEIVE_CMD && transaction->pcd_command != RC522_PCD_MF_AUTH_CMD);
+    RC522_CHECK(transaction->expected_interrupts == 0);
+
+    rc522_picc_transaction_context_t context = {
+        .transaction = transaction,
+    };
 
     // Prepare values for bit framing
-    uint8_t tx_last_bits = valid_bits ? *valid_bits : 0;
-    uint8_t bit_framing = (rx_align << 4) + tx_last_bits;
+    uint8_t bit_framing = (transaction->rx_align << 4) + transaction->valid_bits;
 
     if (RC522_LOG_LEVEL >= ESP_LOG_DEBUG) {
-        RC522_LOGD("rx_align=%d, check_crc=%d, tx_last_bits=%d, bit_framing=%d",
-            rx_align,
-            check_crc,
-            tx_last_bits,
+        RC522_LOGD("rx_align=%d,tx_last_bits=%d, bit_framing=%d",
+            transaction->rx_align,
+            transaction->valid_bits,
             bit_framing);
 
         char debug_buffer[64];
-        rc522_buffer_to_hex_str(send_data, send_data_len, debug_buffer, sizeof(debug_buffer));
+        rc522_buffer_to_hex_str(transaction->bytes.ptr, transaction->bytes.length, debug_buffer, sizeof(debug_buffer));
         RC522_LOGD("picc << %s", debug_buffer);
     }
-
-// not sure why compiler complains about explicit cast here
-#pragma GCC diagnostic ignored "-Wcast-qual"
-    uint8_t *sdata = (uint8_t *)send_data;
-#pragma GCC diagnostic pop
 
     RC522_RETURN_ON_ERROR(rc522_pcd_stop_active_command(rc522));
     RC522_RETURN_ON_ERROR(rc522_pcd_clear_all_com_interrupts(rc522));
     RC522_RETURN_ON_ERROR(rc522_pcd_fifo_flush(rc522));
-    RC522_RETURN_ON_ERROR(rc522_pcd_fifo_write(rc522, &(rc522_bytes_t) { .ptr = sdata, .length = send_data_len }));
-    RC522_RETURN_ON_ERROR(rc522_pcd_write(rc522, RC522_PCD_BIT_FRAMING_REG, bit_framing)); // Bit adjustments
-    RC522_RETURN_ON_ERROR(rc522_pcd_write(rc522, RC522_PCD_COMMAND_REG, command));         // Execute the command
+    RC522_RETURN_ON_ERROR(rc522_pcd_fifo_write(rc522, &transaction->bytes));
+    RC522_RETURN_ON_ERROR(rc522_pcd_write(rc522, RC522_PCD_BIT_FRAMING_REG, bit_framing));
+    RC522_RETURN_ON_ERROR(rc522_pcd_write(rc522, RC522_PCD_COMMAND_REG, transaction->pcd_command));
 
-    if (command == RC522_PCD_TRANSCEIVE_CMD) {
+    if (transaction->pcd_command == RC522_PCD_TRANSCEIVE_CMD) {
         RC522_RETURN_ON_ERROR(rc522_pcd_start_data_transmission(rc522));
     }
 
-    // In PCD_Init() we set the TAuto flag in TModeReg. This means the timer
-    // automatically starts when the PCD stops transmitting.
-    //
-    // Wait here for the command to complete. The bits specified in the
-    // `waitIRq` parameter define what bits constitute a completed command.
-    // When they are set in the ComIrqReg register, then the command is
-    // considered complete. If the command is not indicated as complete in
-    // ~36ms, then consider the command as timed out.
+    // TAuto flag in TModeReg is set.
+    // This means the timer automatically starts when the PCD stops transmitting.
+
     const uint32_t deadline = rc522_millis() + 36;
-    bool completed = false;
-    uint8_t irq;
 
     do {
-        RC522_RETURN_ON_ERROR(rc522_pcd_read(rc522, RC522_PCD_COM_INT_REQ_REG, &irq));
+        RC522_RETURN_ON_ERROR(rc522_pcd_read(rc522, RC522_PCD_COM_INT_REQ_REG, &context.interrupts));
 
-        if (irq & wait_irq) { // One of the interrupts that signal success has been set.
-            completed = true;
+        if (context.interrupts & transaction->expected_interrupts) {
+            context.completed = true;
             break;
         }
 
-        // Timer interrupt - nothing received in 25ms
-        if (irq & RC522_PCD_TIMER_IRQ_BIT) {
-            RC522_LOGD("timer interrupt (irq=0x%02" RC522_X ")", irq);
+        // Timer interrupt - nothing received
+        if (context.interrupts & RC522_PCD_TIMER_IRQ_BIT) {
+            RC522_LOGD("timer interrupt (irq=0x%02" RC522_X ")", context.interrupts);
 
             return RC522_ERR_RX_TIMER_TIMEOUT;
         }
@@ -83,128 +81,132 @@ esp_err_t rc522_picc_comm(const rc522_handle_t rc522, rc522_pcd_command_t comman
     }
     while (rc522_millis() < deadline);
 
-    // 36ms and nothing happened. Communication with the MFRC522 might be down.
-    RC522_RETURN_ON_FALSE(completed, RC522_ERR_RX_TIMEOUT);
+    // Deadline reached and nothing happened.
+    // Communication with the MFRC522 might be down.
+    RC522_RETURN_ON_FALSE(context.completed, RC522_ERR_RX_TIMEOUT);
 
     // Stop now if any errors except collisions were detected.
-    uint8_t error_reg_value;
-    RC522_RETURN_ON_ERROR(rc522_pcd_read(rc522, RC522_PCD_ERROR_REG, &error_reg_value));
+    RC522_RETURN_ON_ERROR(rc522_pcd_read(rc522, RC522_PCD_ERROR_REG, &context.error_reg));
 
-    if (error_reg_value & RC522_PCD_BUFFER_OVFL_BIT) {
+    if (context.error_reg & RC522_PCD_BUFFER_OVFL_BIT) {
         return RC522_ERR_PCD_FIFO_BUFFER_OVERFLOW;
     }
-    else if (error_reg_value & RC522_PCD_PARITY_ERR_BIT) {
+    else if (context.error_reg & RC522_PCD_PARITY_ERR_BIT) {
         RC522_LOGD("parity error detected");
 
         return RC522_ERR_PCD_PARITY_CHECK_FAILED;
     }
-    else if (error_reg_value & RC522_PCD_PROTOCOL_ERR_BIT) {
+    else if (context.error_reg & RC522_PCD_PROTOCOL_ERR_BIT) {
         RC522_LOGD("protocol error detected");
 
         return RC522_ERR_PCD_PROTOCOL_ERROR;
     }
 
-    uint8_t fifo_level = 0;
-
-    if (irq & RC522_PCD_RX_IRQ_BIT) {
-        RC522_RETURN_ON_ERROR(rc522_pcd_read(rc522, RC522_PCD_FIFO_LEVEL_REG, &fifo_level));
-
-        if (fifo_level < 1) {
-            RC522_LOGW("unexpectedly, fifo is empty (irq=0x%02" RC522_X ")", irq);
-        }
-    }
-
-    uint8_t _valid_bits = 0;
-
-    // If the caller wants data back, get it from the MFRC522.
-    if (back_data && back_data_len) {
-        if (fifo_level > *back_data_len) {
-            RC522_LOGW("buffer no space");
-
-            return ESP_ERR_NO_MEM;
-        }
-
-        *back_data_len = fifo_level; // Number of bytes returned
-
-        uint8_t b0_orig = back_data[0];
-        RC522_RETURN_ON_ERROR(rc522_pcd_fifo_read(rc522, &(rc522_bytes_t) { .ptr = back_data, .length = fifo_level }));
-
-        if (RC522_LOG_LEVEL >= ESP_LOG_DEBUG) {
-            char debug_buffer[64];
-            rc522_buffer_to_hex_str(back_data, *back_data_len, debug_buffer, sizeof(debug_buffer));
-            RC522_LOGD("picc >> %s", debug_buffer);
-        }
-
-        if (rx_align) { // Only update bit positions rxAlign..7 in values[0]
-            RC522_LOGD("applying mask based on rx_align=%d", rx_align);
-
-            // Create bit mask for bit positions rxAlign..7
-            uint8_t mask = (0xFF << rx_align) & 0xFF;
-            // Apply mask to both current value of values[0] and the new data in value.
-            back_data[0] = (b0_orig & ~mask) | (back_data[0] & mask);
-        }
-
-        // RxLastBits[2:0] indicates the number of valid bits in the last
-        // received byte. If this value is 000b, the whole byte is valid.
-        RC522_RETURN_ON_ERROR(rc522_pcd_read(rc522, RC522_PCD_CONTROL_REG, &_valid_bits));
-        _valid_bits &= 0x07;
-
-        if (_valid_bits) {
-            RC522_LOGD("not full byte received, valid_bits=%d", _valid_bits);
-        }
-
-        if (valid_bits) {
-            *valid_bits = _valid_bits;
-        }
-    }
-
-    if (error_reg_value & RC522_PCD_COLL_ERR_BIT) {
-        return RC522_ERR_COLLISION;
-    }
-
-    // Perform CRC_A validation if requested.
-    if (check_crc && back_data && back_data_len) {
-        // We need at least the CRC_A value and all 8 bits of the last byte must be received.
-        if (*back_data_len < 2 || _valid_bits != 0) {
-            RC522_LOGD("crc cannot be performed (len=%d, valid_bits=%d)", *back_data_len, _valid_bits);
-            return ESP_ERR_INVALID_ARG;
-        }
-
-        // Verify CRC_A
-        rc522_pcd_crc_t crc = { 0 };
-        RC522_RETURN_ON_ERROR(
-            rc522_pcd_calculate_crc(rc522, &(rc522_bytes_t) { .ptr = back_data, .length = *back_data_len - 2 }, &crc));
-
-        if ((back_data[*back_data_len - 2] != crc.lsb) || (back_data[*back_data_len - 1] != crc.msb)) {
-            return RC522_ERR_CRC_WRONG;
-        }
-    }
-
-    if (RC522_LOG_LEVEL >= ESP_LOG_DEBUG) {
-        if (!back_data || !back_data_len) {
-            // TODO: Read from PICC above even if back_data is null so we can log.
-            //        But then we would need local buffer. Hmm...
-
-            RC522_LOGD("cannot log rx data, back_data buffer is null");
-        }
+    if (out_context) {
+        memcpy(out_context, &context, sizeof(context));
     }
 
     return ESP_OK;
 }
 
-inline esp_err_t rc522_picc_transceive(const rc522_handle_t rc522, const uint8_t *send_data, uint8_t send_data_len,
-    uint8_t *back_data, uint8_t *back_data_len, uint8_t *valid_bits, uint8_t rx_align, bool check_crc)
+static esp_err_t rc522_picc_receive(const rc522_handle_t rc522, const rc522_picc_transaction_context_t *context,
+    rc522_picc_transaction_result_t *out_result)
 {
-    return rc522_picc_comm(rc522,
-        RC522_PCD_TRANSCEIVE_CMD,
-        RC522_PCD_RX_IRQ_BIT | RC522_PCD_IDLE_IRQ_BIT,
-        send_data,
-        send_data_len,
-        back_data,
-        back_data_len,
-        valid_bits,
-        rx_align,
-        check_crc);
+    RC522_CHECK(rc522 == NULL);
+    RC522_CHECK(context == NULL);
+    RC522_CHECK(context->transaction == NULL);
+    RC522_CHECK(out_result == NULL);
+    RC522_CHECK_BYTES(&context->transaction->bytes);
+
+    uint8_t fifo_level = 0;
+    RC522_RETURN_ON_ERROR(rc522_pcd_read(rc522, RC522_PCD_FIFO_LEVEL_REG, &fifo_level));
+
+    if (fifo_level < 1) {
+        RC522_LOGW("fifo empty (irq=0x%02" RC522_X ")", context->interrupts);
+
+        return RC522_ERR_PCD_FIFO_EMPTY;
+    }
+
+    RC522_CHECK(fifo_level > out_result->bytes.length);
+
+    rc522_picc_transaction_result_t result = {
+        .bytes = { 
+            .ptr = out_result->bytes.ptr, // Use buffer provided by caller
+            .length = fifo_level,
+        },
+    };
+
+    RC522_RETURN_ON_ERROR(rc522_pcd_fifo_read(rc522, &result.bytes));
+
+    if (RC522_LOG_LEVEL >= ESP_LOG_DEBUG) {
+        char debug_buffer[64];
+        rc522_buffer_to_hex_str(result.bytes.ptr, result.bytes.length, debug_buffer, sizeof(debug_buffer));
+        RC522_LOGD("picc >> %s", debug_buffer);
+    }
+
+    if (context->transaction->rx_align) {
+        RC522_LOGD("applying mask (rx_align=%d)", context->transaction->rx_align);
+
+        // Apply mask for rx_align..7 of the first byte
+        result.bytes.ptr[0] &= (0xFF << context->transaction->rx_align);
+    }
+
+    // RxLastBits[2:0] indicates the number of valid bits in the last received byte.
+    // If this value is 0, the whole byte is valid.
+    RC522_RETURN_ON_ERROR(rc522_pcd_read(rc522, RC522_PCD_CONTROL_REG, &result.valid_bits));
+    result.valid_bits &= 0x07;
+
+    if (result.valid_bits) {
+        RC522_LOGD("not full byte received, valid_bits=%d", result.valid_bits);
+    }
+
+    if (context->error_reg & RC522_PCD_COLL_ERR_BIT) {
+        return RC522_ERR_COLLISION;
+    }
+
+    // Perform CRC_A validation
+    if (context->transaction->check_crc) {
+        // We need at least the CRC_A value
+        // and all 8 bits of the last byte
+        RC522_CHECK_AND_RETURN(result.bytes.length < 3, ESP_ERR_INVALID_STATE);
+        RC522_CHECK_AND_RETURN(result.valid_bits != 0, ESP_ERR_INVALID_STATE);
+
+        // Verify CRC_A
+        rc522_pcd_crc_t crc = { 0 };
+        RC522_RETURN_ON_ERROR(rc522_pcd_calculate_crc(rc522,
+            &(rc522_bytes_t) { .ptr = result.bytes.ptr, .length = result.bytes.length - 2 },
+            &crc));
+
+        if (memcmp(result.bytes.ptr + result.bytes.length - 2, &crc, sizeof(crc)) != 0) {
+            return RC522_ERR_CRC_WRONG;
+        }
+    }
+
+    memcpy(out_result, &result, sizeof(result));
+
+    return ESP_OK;
+}
+
+esp_err_t rc522_picc_transceive(const rc522_handle_t rc522, const rc522_picc_transaction_t *transaction,
+    rc522_picc_transaction_result_t *out_result)
+{
+    RC522_CHECK(rc522 == NULL);
+    RC522_CHECK(transaction == NULL);
+
+    rc522_picc_transaction_t transaction_clone = { 0 };
+    memcpy(&transaction_clone, transaction, sizeof(transaction_clone));
+
+    transaction_clone.pcd_command = RC522_PCD_TRANSCEIVE_CMD;
+    transaction_clone.expected_interrupts = RC522_PCD_RX_IRQ_BIT | RC522_PCD_IDLE_IRQ_BIT;
+
+    rc522_picc_transaction_context_t context = { 0 };
+    RC522_RETURN_ON_ERROR_SILENTLY(rc522_picc_send(rc522, &transaction_clone, &context));
+
+    if (out_result) {
+        RC522_RETURN_ON_ERROR(rc522_picc_receive(rc522, &context, out_result));
+    }
+
+    return ESP_OK;
 }
 
 inline static esp_err_t rc522_picc_parse_atqa(uint16_t atqa, rc522_picc_atqa_desc_t *out_atqa)
@@ -224,22 +226,26 @@ inline static esp_err_t rc522_picc_parse_atqa(uint16_t atqa, rc522_picc_atqa_des
 static esp_err_t rc522_picc_reqa_or_wupa(const rc522_handle_t rc522, uint8_t picc_cmd, rc522_picc_atqa_desc_t *out_atqa)
 {
     RC522_CHECK(rc522 == NULL);
+    RC522_CHECK(picc_cmd != RC522_PICC_CMD_REQA && picc_cmd != RC522_PICC_CMD_WUPA);
     RC522_CHECK(out_atqa == NULL);
 
     RC522_RETURN_ON_ERROR(rc522_pcd_clear_bits(rc522, RC522_PCD_COLL_REG, RC522_PCD_VALUES_AFTER_COLL_BIT));
 
-    uint8_t atqa_buffer[2];
-    uint8_t atqa_buffer_size = sizeof(atqa_buffer);
+    uint8_t buffer[2] = { 0 };
 
-    // For REQA and WUPA we need the short frame format - transmit only 7 bits of the last (and only)
-    // byte. TxLastBits = BitFramingReg[2..0]
-    uint8_t valid_bits = 7;
+    rc522_picc_transaction_t transaction = {
+        .bytes = { .ptr = &picc_cmd, .length = 1 },
+        .valid_bits = 7, // REQA and WUPA use short frame format
+    };
 
-    esp_err_t ret = rc522_picc_transceive(rc522, &picc_cmd, 1, atqa_buffer, &atqa_buffer_size, &valid_bits, 0, false);
+    rc522_picc_transaction_result_t transaction_result = {
+        .bytes = { .ptr = buffer, .length = sizeof(buffer) },
+    };
+
+    esp_err_t ret = rc522_picc_transceive(rc522, &transaction, &transaction_result);
 
     if (ret != ESP_OK) {
-        // Timeouts are expected if no PICC are in the field.
-        // Log other errors
+        // Timeouts are expected if no PICC are in the field, log other errors
         if (ret != RC522_ERR_RX_TIMER_TIMEOUT && ret != RC522_ERR_RX_TIMEOUT) {
             RC522_LOGD("non-timeout error: %04" RC522_X, ret);
         }
@@ -247,11 +253,11 @@ static esp_err_t rc522_picc_reqa_or_wupa(const rc522_handle_t rc522, uint8_t pic
         return ret;
     }
 
-    if (atqa_buffer_size != 2 || valid_bits != 0) { // ATQA must be exactly 16 bits.
+    if (transaction_result.bytes.length != 2 || transaction_result.valid_bits != 0) {
         return RC522_ERR_INVALID_ATQA;
     }
 
-    uint16_t atqa = (atqa_buffer[0] << 8) | atqa_buffer[1];
+    uint16_t atqa = (buffer[0] << 8) | buffer[1];
     RC522_RETURN_ON_ERROR(rc522_picc_parse_atqa(atqa, out_atqa));
 
     return ESP_OK;
@@ -455,14 +461,22 @@ esp_err_t rc522_picc_select(const rc522_handle_t rc522, rc522_picc_uid_t *out_ui
             RC522_RETURN_ON_ERROR(rc522_pcd_write(rc522, RC522_PCD_BIT_FRAMING_REG, (rx_align << 4) + tx_last_bits));
 
             // Transmit the buffer and receive the response.
-            ret = rc522_picc_transceive(rc522,
-                buffer,
-                buffer_used,
-                response_buffer,
-                &response_length,
-                &tx_last_bits,
-                rx_align,
-                false);
+            rc522_picc_transaction_t transaction = {
+                .bytes = { .ptr = buffer, .length = buffer_used },
+                .rx_align = rx_align,
+                .valid_bits = tx_last_bits,
+            };
+
+            rc522_picc_transaction_result_t transaction_result = {
+                .bytes = { .ptr = response_buffer, .length = response_length },
+            };
+
+            ret = rc522_picc_transceive(rc522, &transaction, &transaction_result);
+
+            if (ret == ESP_OK) {
+                response_length = transaction_result.bytes.length;
+                tx_last_bits = transaction_result.valid_bits;
+            }
 
             if (ret == RC522_ERR_COLLISION) { // More than one PICC in the field => collision.
                 RC522_LOGD("collision detected (cl=%d, skip_anticoll=%d)", cascade_level, skip_anticoll);
@@ -548,13 +562,14 @@ esp_err_t rc522_picc_select(const rc522_handle_t rc522, rc522_picc_uid_t *out_ui
         RC522_RETURN_ON_ERROR(
             rc522_pcd_calculate_crc(rc522, &(rc522_bytes_t) { .ptr = response_buffer, .length = 1 }, &crc));
 
-        buffer[2] = crc.lsb;
-        buffer[3] = crc.msb;
-
-        if ((buffer[2] != response_buffer[1]) || (buffer[3] != response_buffer[2])) {
+        if (memcmp(response_buffer + 1, &crc, sizeof(crc)) != 0) {
             RC522_LOGD("crc wrong");
             return RC522_ERR_CRC_WRONG;
         }
+
+        buffer[2] = crc.lsb;
+        buffer[3] = crc.msb;
+
         if (response_buffer[0] & 0x04) { // Cascade bit set - UID not complete yes
             cascade_level++;
         }
@@ -673,32 +688,32 @@ esp_err_t rc522_picc_halta(const rc522_handle_t rc522, rc522_picc_t *picc)
 
     RC522_LOGD("HALTA");
 
-    uint8_t buffer[4];
+    uint8_t buffer[4] = { 0 };
 
-    // Build command buffer
     buffer[0] = RC522_PICC_CMD_HLTA;
     buffer[1] = 0;
-    // Calculate CRC_A
+
     rc522_pcd_crc_t crc = { 0 };
     RC522_RETURN_ON_ERROR(rc522_pcd_calculate_crc(rc522, &(rc522_bytes_t) { .ptr = buffer, .length = 2 }, &crc));
 
     buffer[2] = crc.lsb;
     buffer[3] = crc.msb;
 
-    // Send the command.
-    // The standard says:
-    //		If the PICC responds with any modulation during a period of 1 ms after the end of the frame containing
-    // the 		HLTA command, this response shall be interpreted as 'not acknowledge'.
-    // We interpret that this way: Only STATUS_TIMEOUT is a success.
-    esp_err_t ret = rc522_picc_transceive(rc522, buffer, sizeof(buffer), NULL, NULL, NULL, 0, false);
+    rc522_picc_transaction_t transaction = {
+        .bytes = { .ptr = buffer, .length = sizeof(buffer) },
+    };
 
-    if (ret == RC522_ERR_RX_TIMER_TIMEOUT || ret == RC522_ERR_RX_TIMEOUT) {
-        return rc522_picc_set_state(rc522, picc, RC522_PICC_STATE_HALT, true);
-    }
+    esp_err_t ret = rc522_picc_transceive(rc522, &transaction, NULL);
 
+    // If the PICC responds with any modulation during a period of 1 ms after the HLTA,
+    // response shall be interpreted as 'not acknowledge', so timeout is not an error.
     if (ret == ESP_OK) {
-        // That is ironically NOT ok in this case ;-)
-        return ESP_FAIL; // TODO: use custom err
+        return RC522_ERR_HLTA_NOT_ACKED;
+    }
+    else if (ret == RC522_ERR_RX_TIMER_TIMEOUT || ret == RC522_ERR_RX_TIMEOUT) {
+        RC522_RETURN_ON_ERROR(rc522_picc_set_state(rc522, picc, RC522_PICC_STATE_HALT, true));
+
+        return ESP_OK;
     }
 
     return ret;

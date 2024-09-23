@@ -25,6 +25,8 @@ extern "C" {
 #define RC522_ERR_PCD_PARITY_CHECK_FAILED       (RC522_ERR_BASE + 10)
 #define RC522_ERR_PCD_PROTOCOL_ERROR            (RC522_ERR_BASE + 11)
 #define RC522_ERR_RST_PIN_UNUSED                (RC522_ERR_BASE + 12)
+#define RC522_ERR_PCD_FIFO_EMPTY                (RC522_ERR_BASE + 13)
+#define RC522_ERR_HLTA_NOT_ACKED                (RC522_ERR_BASE + 14)
 
 typedef struct rc522 *rc522_handle_t;
 
