@@ -176,8 +176,7 @@ esp_err_t rc522_mifare_read(const rc522_handle_t rc522, const rc522_picc_t *picc
     return ESP_OK;
 }
 
-static esp_err_t rc522_mifare_send(
-    const rc522_handle_t rc522, const uint8_t *send_data, uint8_t send_length, bool accept_timeout)
+static esp_err_t rc522_mifare_send(const rc522_handle_t rc522, const uint8_t *send_data, uint8_t send_length)
 {
     RC522_CHECK(send_data == NULL);
     RC522_CHECK(send_length > RC522_MIFARE_BLOCK_SIZE);
@@ -207,15 +206,7 @@ static esp_err_t rc522_mifare_send(
         .bytes = { .ptr = buffer, .length = sizeof(buffer) },
     };
 
-    esp_err_t ret = rc522_picc_transceive(rc522, &transaction, &result);
-
-    if (accept_timeout && ret == ESP_ERR_TIMEOUT) {
-        return ESP_OK;
-    }
-
-    if (ret != ESP_OK) {
-        return ret;
-    }
+    RC522_RETURN_ON_ERROR(rc522_picc_transceive(rc522, &transaction, &result));
 
     // The PICC must reply with a 4 bit ACK
     if (result.bytes.length != 1 || result.valid_bits != 4) {
@@ -226,7 +217,7 @@ static esp_err_t rc522_mifare_send(
         return RC522_ERR_MIFARE_NACK;
     }
 
-    return ret;
+    return ESP_OK;
 }
 
 static esp_err_t rc522_mifare_get_number_of_sectors(rc522_picc_type_t type, uint8_t *out_result)
@@ -354,15 +345,10 @@ esp_err_t rc522_mifare_write(const rc522_handle_t rc522, const rc522_picc_t *pic
 
     RC522_LOGD("MIFARE WRITE (block_address=%02" RC522_X ")", block_address);
 
-    // Step 1: Tell the PICC we want to write to block blockAddr.
     uint8_t cmd_buffer[] = { RC522_MIFARE_WRITE_CMD, block_address };
-    RC522_RETURN_ON_ERROR(
-        rc522_mifare_send(rc522, cmd_buffer, 2, false)); // Adds CRC_A and checks that the response is MF_ACK.
 
-    RC522_RETURN_ON_ERROR(rc522_mifare_send(rc522,
-        buffer,
-        RC522_MIFARE_BLOCK_SIZE,
-        false)); // Adds CRC_A and checks that the response is MF_ACK.
+    RC522_RETURN_ON_ERROR(rc522_mifare_send(rc522, cmd_buffer, sizeof(cmd_buffer)));
+    RC522_RETURN_ON_ERROR(rc522_mifare_send(rc522, buffer, RC522_MIFARE_BLOCK_SIZE));
 
     return ESP_OK;
 }
