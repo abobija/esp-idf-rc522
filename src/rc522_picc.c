@@ -177,8 +177,7 @@ static esp_err_t rc522_picc_receive(const rc522_handle_t rc522, const rc522_picc
             &(rc522_bytes_t) { .ptr = result.bytes.ptr, .length = result.bytes.length - 2 },
             &crc));
 
-        if ((result.bytes.ptr[result.bytes.length - 2] != crc.lsb)
-            || (result.bytes.ptr[result.bytes.length - 1] != crc.msb)) {
+        if (memcmp(result.bytes.ptr + result.bytes.length - 2, &crc, sizeof(crc)) != 0) {
             return RC522_ERR_CRC_WRONG;
         }
     }
@@ -563,13 +562,14 @@ esp_err_t rc522_picc_select(const rc522_handle_t rc522, rc522_picc_uid_t *out_ui
         RC522_RETURN_ON_ERROR(
             rc522_pcd_calculate_crc(rc522, &(rc522_bytes_t) { .ptr = response_buffer, .length = 1 }, &crc));
 
-        buffer[2] = crc.lsb;
-        buffer[3] = crc.msb;
-
-        if ((buffer[2] != response_buffer[1]) || (buffer[3] != response_buffer[2])) {
+        if (memcmp(response_buffer + 1, &crc, sizeof(crc)) != 0) {
             RC522_LOGD("crc wrong");
             return RC522_ERR_CRC_WRONG;
         }
+
+        buffer[2] = crc.lsb;
+        buffer[3] = crc.msb;
+
         if (response_buffer[0] & 0x04) { // Cascade bit set - UID not complete yes
             cascade_level++;
         }
