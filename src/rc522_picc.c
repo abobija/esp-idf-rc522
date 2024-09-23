@@ -166,13 +166,10 @@ static esp_err_t rc522_picc_receive(const rc522_handle_t rc522, const rc522_picc
 
     // Perform CRC_A validation
     if (context->transaction->check_crc) {
-        // We need at least the CRC_A value and all 8 bits of the last byte must be received.
-        if (result.bytes.length < 2 || result.valid_bits != 0) {
-            RC522_LOGD("crc cannot be performed (len=%d, valid_bits=%d)", result.bytes.length, result.valid_bits);
-            return ESP_ERR_INVALID_STATE;
-        }
-
-        // TODO: Check if ((result.bytes.length - 2) > 0) before CRC calculation
+        // We need at least the CRC_A value
+        // and all 8 bits of the last byte
+        RC522_CHECK_AND_RETURN(result.bytes.length < 3, ESP_ERR_INVALID_STATE);
+        RC522_CHECK_AND_RETURN(result.valid_bits != 0, ESP_ERR_INVALID_STATE);
 
         // Verify CRC_A
         rc522_pcd_crc_t crc = { 0 };
