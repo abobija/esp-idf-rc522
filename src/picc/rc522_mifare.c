@@ -380,17 +380,23 @@ esp_err_t rc522_mifare_get_desc(const rc522_picc_t *picc, rc522_mifare_desc_t *o
 
 /**
  * Bytes 6, 7 and 8 of sector trailer block are bytes that holds access bits.
- * Next table shows bit descriptions for each of those bytes.
+ * Next table shows descriptions for each bit of those bytes.
  *
- * |      |   7  |   6  |   5  |   4  |   3  |   2  |   1  |   0  |
- * | ---- | ---- | ---- | ---- | ---- | ---- | ---- | ---- | ---- |
- * | [6]  | C23_ | C22_ | C21_ | C20_ | C13_ | C12_ | C11_ | C10_ |
- * | [7]  | C13  | C12  | C11  | C10  | C33_ | C32_ | C31_ | C30_ |
- * | [8]  | C33  | C32  | C31  | C30  | C23  | C22  | C21  | C20  |
  *
- * Where Cx is access bit for the block group y, for example:
- *  - C10 is the access bit C1 for the block group 0,
- *  - C20 is the access bit C2 for the block group 0,
+ * +-----+------+------+------+------+------+------+------+------+
+ * |     |   7  |   6  |   5  |   4  |   3  |   2  |   1  |   0  |
+ * +-----+------+------+------+------+------+------+------+------+
+ * | [6] | ~C23 | ~C22 | ~C21 | ~C20 | ~C13 | ~C12 | ~C11 | ~C10 |
+ * +-----+------+------+------+------+------+------+------+------+
+ * | [7] |  C13 |  C12 |  C11 |  C10 | ~C33 | ~C32 | ~C31 | ~C30 |
+ * +-----+------+------+------+------+------+------+------+------+
+ * | [8] |  C33 |  C32 |  C31 |  C30 |  C23 |  C22 |  C21 |  C20 |
+ * +-----+------+------+------+------+------+------+------+------+
+ *
+ *
+ * Where Cxy is access bit Cx for the block (group) y, for example:
+ *  - C10 is the access bit C1 for the block (group) 0,
+ *  - C20 is the access bit C2 for the block (group) 0,
  *  - ...,
  *  - C33 is the access bit C3 for the sector trailer.
  */
