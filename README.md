@@ -16,6 +16,8 @@ To install latest version of this component to your project, run:
 idf.py add-dependency "abobija/rc522"
 ```
 
+Read more about esp-idf component manager in [official documentation](https://docs.espressif.com/projects/esp-idf/en/stable/esp32/api-guides/tools/idf-component-manager.html).
+
 ## Support
 
 - Cards: `MIFARE 1K`, `MIFARE 4K` and `MIFARE Mini`
