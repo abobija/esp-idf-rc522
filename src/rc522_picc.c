@@ -10,6 +10,104 @@
 
 RC522_LOG_DEFINE_BASE();
 
+struct rc522_picc_transaction_context
+{
+    const rc522_picc_transaction_t *transaction;
+    uint8_t interrupts;
+    bool completed;
+    uint8_t error_reg;
+};
+
+static esp_err_t rc522_picc_send(const rc522_handle_t rc522, const rc522_picc_transaction_t *transaction,
+    rc522_picc_transaction_context_t *out_context)
+{
+    RC522_CHECK(rc522 == NULL);
+    RC522_CHECK(transaction == NULL);
+    RC522_CHECK(out_context == NULL);
+    RC522_CHECK_BYTES(&transaction->bytes);
+    RC522_CHECK(
+        transaction->pcd_command != RC522_PCD_TRANSCEIVE_CMD && transaction->pcd_command != RC522_PCD_MF_AUTH_CMD);
+    RC522_CHECK(transaction->expected_interrupts == 0);
+
+    rc522_picc_transaction_context_t context = {
+        .transaction = transaction,
+    };
+
+    // Prepare values for bit framing
+    uint8_t bit_framing = (transaction->rx_align << 4) + transaction->valid_bits;
+
+    if (RC522_LOG_LEVEL >= ESP_LOG_DEBUG) {
+        RC522_LOGD("rx_align=%d,tx_last_bits=%d, bit_framing=%d",
+            transaction->rx_align,
+            transaction->valid_bits,
+            bit_framing);
+
+        char debug_buffer[64];
+        rc522_buffer_to_hex_str(transaction->bytes.ptr, transaction->bytes.length, debug_buffer, sizeof(debug_buffer));
+        RC522_LOGD("picc << %s", debug_buffer);
+    }
+
+    RC522_RETURN_ON_ERROR(rc522_pcd_stop_active_command(rc522));
+    RC522_RETURN_ON_ERROR(rc522_pcd_clear_all_com_interrupts(rc522));
+    RC522_RETURN_ON_ERROR(rc522_pcd_fifo_flush(rc522));
+    RC522_RETURN_ON_ERROR(rc522_pcd_fifo_write(rc522, &transaction->bytes));
+    RC522_RETURN_ON_ERROR(rc522_pcd_write(rc522, RC522_PCD_BIT_FRAMING_REG, bit_framing));
+    RC522_RETURN_ON_ERROR(rc522_pcd_write(rc522, RC522_PCD_COMMAND_REG, transaction->pcd_command));
+
+    if (transaction->pcd_command == RC522_PCD_TRANSCEIVE_CMD) {
+        RC522_RETURN_ON_ERROR(rc522_pcd_start_data_transmission(rc522));
+    }
+
+    // TAuto flag in TModeReg is set.
+    // This means the timer automatically starts when the PCD stops transmitting.
+
+    const uint32_t deadline = rc522_millis() + 36;
+
+    do {
+        RC522_RETURN_ON_ERROR(rc522_pcd_read(rc522, RC522_PCD_COM_INT_REQ_REG, &context.interrupts));
+
+        if (context.interrupts & transaction->expected_interrupts) {
+            context.completed = true;
+            break;
+        }
+
+        // Timer interrupt - nothing received
+        if (context.interrupts & RC522_PCD_TIMER_IRQ_BIT) {
+            RC522_LOGD("timer interrupt (irq=0x%02" RC522_X ")", context.interrupts);
+
+            return RC522_ERR_RX_TIMER_TIMEOUT;
+        }
+
+        taskYIELD();
+    }
+    while (rc522_millis() < deadline);
+
+    // Deadline reached and nothing happened.
+    // Communication with the MFRC522 might be down.
+    RC522_RETURN_ON_FALSE(context.completed, RC522_ERR_RX_TIMEOUT);
+
+    // Stop now if any errors except collisions were detected.
+    RC522_RETURN_ON_ERROR(rc522_pcd_read(rc522, RC522_PCD_ERROR_REG, &context.error_reg));
+
+    if (context.error_reg & RC522_PCD_BUFFER_OVFL_BIT) {
+        return RC522_ERR_PCD_FIFO_BUFFER_OVERFLOW;
+    }
+    else if (context.error_reg & RC522_PCD_PARITY_ERR_BIT) {
+        RC522_LOGD("parity error detected");
+
+        return RC522_ERR_PCD_PARITY_CHECK_FAILED;
+    }
+    else if (context.error_reg & RC522_PCD_PROTOCOL_ERR_BIT) {
+        RC522_LOGD("protocol error detected");
+
+        return RC522_ERR_PCD_PROTOCOL_ERROR;
+    }
+
+    memcpy(out_context, &context, sizeof(context));
+
+    return ESP_OK;
+}
+
 // TODO: Refactor this mess, use structs
 esp_err_t rc522_picc_comm_deprecated(const rc522_handle_t rc522, rc522_pcd_command_t command, uint8_t wait_irq,
     const uint8_t *send_data, uint8_t send_data_len, uint8_t *back_data, uint8_t *back_data_len, uint8_t *valid_bits,
@@ -20,97 +118,26 @@ esp_err_t rc522_picc_comm_deprecated(const rc522_handle_t rc522, rc522_pcd_comma
     RC522_CHECK(send_data == NULL);
     RC522_CHECK(send_data_len < 1);
 
-    // Prepare values for bit framing
-    uint8_t tx_last_bits = valid_bits ? *valid_bits : 0;
-    uint8_t bit_framing = (rx_align << 4) + tx_last_bits;
-
-    if (RC522_LOG_LEVEL >= ESP_LOG_DEBUG) {
-        RC522_LOGD("rx_align=%d, check_crc=%d, tx_last_bits=%d, bit_framing=%d",
-            rx_align,
-            check_crc,
-            tx_last_bits,
-            bit_framing);
-
-        char debug_buffer[64];
-        rc522_buffer_to_hex_str(send_data, send_data_len, debug_buffer, sizeof(debug_buffer));
-        RC522_LOGD("picc << %s", debug_buffer);
-    }
-
-// not sure why compiler complains about explicit cast here
 #pragma GCC diagnostic ignored "-Wcast-qual"
-    uint8_t *sdata = (uint8_t *)send_data;
+    rc522_picc_transaction_t transaction = {
+        .pcd_command = command,
+        .bytes = { .ptr = (uint8_t *)send_data, .length = send_data_len },
+        .expected_interrupts = wait_irq,
+        .rx_align = rx_align,
+        .valid_bits = valid_bits ? *valid_bits : 0,
+    };
 #pragma GCC diagnostic pop
 
-    RC522_RETURN_ON_ERROR(rc522_pcd_stop_active_command(rc522));
-    RC522_RETURN_ON_ERROR(rc522_pcd_clear_all_com_interrupts(rc522));
-    RC522_RETURN_ON_ERROR(rc522_pcd_fifo_flush(rc522));
-    RC522_RETURN_ON_ERROR(rc522_pcd_fifo_write(rc522, &(rc522_bytes_t) { .ptr = sdata, .length = send_data_len }));
-    RC522_RETURN_ON_ERROR(rc522_pcd_write(rc522, RC522_PCD_BIT_FRAMING_REG, bit_framing)); // Bit adjustments
-    RC522_RETURN_ON_ERROR(rc522_pcd_write(rc522, RC522_PCD_COMMAND_REG, command));         // Execute the command
-
-    if (command == RC522_PCD_TRANSCEIVE_CMD) {
-        RC522_RETURN_ON_ERROR(rc522_pcd_start_data_transmission(rc522));
-    }
-
-    // In PCD_Init() we set the TAuto flag in TModeReg. This means the timer
-    // automatically starts when the PCD stops transmitting.
-    //
-    // Wait here for the command to complete. The bits specified in the
-    // `waitIRq` parameter define what bits constitute a completed command.
-    // When they are set in the ComIrqReg register, then the command is
-    // considered complete. If the command is not indicated as complete in
-    // ~36ms, then consider the command as timed out.
-    const uint32_t deadline = rc522_millis() + 36;
-    bool completed = false;
-    uint8_t irq;
-
-    do {
-        RC522_RETURN_ON_ERROR(rc522_pcd_read(rc522, RC522_PCD_COM_INT_REQ_REG, &irq));
-
-        if (irq & wait_irq) { // One of the interrupts that signal success has been set.
-            completed = true;
-            break;
-        }
-
-        // Timer interrupt - nothing received in 25ms
-        if (irq & RC522_PCD_TIMER_IRQ_BIT) {
-            RC522_LOGD("timer interrupt (irq=0x%02" RC522_X ")", irq);
-
-            return RC522_ERR_RX_TIMER_TIMEOUT;
-        }
-
-        taskYIELD();
-    }
-    while (rc522_millis() < deadline);
-
-    // 36ms and nothing happened. Communication with the MFRC522 might be down.
-    RC522_RETURN_ON_FALSE(completed, RC522_ERR_RX_TIMEOUT);
-
-    // Stop now if any errors except collisions were detected.
-    uint8_t error_reg_value;
-    RC522_RETURN_ON_ERROR(rc522_pcd_read(rc522, RC522_PCD_ERROR_REG, &error_reg_value));
-
-    if (error_reg_value & RC522_PCD_BUFFER_OVFL_BIT) {
-        return RC522_ERR_PCD_FIFO_BUFFER_OVERFLOW;
-    }
-    else if (error_reg_value & RC522_PCD_PARITY_ERR_BIT) {
-        RC522_LOGD("parity error detected");
-
-        return RC522_ERR_PCD_PARITY_CHECK_FAILED;
-    }
-    else if (error_reg_value & RC522_PCD_PROTOCOL_ERR_BIT) {
-        RC522_LOGD("protocol error detected");
-
-        return RC522_ERR_PCD_PROTOCOL_ERROR;
-    }
+    rc522_picc_transaction_context_t context;
+    RC522_RETURN_ON_ERROR_SILENTLY(rc522_picc_send(rc522, &transaction, &context));
 
     uint8_t fifo_level = 0;
 
-    if (irq & RC522_PCD_RX_IRQ_BIT) {
+    if (context.interrupts & RC522_PCD_RX_IRQ_BIT) {
         RC522_RETURN_ON_ERROR(rc522_pcd_read(rc522, RC522_PCD_FIFO_LEVEL_REG, &fifo_level));
 
         if (fifo_level < 1) {
-            RC522_LOGW("unexpectedly, fifo is empty (irq=0x%02" RC522_X ")", irq);
+            RC522_LOGW("unexpectedly, fifo is empty (irq=0x%02" RC522_X ")", context.interrupts);
         }
     }
 
@@ -158,7 +185,7 @@ esp_err_t rc522_picc_comm_deprecated(const rc522_handle_t rc522, rc522_pcd_comma
         }
     }
 
-    if (error_reg_value & RC522_PCD_COLL_ERR_BIT) {
+    if (context.error_reg & RC522_PCD_COLL_ERR_BIT) {
         return RC522_ERR_COLLISION;
     }
 
