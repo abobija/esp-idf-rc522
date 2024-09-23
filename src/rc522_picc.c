@@ -238,7 +238,6 @@ static esp_err_t rc522_picc_transceive(const rc522_handle_t rc522, const rc522_p
 {
     RC522_CHECK(rc522 == NULL);
     RC522_CHECK(transaction == NULL);
-    RC522_CHECK(out_result == NULL);
 
     rc522_picc_transaction_t transaction_clone = { 0 };
     memcpy(&transaction_clone, transaction, sizeof(transaction_clone));
@@ -246,9 +245,12 @@ static esp_err_t rc522_picc_transceive(const rc522_handle_t rc522, const rc522_p
     transaction_clone.pcd_command = RC522_PCD_TRANSCEIVE_CMD;
     transaction_clone.expected_interrupts = RC522_PCD_RX_IRQ_BIT | RC522_PCD_IDLE_IRQ_BIT;
 
-    rc522_picc_transaction_context_t context;
+    rc522_picc_transaction_context_t context = { 0 };
     RC522_RETURN_ON_ERROR_SILENTLY(rc522_picc_send(rc522, &transaction_clone, &context));
-    RC522_RETURN_ON_ERROR(rc522_picc_receive(rc522, &context, out_result));
+
+    if (out_result) {
+        RC522_RETURN_ON_ERROR(rc522_picc_receive(rc522, &context, out_result));
+    }
 
     return ESP_OK;
 }
@@ -744,32 +746,32 @@ esp_err_t rc522_picc_halta(const rc522_handle_t rc522, rc522_picc_t *picc)
 
     RC522_LOGD("HALTA");
 
-    uint8_t buffer[4];
+    uint8_t buffer[4] = { 0 };
 
-    // Build command buffer
     buffer[0] = RC522_PICC_CMD_HLTA;
     buffer[1] = 0;
-    // Calculate CRC_A
+
     rc522_pcd_crc_t crc = { 0 };
     RC522_RETURN_ON_ERROR(rc522_pcd_calculate_crc(rc522, &(rc522_bytes_t) { .ptr = buffer, .length = 2 }, &crc));
 
     buffer[2] = crc.lsb;
     buffer[3] = crc.msb;
 
-    // Send the command.
-    // The standard says:
-    //		If the PICC responds with any modulation during a period of 1 ms after the end of the frame containing
-    // the 		HLTA command, this response shall be interpreted as 'not acknowledge'.
-    // We interpret that this way: Only STATUS_TIMEOUT is a success.
-    esp_err_t ret = rc522_picc_transceive_deprecated(rc522, buffer, sizeof(buffer), NULL, NULL, NULL, 0, false);
+    rc522_picc_transaction_t transaction = {
+        .bytes = { .ptr = buffer, .length = sizeof(buffer) },
+    };
 
-    if (ret == RC522_ERR_RX_TIMER_TIMEOUT || ret == RC522_ERR_RX_TIMEOUT) {
-        return rc522_picc_set_state(rc522, picc, RC522_PICC_STATE_HALT, true);
-    }
+    esp_err_t ret = rc522_picc_transceive(rc522, &transaction, NULL);
 
+    // If the PICC responds with any modulation during a period of 1 ms after the HLTA,
+    // response shall be interpreted as 'not acknowledge', so timeout is not an error.
     if (ret == ESP_OK) {
-        // That is ironically NOT ok in this case ;-)
-        return ESP_FAIL; // TODO: use custom err
+        return RC522_ERR_HLTA_NOT_ACKED;
+    }
+    else if (ret == RC522_ERR_RX_TIMER_TIMEOUT || ret == RC522_ERR_RX_TIMEOUT) {
+        RC522_RETURN_ON_ERROR(rc522_picc_set_state(rc522, picc, RC522_PICC_STATE_HALT, true));
+
+        return ESP_OK;
     }
 
     return ret;
