@@ -113,11 +113,10 @@ esp_err_t rc522_mifare_auth(
  * @param rc522 RC522 handle
  * @param picc PICC that is currently selected
  * @param block_address Address of the block to read
- * @param[out] out_buffer Buffer to store the retrived data in
- * @param buffer_size Size of the @c out_buffer (should be at least @c RC522_MIFARE_BLOCK_SIZE)
+ * @param[out] out_buffer Buffer of exactly @c RC522_MIFARE_BLOCK_SIZE bytes to store the retrived data in
  */
 esp_err_t rc522_mifare_read(const rc522_handle_t rc522, const rc522_picc_t *picc, uint8_t block_address,
-    uint8_t *out_buffer, uint8_t buffer_size);
+    uint8_t out_buffer[RC522_MIFARE_BLOCK_SIZE]);
 
 /**
  * @brief Write to a block at the given @c block_address on the PICC.
@@ -127,11 +126,10 @@ esp_err_t rc522_mifare_read(const rc522_handle_t rc522, const rc522_picc_t *picc
  * @param rc522 RC522 handle
  * @param picc PICC that is currently selected
  * @param block_address Address of the block to write
- * @param[in] buffer Buffer containing the data to write
- * @param buffer_size Size of the @c buffer (should be at least @c RC522_MIFARE_BLOCK_SIZE)
+ * @param[in] buffer Buffer of exactly @c RC522_MIFARE_BLOCK_SIZE that contains the data to write
  */
 esp_err_t rc522_mifare_write(const rc522_handle_t rc522, const rc522_picc_t *picc, uint8_t block_address,
-    const uint8_t *buffer, uint8_t buffer_size);
+    const uint8_t buffer[RC522_MIFARE_BLOCK_SIZE]);
 
 // }}
 

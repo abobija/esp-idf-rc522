@@ -16,7 +16,7 @@ static const char *TAG = "rc522-multiple-scanners-example";
 #define RC522_SPI_SCANNER_1_GPIO_SDA (22)
 #define RC522_SPI_SCANNER_2_GPIO_SDA (26)
 
-// {{ Reader configurations
+// {{ Scanner configurations
 
 static rc522_spi_config_t scanner_1_config = {
     .host_id = VSPI_HOST,
@@ -49,7 +49,7 @@ static rc522_spi_config_t scanner_2_config = {
 static rc522_driver_handle_t driver_1;
 static rc522_driver_handle_t driver_2;
 
-// Readers
+// Scanners
 
 static rc522_handle_t scanner_1;
 static rc522_handle_t scanner_2;

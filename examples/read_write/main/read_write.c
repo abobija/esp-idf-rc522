@@ -31,9 +31,9 @@ static rc522_spi_config_t driver_config = {
 static rc522_driver_handle_t driver;
 static rc522_handle_t scanner;
 
-static void dump_block(uint8_t buffer[16])
+static void dump_block(uint8_t buffer[RC522_MIFARE_BLOCK_SIZE])
 {
-    for (uint8_t i = 0; i < 16; i++) {
+    for (uint8_t i = 0; i < RC522_MIFARE_BLOCK_SIZE; i++) {
         esp_log_write(ESP_LOG_INFO, TAG, "%02" RC522_X " ", buffer[i]);
     }
 
@@ -57,39 +57,33 @@ static esp_err_t read_write(rc522_handle_t scanner, rc522_picc_t *picc)
 
     ESP_RETURN_ON_ERROR(rc522_mifare_auth(scanner, picc, block_address, &key), TAG, "auth fail");
 
-    uint8_t read_buffer[16];
-    uint8_t write_buffer[16];
+    uint8_t read_buffer[RC522_MIFARE_BLOCK_SIZE];
+    uint8_t write_buffer[RC522_MIFARE_BLOCK_SIZE];
 
     // Read
     ESP_LOGI(TAG, "Reading data from the block %d", block_address);
-    ESP_RETURN_ON_ERROR(rc522_mifare_read(scanner, picc, block_address, read_buffer, sizeof(read_buffer)),
-        TAG,
-        "read fail");
+    ESP_RETURN_ON_ERROR(rc522_mifare_read(scanner, picc, block_address, read_buffer), TAG, "read fail");
     ESP_LOGI(TAG, "Current data:");
     dump_block(read_buffer);
     // ~Read
 
     // Write
-    strncpy((char *)write_buffer, data_to_write, 16);
+    strncpy((char *)write_buffer, data_to_write, RC522_MIFARE_BLOCK_SIZE);
 
     // Set random values for the last two bytes in the write buffer
     // so we are using new data on each call of read_write function
     int r = rand();
-    write_buffer[16 - 2] = ((r >> 8) & 0xFF);
-    write_buffer[16 - 1] = ((r >> 0) & 0xFF);
+    write_buffer[RC522_MIFARE_BLOCK_SIZE - 2] = ((r >> 8) & 0xFF);
+    write_buffer[RC522_MIFARE_BLOCK_SIZE - 1] = ((r >> 0) & 0xFF);
 
     ESP_LOGI(TAG, "Writing data (%s) to the block %d:", data_to_write, block_address);
     dump_block(write_buffer);
-    ESP_RETURN_ON_ERROR(rc522_mifare_write(scanner, picc, block_address, write_buffer, sizeof(write_buffer)),
-        TAG,
-        "write fail");
+    ESP_RETURN_ON_ERROR(rc522_mifare_write(scanner, picc, block_address, write_buffer), TAG, "write fail");
     // ~Write
 
     // Read again
     ESP_LOGI(TAG, "Write done. Verifying...");
-    ESP_RETURN_ON_ERROR(rc522_mifare_read(scanner, picc, block_address, read_buffer, sizeof(read_buffer)),
-        TAG,
-        "read fail");
+    ESP_RETURN_ON_ERROR(rc522_mifare_read(scanner, picc, block_address, read_buffer), TAG, "read fail");
     ESP_LOGI(TAG, "New data in the block %d:", block_address);
     dump_block(read_buffer);
     // ~Read again
@@ -97,7 +91,7 @@ static esp_err_t read_write(rc522_handle_t scanner, rc522_picc_t *picc)
     // Validate
     bool rw_missmatch = false;
     uint8_t i;
-    for (i = 0; i < 16; i++) {
+    for (i = 0; i < RC522_MIFARE_BLOCK_SIZE; i++) {
         if (write_buffer[i] != read_buffer[i]) {
             rw_missmatch = true;
             break;
