@@ -255,22 +255,6 @@ esp_err_t rc522_picc_transceive(const rc522_handle_t rc522, const rc522_picc_tra
     return ESP_OK;
 }
 
-inline esp_err_t rc522_picc_transceive_deprecated(const rc522_handle_t rc522, const uint8_t *send_data,
-    uint8_t send_data_len, uint8_t *back_data, uint8_t *back_data_len, uint8_t *valid_bits, uint8_t rx_align,
-    bool check_crc)
-{
-    return rc522_picc_comm_deprecated(rc522,
-        RC522_PCD_TRANSCEIVE_CMD,
-        RC522_PCD_RX_IRQ_BIT | RC522_PCD_IDLE_IRQ_BIT,
-        send_data,
-        send_data_len,
-        back_data,
-        back_data_len,
-        valid_bits,
-        rx_align,
-        check_crc);
-}
-
 inline static esp_err_t rc522_picc_parse_atqa(uint16_t atqa, rc522_picc_atqa_desc_t *out_atqa)
 {
     RC522_CHECK(out_atqa == NULL);

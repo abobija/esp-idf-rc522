@@ -83,9 +83,6 @@ esp_err_t rc522_picc_comm_deprecated(const rc522_handle_t rc522, rc522_pcd_comma
     const uint8_t *send_data, uint8_t send_data_len, uint8_t *back_data, uint8_t *back_data_len, uint8_t *valid_bits,
     uint8_t rx_align, bool check_crc);
 
-esp_err_t rc522_picc_transceive_deprecated(const rc522_handle_t rc522, const uint8_t *send_data, uint8_t send_data_len,
-    uint8_t *back_data, uint8_t *back_data_len, uint8_t *valid_bits, uint8_t rx_align, bool check_crc);
-
 esp_err_t rc522_picc_reqa(const rc522_handle_t rc522, rc522_picc_atqa_desc_t *out_atqa);
 
 esp_err_t rc522_picc_wupa(const rc522_handle_t rc522, rc522_picc_atqa_desc_t *out_atqa);
