@@ -18,12 +18,11 @@ struct rc522_picc_transaction_context
     uint8_t error_reg;
 };
 
-static esp_err_t rc522_picc_send(const rc522_handle_t rc522, const rc522_picc_transaction_t *transaction,
+esp_err_t rc522_picc_send(const rc522_handle_t rc522, const rc522_picc_transaction_t *transaction,
     rc522_picc_transaction_context_t *out_context)
 {
     RC522_CHECK(rc522 == NULL);
     RC522_CHECK(transaction == NULL);
-    RC522_CHECK(out_context == NULL);
     RC522_CHECK_BYTES(&transaction->bytes);
     RC522_CHECK(
         transaction->pcd_command != RC522_PCD_TRANSCEIVE_CMD && transaction->pcd_command != RC522_PCD_MF_AUTH_CMD);
@@ -103,7 +102,9 @@ static esp_err_t rc522_picc_send(const rc522_handle_t rc522, const rc522_picc_tr
         return RC522_ERR_PCD_PROTOCOL_ERROR;
     }
 
-    memcpy(out_context, &context, sizeof(context));
+    if (out_context) {
+        memcpy(out_context, &context, sizeof(context));
+    }
 
     return ESP_OK;
 }
@@ -238,6 +239,7 @@ esp_err_t rc522_picc_transceive(const rc522_handle_t rc522, const rc522_picc_tra
 {
     RC522_CHECK(rc522 == NULL);
     RC522_CHECK(transaction == NULL);
+    RC522_CHECK(out_result == NULL);
 
     rc522_picc_transaction_t transaction_clone = { 0 };
     memcpy(&transaction_clone, transaction, sizeof(transaction_clone));
@@ -247,10 +249,7 @@ esp_err_t rc522_picc_transceive(const rc522_handle_t rc522, const rc522_picc_tra
 
     rc522_picc_transaction_context_t context = { 0 };
     RC522_RETURN_ON_ERROR_SILENTLY(rc522_picc_send(rc522, &transaction_clone, &context));
-
-    if (out_result) {
-        RC522_RETURN_ON_ERROR(rc522_picc_receive(rc522, &context, out_result));
-    }
+    RC522_RETURN_ON_ERROR(rc522_picc_receive(rc522, &context, out_result));
 
     return ESP_OK;
 }
@@ -748,7 +747,7 @@ esp_err_t rc522_picc_halta(const rc522_handle_t rc522, rc522_picc_t *picc)
         .bytes = { .ptr = buffer, .length = sizeof(buffer) },
     };
 
-    esp_err_t ret = rc522_picc_transceive(rc522, &transaction, NULL);
+    esp_err_t ret = rc522_picc_send(rc522, &transaction, NULL);
 
     // If the PICC responds with any modulation during a period of 1 ms after the HLTA,
     // response shall be interpreted as 'not acknowledge', so timeout is not an error.

@@ -76,6 +76,9 @@ typedef struct
     uint8_t valid_bits;
 } rc522_picc_transaction_result_t;
 
+esp_err_t rc522_picc_send(const rc522_handle_t rc522, const rc522_picc_transaction_t *transaction,
+    rc522_picc_transaction_context_t *out_context);
+
 esp_err_t rc522_picc_transceive(const rc522_handle_t rc522, const rc522_picc_transaction_t *transaction,
     rc522_picc_transaction_result_t *out_result);
 
