@@ -186,34 +186,32 @@ static esp_err_t rc522_mifare_send(
     RC522_CHECK(send_data == NULL);
     RC522_CHECK(send_length > RC522_MIFARE_BLOCK_SIZE);
 
-    uint8_t cmd_buffer[RC522_MIFARE_BLOCK_SIZE + 2]; // We need room for data + 2 bytes CRC_A
-
-    // Copy sendData[] to cmdBuffer[] and add CRC_A
-    memcpy(cmd_buffer, send_data, send_length);
+#pragma GCC diagnostic ignored "-Wcast-qual"
+    uint8_t *sdata = (uint8_t *)send_data;
+#pragma GCC diagnostic pop
 
     rc522_pcd_crc_t crc = { 0 };
     RC522_RETURN_ON_ERROR(
-        rc522_pcd_calculate_crc(rc522, &(rc522_bytes_t) { .ptr = cmd_buffer, .length = send_length }, &crc));
+        rc522_pcd_calculate_crc(rc522, &(rc522_bytes_t) { .ptr = sdata, .length = send_length }, &crc));
 
-    cmd_buffer[send_length] = crc.lsb;
-    cmd_buffer[send_length + 1] = crc.msb;
+    uint8_t buffer[RC522_MIFARE_BLOCK_SIZE + 2]; // +2 for CRC_A
+
+    memcpy(buffer, send_data, send_length);
+
+    buffer[send_length] = crc.lsb;
+    buffer[send_length + 1] = crc.msb;
 
     send_length += 2;
 
-    // Transceive the data, store the reply in cmdBuffer[]
-    uint8_t cmd_buffer_size = sizeof(cmd_buffer);
-    uint8_t valid_bits = 0;
+    rc522_picc_transaction_t transaction = {
+        .bytes = { .ptr = buffer, .length = send_length },
+    };
 
-    esp_err_t ret = rc522_picc_comm_deprecated(rc522,
-        RC522_PCD_TRANSCEIVE_CMD,
-        RC522_PCD_RX_IRQ_BIT | RC522_PCD_IDLE_IRQ_BIT,
-        cmd_buffer,
-        send_length,
-        cmd_buffer,
-        &cmd_buffer_size,
-        &valid_bits,
-        0,
-        false);
+    rc522_picc_transaction_result_t result = {
+        .bytes = { .ptr = buffer, .length = sizeof(buffer) },
+    };
+
+    esp_err_t ret = rc522_picc_transceive(rc522, &transaction, &result);
 
     if (accept_timeout && ret == ESP_ERR_TIMEOUT) {
         return ESP_OK;
@@ -224,11 +222,11 @@ static esp_err_t rc522_mifare_send(
     }
 
     // The PICC must reply with a 4 bit ACK
-    if (cmd_buffer_size != 1 || valid_bits != 4) {
+    if (result.bytes.length != 1 || result.valid_bits != 4) {
         return ESP_FAIL; // TODO: use custom err
     }
 
-    if (cmd_buffer[0] != RC522_MIFARE_ACK) {
+    if (result.bytes.ptr[0] != RC522_MIFARE_ACK) {
         return RC522_ERR_MIFARE_NACK;
     }
 
