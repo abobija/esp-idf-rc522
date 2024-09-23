@@ -21,7 +21,7 @@ extern "C" {
 
 #define RC522_TASK_STOPPED_BIT (BIT0)
 
-#define RC522_LOG_LEVEL esp_log_level_get(RC522_LOG_TAG)
+#define RC522_LOG_LEVEL LOG_LOCAL_LEVEL
 
 typedef enum
 {
