@@ -83,23 +83,20 @@ esp_err_t rc522_mifare_auth(
 
     RC522_LOGD("MIFARE AUTH (block_address=%02" RC522_X ")", block_address);
 
-    uint8_t auth_cmd;
+    uint8_t send_data[12];
 
     switch (key->type) {
         case RC522_MIFARE_KEY_A:
-            auth_cmd = RC522_MIFARE_AUTH_KEY_A_CMD;
+            send_data[0] = RC522_MIFARE_AUTH_KEY_A_CMD;
             break;
         case RC522_MIFARE_KEY_B:
-            auth_cmd = RC522_MIFARE_AUTH_KEY_B_CMD;
+            send_data[0] = RC522_MIFARE_AUTH_KEY_B_CMD;
             break;
         default:
             RC522_LOGE("Invalid key type");
             return ESP_ERR_INVALID_ARG;
     }
 
-    // Build command buffer
-    uint8_t send_data[12];
-    send_data[0] = auth_cmd;
     send_data[1] = block_address;
     memcpy(send_data + 2, key->value, RC522_MIFARE_KEY_SIZE);
 
@@ -110,18 +107,17 @@ esp_err_t rc522_mifare_auth(
     memcpy(send_data + 8, picc->uid.value + picc->uid.length - 4, 4);
 
     // Start the authentication.
-    esp_err_t ret = rc522_picc_comm_deprecated(rc522,
-        RC522_PCD_MF_AUTH_CMD,
-        RC522_PCD_IDLE_IRQ_BIT,
-        send_data,
-        sizeof(send_data),
-        NULL,
-        NULL,
-        NULL,
-        0,
-        false);
+
+    rc522_picc_transaction_t transaction = {
+        .pcd_command = RC522_PCD_MF_AUTH_CMD,
+        .expected_interrupts = RC522_PCD_IDLE_IRQ_BIT,
+        .bytes = { .ptr = send_data, .length = sizeof(send_data) },
+    };
+
+    esp_err_t ret = rc522_picc_send(rc522, &transaction, NULL);
 
     // 10.3.1.9
+    //
     // "If an error occurs during authentication,
     // the ErrorReg register’s ProtocolErr bit is set to logic 1
     // and the Status2Reg register’s Crypto1On bit is set to logic 0"
