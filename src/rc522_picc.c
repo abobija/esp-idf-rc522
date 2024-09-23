@@ -239,7 +239,6 @@ esp_err_t rc522_picc_transceive(const rc522_handle_t rc522, const rc522_picc_tra
 {
     RC522_CHECK(rc522 == NULL);
     RC522_CHECK(transaction == NULL);
-    RC522_CHECK(out_result == NULL);
 
     rc522_picc_transaction_t transaction_clone = { 0 };
     memcpy(&transaction_clone, transaction, sizeof(transaction_clone));
@@ -249,7 +248,10 @@ esp_err_t rc522_picc_transceive(const rc522_handle_t rc522, const rc522_picc_tra
 
     rc522_picc_transaction_context_t context = { 0 };
     RC522_RETURN_ON_ERROR_SILENTLY(rc522_picc_send(rc522, &transaction_clone, &context));
-    RC522_RETURN_ON_ERROR(rc522_picc_receive(rc522, &context, out_result));
+
+    if (out_result) {
+        RC522_RETURN_ON_ERROR(rc522_picc_receive(rc522, &context, out_result));
+    }
 
     return ESP_OK;
 }
@@ -747,7 +749,7 @@ esp_err_t rc522_picc_halta(const rc522_handle_t rc522, rc522_picc_t *picc)
         .bytes = { .ptr = buffer, .length = sizeof(buffer) },
     };
 
-    esp_err_t ret = rc522_picc_send(rc522, &transaction, NULL);
+    esp_err_t ret = rc522_picc_transceive(rc522, &transaction, NULL);
 
     // If the PICC responds with any modulation during a period of 1 ms after the HLTA,
     // response shall be interpreted as 'not acknowledge', so timeout is not an error.
