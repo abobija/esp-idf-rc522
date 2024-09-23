@@ -191,49 +191,6 @@ static esp_err_t rc522_picc_receive(const rc522_handle_t rc522, const rc522_picc
     return ESP_OK;
 }
 
-// TODO: Refactor this mess, use structs
-esp_err_t rc522_picc_comm_deprecated(const rc522_handle_t rc522, rc522_pcd_command_t command, uint8_t wait_irq,
-    const uint8_t *send_data, uint8_t send_data_len, uint8_t *back_data, uint8_t *back_data_len, uint8_t *valid_bits,
-    uint8_t rx_align, bool check_crc)
-{
-    RC522_CHECK(rc522 == NULL);
-    RC522_CHECK(wait_irq == 0x00);
-    RC522_CHECK(send_data == NULL);
-    RC522_CHECK(send_data_len < 1);
-
-#pragma GCC diagnostic ignored "-Wcast-qual"
-    rc522_picc_transaction_t transaction = {
-        .pcd_command = command,
-        .bytes = { .ptr = (uint8_t *)send_data, .length = send_data_len },
-        .expected_interrupts = wait_irq,
-        .rx_align = rx_align,
-        .valid_bits = valid_bits ? *valid_bits : 0,
-        .check_crc = check_crc,
-    };
-#pragma GCC diagnostic pop
-
-    rc522_picc_transaction_context_t context;
-    RC522_RETURN_ON_ERROR_SILENTLY(rc522_picc_send(rc522, &transaction, &context));
-
-    if (!back_data || !back_data_len) {
-        return ESP_OK;
-    }
-
-    rc522_picc_transaction_result_t result = {
-        .bytes = { .ptr = back_data, .length = *back_data_len },
-    };
-
-    RC522_RETURN_ON_ERROR(rc522_picc_receive(rc522, &context, &result));
-
-    *back_data_len = result.bytes.length;
-
-    if (valid_bits) {
-        *valid_bits = result.valid_bits;
-    }
-
-    return ESP_OK;
-}
-
 esp_err_t rc522_picc_transceive(const rc522_handle_t rc522, const rc522_picc_transaction_t *transaction,
     rc522_picc_transaction_result_t *out_result)
 {
