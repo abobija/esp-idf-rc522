@@ -138,40 +138,44 @@ esp_err_t rc522_mifare_auth(
     return ret;
 }
 
-esp_err_t rc522_mifare_read(
-    const rc522_handle_t rc522, const rc522_picc_t *picc, uint8_t block_address, uint8_t *buffer, uint8_t buffer_size)
+esp_err_t rc522_mifare_read(const rc522_handle_t rc522, const rc522_picc_t *picc, uint8_t block_address,
+    uint8_t *out_buffer, uint8_t buffer_size)
 {
     RC522_CHECK(rc522 == NULL);
     RC522_CHECK(picc == NULL);
-    RC522_CHECK(buffer == NULL);
+    RC522_CHECK(out_buffer == NULL);
     RC522_CHECK(buffer_size < RC522_MIFARE_BLOCK_SIZE);
 
     RC522_LOGD("MIFARE READ (block_address=%02" RC522_X ")", block_address);
 
-    // FIXME: Cloning the buffer since picc_transceive uses +2 bytes buffer
-    //        to store some extra data (crc i think). Refactor picc_transceive
-    //        and picc_comm functions!
-    uint8_t buffer_clone[RC522_MIFARE_BLOCK_SIZE + 2];
+    uint8_t cmd_buffer[4] = { 0 };
 
     // Build command buffer
-    buffer_clone[0] = RC522_MIFARE_READ_CMD;
-    buffer_clone[1] = block_address;
+    cmd_buffer[0] = RC522_MIFARE_READ_CMD;
+    cmd_buffer[1] = block_address;
 
     // Calculate CRC_A
     rc522_pcd_crc_t crc = { 0 };
-    RC522_RETURN_ON_ERROR(rc522_pcd_calculate_crc(rc522, &(rc522_bytes_t) { .ptr = buffer_clone, .length = 2 }, &crc));
+    RC522_RETURN_ON_ERROR(rc522_pcd_calculate_crc(rc522, &(rc522_bytes_t) { .ptr = cmd_buffer, .length = 2 }, &crc));
 
-    buffer_clone[2] = crc.lsb;
-    buffer_clone[3] = crc.msb;
+    cmd_buffer[2] = crc.lsb;
+    cmd_buffer[3] = crc.msb;
 
-    // Transmit the buffer and receive the response, validate CRC_A.
-    uint8_t _ = sizeof(buffer_clone);
-    RC522_RETURN_ON_ERROR(rc522_picc_transceive_deprecated(rc522, buffer_clone, 4, buffer_clone, &_, NULL, 0, true));
+    uint8_t block_buffer[RC522_MIFARE_BLOCK_SIZE + 2] = { 0 }; // +2 for CRC_A
 
-    RC522_CHECK(_ != (RC522_MIFARE_BLOCK_SIZE + 2));
+    rc522_picc_transaction_t transaction = {
+        .bytes = { .ptr = cmd_buffer, .length = sizeof(cmd_buffer) },
+        .check_crc = true,
+    };
 
-    // FIXME: Move data back to the original buffer
-    memcpy(buffer, buffer_clone, RC522_MIFARE_BLOCK_SIZE);
+    rc522_picc_transaction_result_t result = {
+        .bytes = { .ptr = block_buffer, .length = sizeof(block_buffer) },
+    };
+
+    RC522_RETURN_ON_ERROR(rc522_picc_transceive(rc522, &transaction, &result));
+    RC522_CHECK_AND_RETURN((result.bytes.length - 2) != RC522_MIFARE_BLOCK_SIZE, ESP_FAIL);
+
+    memcpy(out_buffer, block_buffer, sizeof(block_buffer) - 2); // -2 cuz of CRC_A
 
     return ESP_OK;
 }

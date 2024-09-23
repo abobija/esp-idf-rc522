@@ -233,7 +233,7 @@ esp_err_t rc522_picc_comm_deprecated(const rc522_handle_t rc522, rc522_pcd_comma
     return ESP_OK;
 }
 
-static esp_err_t rc522_picc_transceive(const rc522_handle_t rc522, const rc522_picc_transaction_t *transaction,
+esp_err_t rc522_picc_transceive(const rc522_handle_t rc522, const rc522_picc_transaction_t *transaction,
     rc522_picc_transaction_result_t *out_result)
 {
     RC522_CHECK(rc522 == NULL);
