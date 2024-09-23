@@ -65,6 +65,7 @@ typedef struct
     uint8_t expected_interrupts;
     uint8_t rx_align;
     uint8_t valid_bits;
+    bool check_crc;
 } rc522_picc_transaction_t;
 
 typedef struct rc522_picc_transaction_context rc522_picc_transaction_context_t;

@@ -109,7 +109,7 @@ static esp_err_t rc522_picc_send(const rc522_handle_t rc522, const rc522_picc_tr
 }
 
 static esp_err_t rc522_picc_receive(const rc522_handle_t rc522, const rc522_picc_transaction_context_t *context,
-    bool check_crc, rc522_picc_transaction_result_t *out_result)
+    rc522_picc_transaction_result_t *out_result)
 {
     RC522_CHECK(rc522 == NULL);
     RC522_CHECK(context == NULL);
@@ -164,7 +164,7 @@ static esp_err_t rc522_picc_receive(const rc522_handle_t rc522, const rc522_picc
     }
 
     // Perform CRC_A validation
-    if (check_crc) {
+    if (context->transaction->check_crc) {
         // We need at least the CRC_A value and all 8 bits of the last byte must be received.
         if (result.bytes.length < 2 || result.valid_bits != 0) {
             RC522_LOGD("crc cannot be performed (len=%d, valid_bits=%d)", result.bytes.length, result.valid_bits);
@@ -207,6 +207,7 @@ esp_err_t rc522_picc_comm_deprecated(const rc522_handle_t rc522, rc522_pcd_comma
         .expected_interrupts = wait_irq,
         .rx_align = rx_align,
         .valid_bits = valid_bits ? *valid_bits : 0,
+        .check_crc = check_crc,
     };
 #pragma GCC diagnostic pop
 
@@ -221,13 +222,33 @@ esp_err_t rc522_picc_comm_deprecated(const rc522_handle_t rc522, rc522_pcd_comma
         .bytes = { .ptr = back_data, .length = *back_data_len },
     };
 
-    RC522_RETURN_ON_ERROR(rc522_picc_receive(rc522, &context, check_crc, &result));
+    RC522_RETURN_ON_ERROR(rc522_picc_receive(rc522, &context, &result));
 
     *back_data_len = result.bytes.length;
 
     if (valid_bits) {
         *valid_bits = result.valid_bits;
     }
+
+    return ESP_OK;
+}
+
+static esp_err_t rc522_picc_transceive(const rc522_handle_t rc522, const rc522_picc_transaction_t *transaction,
+    rc522_picc_transaction_result_t *out_result)
+{
+    RC522_CHECK(rc522 == NULL);
+    RC522_CHECK(transaction == NULL);
+    RC522_CHECK(out_result == NULL);
+
+    rc522_picc_transaction_t transaction_clone = { 0 };
+    memcpy(&transaction_clone, transaction, sizeof(transaction_clone));
+
+    transaction_clone.pcd_command = RC522_PCD_TRANSCEIVE_CMD;
+    transaction_clone.expected_interrupts = RC522_PCD_RX_IRQ_BIT | RC522_PCD_IDLE_IRQ_BIT;
+
+    rc522_picc_transaction_context_t context;
+    RC522_RETURN_ON_ERROR_SILENTLY(rc522_picc_send(rc522, &transaction_clone, &context));
+    RC522_RETURN_ON_ERROR(rc522_picc_receive(rc522, &context, out_result));
 
     return ESP_OK;
 }
@@ -497,14 +518,22 @@ esp_err_t rc522_picc_select(const rc522_handle_t rc522, rc522_picc_uid_t *out_ui
             RC522_RETURN_ON_ERROR(rc522_pcd_write(rc522, RC522_PCD_BIT_FRAMING_REG, (rx_align << 4) + tx_last_bits));
 
             // Transmit the buffer and receive the response.
-            ret = rc522_picc_transceive_deprecated(rc522,
-                buffer,
-                buffer_used,
-                response_buffer,
-                &response_length,
-                &tx_last_bits,
-                rx_align,
-                false);
+            rc522_picc_transaction_t transaction = {
+                .bytes = { .ptr = buffer, .length = buffer_used },
+                .rx_align = rx_align,
+                .valid_bits = tx_last_bits,
+            };
+
+            rc522_picc_transaction_result_t transaction_result = {
+                .bytes = { .ptr = response_buffer, .length = response_length },
+            };
+
+            ret = rc522_picc_transceive(rc522, &transaction, &transaction_result);
+
+            if (ret == ESP_OK) {
+                response_length = transaction_result.bytes.length;
+                tx_last_bits = transaction_result.valid_bits;
+            }
 
             if (ret == RC522_ERR_COLLISION) { // More than one PICC in the field => collision.
                 RC522_LOGD("collision detected (cl=%d, skip_anticoll=%d)", cascade_level, skip_anticoll);
