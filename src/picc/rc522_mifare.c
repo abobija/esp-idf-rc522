@@ -135,12 +135,11 @@ esp_err_t rc522_mifare_auth(
 }
 
 esp_err_t rc522_mifare_read(const rc522_handle_t rc522, const rc522_picc_t *picc, uint8_t block_address,
-    uint8_t *out_buffer, uint8_t buffer_size)
+    uint8_t out_buffer[RC522_MIFARE_BLOCK_SIZE])
 {
     RC522_CHECK(rc522 == NULL);
     RC522_CHECK(picc == NULL);
     RC522_CHECK(out_buffer == NULL);
-    RC522_CHECK(buffer_size < RC522_MIFARE_BLOCK_SIZE);
 
     RC522_LOGD("MIFARE READ (block_address=%02" RC522_X ")", block_address);
 
@@ -334,12 +333,11 @@ static esp_err_t rc522_mifare_confirm_sector_trailer_write_permission_config(uin
 }
 
 esp_err_t rc522_mifare_write(const rc522_handle_t rc522, const rc522_picc_t *picc, uint8_t block_address,
-    const uint8_t *buffer, uint8_t buffer_size)
+    const uint8_t buffer[RC522_MIFARE_BLOCK_SIZE])
 {
     RC522_CHECK(rc522 == NULL);
     RC522_CHECK(picc == NULL);
     RC522_CHECK(buffer == NULL);
-    RC522_CHECK(buffer_size < RC522_MIFARE_BLOCK_SIZE);
     RC522_CHECK(!rc522_mifare_type_is_classic_compatible(picc->type));
     RC522_CHECK(rc522_mifare_confirm_sector_trailer_write_permission_config(block_address) != ESP_OK);
 
@@ -513,7 +511,7 @@ esp_err_t rc522_mifare_read_sector_trailer_block(const rc522_handle_t rc522, con
     block.address = (sector_desc->block_0_address + sector_desc->number_of_blocks - 1);
     block.type = RC522_MIFARE_BLOCK_TRAILER;
 
-    RC522_RETURN_ON_ERROR(rc522_mifare_read(rc522, picc, block.address, block.bytes, sizeof(block.bytes)));
+    RC522_RETURN_ON_ERROR(rc522_mifare_read(rc522, picc, block.address, block.bytes));
     block.error = rc522_mifare_parse_sector_trailer(block.bytes, sizeof(block.bytes), &block.trailer_info);
     memcpy(&block.access_bits, &block.trailer_info.access_bits[3], sizeof(rc522_mifare_access_bits_t));
 
@@ -541,7 +539,7 @@ esp_err_t rc522_mifare_read_sector_block(const rc522_handle_t rc522, const rc522
 
     block.address = (sector_desc->block_0_address + block_offset);
 
-    RC522_RETURN_ON_ERROR(rc522_mifare_read(rc522, picc, block.address, block.bytes, sizeof(block.bytes)));
+    RC522_RETURN_ON_ERROR(rc522_mifare_read(rc522, picc, block.address, block.bytes));
 
     uint8_t group = 0;
     RC522_RETURN_ON_ERROR(rc522_mifare_get_sector_block_group_index(sector_desc, block_offset, &group));
