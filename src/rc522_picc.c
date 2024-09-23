@@ -288,23 +288,26 @@ inline static esp_err_t rc522_picc_parse_atqa(uint16_t atqa, rc522_picc_atqa_des
 static esp_err_t rc522_picc_reqa_or_wupa(const rc522_handle_t rc522, uint8_t picc_cmd, rc522_picc_atqa_desc_t *out_atqa)
 {
     RC522_CHECK(rc522 == NULL);
+    RC522_CHECK(picc_cmd != RC522_PICC_CMD_REQA && picc_cmd != RC522_PICC_CMD_WUPA);
     RC522_CHECK(out_atqa == NULL);
 
     RC522_RETURN_ON_ERROR(rc522_pcd_clear_bits(rc522, RC522_PCD_COLL_REG, RC522_PCD_VALUES_AFTER_COLL_BIT));
 
-    uint8_t atqa_buffer[2];
-    uint8_t atqa_buffer_size = sizeof(atqa_buffer);
+    uint8_t buffer[2] = { 0 };
 
-    // For REQA and WUPA we need the short frame format - transmit only 7 bits of the last (and only)
-    // byte. TxLastBits = BitFramingReg[2..0]
-    uint8_t valid_bits = 7;
+    rc522_picc_transaction_t transaction = {
+        .bytes = { .ptr = &picc_cmd, .length = 1 },
+        .valid_bits = 7, // REQA and WUPA use short frame format
+    };
 
-    esp_err_t ret =
-        rc522_picc_transceive_deprecated(rc522, &picc_cmd, 1, atqa_buffer, &atqa_buffer_size, &valid_bits, 0, false);
+    rc522_picc_transaction_result_t transaction_result = {
+        .bytes = { .ptr = buffer, .length = sizeof(buffer) },
+    };
+
+    esp_err_t ret = rc522_picc_transceive(rc522, &transaction, &transaction_result);
 
     if (ret != ESP_OK) {
-        // Timeouts are expected if no PICC are in the field.
-        // Log other errors
+        // Timeouts are expected if no PICC are in the field, log other errors
         if (ret != RC522_ERR_RX_TIMER_TIMEOUT && ret != RC522_ERR_RX_TIMEOUT) {
             RC522_LOGD("non-timeout error: %04" RC522_X, ret);
         }
@@ -312,11 +315,11 @@ static esp_err_t rc522_picc_reqa_or_wupa(const rc522_handle_t rc522, uint8_t pic
         return ret;
     }
 
-    if (atqa_buffer_size != 2 || valid_bits != 0) { // ATQA must be exactly 16 bits.
+    if (transaction_result.bytes.length != 2 || transaction_result.valid_bits != 0) {
         return RC522_ERR_INVALID_ATQA;
     }
 
-    uint16_t atqa = (atqa_buffer[0] << 8) | atqa_buffer[1];
+    uint16_t atqa = (buffer[0] << 8) | buffer[1];
     RC522_RETURN_ON_ERROR(rc522_picc_parse_atqa(atqa, out_atqa));
 
     return ESP_OK;
