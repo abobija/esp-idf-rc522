@@ -11,7 +11,7 @@
 RC522_LOG_DEFINE_BASE();
 
 // TODO: Refactor this mess, use structs
-esp_err_t rc522_picc_comm(const rc522_handle_t rc522, rc522_pcd_command_t command, uint8_t wait_irq,
+esp_err_t rc522_picc_comm_deprecated(const rc522_handle_t rc522, rc522_pcd_command_t command, uint8_t wait_irq,
     const uint8_t *send_data, uint8_t send_data_len, uint8_t *back_data, uint8_t *back_data_len, uint8_t *valid_bits,
     uint8_t rx_align, bool check_crc)
 {
@@ -192,10 +192,11 @@ esp_err_t rc522_picc_comm(const rc522_handle_t rc522, rc522_pcd_command_t comman
     return ESP_OK;
 }
 
-inline esp_err_t rc522_picc_transceive(const rc522_handle_t rc522, const uint8_t *send_data, uint8_t send_data_len,
-    uint8_t *back_data, uint8_t *back_data_len, uint8_t *valid_bits, uint8_t rx_align, bool check_crc)
+inline esp_err_t rc522_picc_transceive_deprecated(const rc522_handle_t rc522, const uint8_t *send_data,
+    uint8_t send_data_len, uint8_t *back_data, uint8_t *back_data_len, uint8_t *valid_bits, uint8_t rx_align,
+    bool check_crc)
 {
-    return rc522_picc_comm(rc522,
+    return rc522_picc_comm_deprecated(rc522,
         RC522_PCD_TRANSCEIVE_CMD,
         RC522_PCD_RX_IRQ_BIT | RC522_PCD_IDLE_IRQ_BIT,
         send_data,
@@ -235,7 +236,8 @@ static esp_err_t rc522_picc_reqa_or_wupa(const rc522_handle_t rc522, uint8_t pic
     // byte. TxLastBits = BitFramingReg[2..0]
     uint8_t valid_bits = 7;
 
-    esp_err_t ret = rc522_picc_transceive(rc522, &picc_cmd, 1, atqa_buffer, &atqa_buffer_size, &valid_bits, 0, false);
+    esp_err_t ret =
+        rc522_picc_transceive_deprecated(rc522, &picc_cmd, 1, atqa_buffer, &atqa_buffer_size, &valid_bits, 0, false);
 
     if (ret != ESP_OK) {
         // Timeouts are expected if no PICC are in the field.
@@ -455,7 +457,7 @@ esp_err_t rc522_picc_select(const rc522_handle_t rc522, rc522_picc_uid_t *out_ui
             RC522_RETURN_ON_ERROR(rc522_pcd_write(rc522, RC522_PCD_BIT_FRAMING_REG, (rx_align << 4) + tx_last_bits));
 
             // Transmit the buffer and receive the response.
-            ret = rc522_picc_transceive(rc522,
+            ret = rc522_picc_transceive_deprecated(rc522,
                 buffer,
                 buffer_used,
                 response_buffer,
@@ -690,7 +692,7 @@ esp_err_t rc522_picc_halta(const rc522_handle_t rc522, rc522_picc_t *picc)
     //		If the PICC responds with any modulation during a period of 1 ms after the end of the frame containing
     // the 		HLTA command, this response shall be interpreted as 'not acknowledge'.
     // We interpret that this way: Only STATUS_TIMEOUT is a success.
-    esp_err_t ret = rc522_picc_transceive(rc522, buffer, sizeof(buffer), NULL, NULL, NULL, 0, false);
+    esp_err_t ret = rc522_picc_transceive_deprecated(rc522, buffer, sizeof(buffer), NULL, NULL, NULL, 0, false);
 
     if (ret == RC522_ERR_RX_TIMER_TIMEOUT || ret == RC522_ERR_RX_TIMEOUT) {
         return rc522_picc_set_state(rc522, picc, RC522_PICC_STATE_HALT, true);

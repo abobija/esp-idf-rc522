@@ -58,11 +58,11 @@ typedef enum
     RC522_PICC_CMD_RATS = 0xE0,
 } rc522_picc_command_t;
 
-esp_err_t rc522_picc_comm(const rc522_handle_t rc522, rc522_pcd_command_t command, uint8_t wait_irq,
+esp_err_t rc522_picc_comm_deprecated(const rc522_handle_t rc522, rc522_pcd_command_t command, uint8_t wait_irq,
     const uint8_t *send_data, uint8_t send_data_len, uint8_t *back_data, uint8_t *back_data_len, uint8_t *valid_bits,
     uint8_t rx_align, bool check_crc);
 
-esp_err_t rc522_picc_transceive(const rc522_handle_t rc522, const uint8_t *send_data, uint8_t send_data_len,
+esp_err_t rc522_picc_transceive_deprecated(const rc522_handle_t rc522, const uint8_t *send_data, uint8_t send_data_len,
     uint8_t *back_data, uint8_t *back_data_len, uint8_t *valid_bits, uint8_t rx_align, bool check_crc);
 
 esp_err_t rc522_picc_reqa(const rc522_handle_t rc522, rc522_picc_atqa_desc_t *out_atqa);

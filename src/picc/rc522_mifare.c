@@ -110,7 +110,7 @@ esp_err_t rc522_mifare_auth(
     memcpy(send_data + 8, picc->uid.value + picc->uid.length - 4, 4);
 
     // Start the authentication.
-    esp_err_t ret = rc522_picc_comm(rc522,
+    esp_err_t ret = rc522_picc_comm_deprecated(rc522,
         RC522_PCD_MF_AUTH_CMD,
         RC522_PCD_IDLE_IRQ_BIT,
         send_data,
@@ -166,7 +166,7 @@ esp_err_t rc522_mifare_read(
 
     // Transmit the buffer and receive the response, validate CRC_A.
     uint8_t _ = sizeof(buffer_clone);
-    RC522_RETURN_ON_ERROR(rc522_picc_transceive(rc522, buffer_clone, 4, buffer_clone, &_, NULL, 0, true));
+    RC522_RETURN_ON_ERROR(rc522_picc_transceive_deprecated(rc522, buffer_clone, 4, buffer_clone, &_, NULL, 0, true));
 
     RC522_CHECK(_ != (RC522_MIFARE_BLOCK_SIZE + 2));
 
@@ -200,7 +200,7 @@ static esp_err_t rc522_mifare_send(
     uint8_t cmd_buffer_size = sizeof(cmd_buffer);
     uint8_t valid_bits = 0;
 
-    esp_err_t ret = rc522_picc_comm(rc522,
+    esp_err_t ret = rc522_picc_comm_deprecated(rc522,
         RC522_PCD_TRANSCEIVE_CMD,
         RC522_PCD_RX_IRQ_BIT | RC522_PCD_IDLE_IRQ_BIT,
         cmd_buffer,
