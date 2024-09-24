@@ -1,5 +1,5 @@
 #include <driver/gpio.h>
-#include "rc522_types_private.h"
+#include "rc522_types_internal.h"
 #include "rc522_driver.h"
 
 #define RC522_DRIVER_HARD_RST_PIN_PWR_DOWN_LEVEL (0)

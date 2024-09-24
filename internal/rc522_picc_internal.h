@@ -1,6 +1,6 @@
 #pragma once
 
-#include "rc522_pcd_private.h"
+#include "rc522_pcd_internal.h"
 #include "rc522_picc.h"
 
 #ifdef __cplusplus
