@@ -359,6 +359,24 @@ static esp_err_t rc522_mifare_block_at_address_is_sector_trailer(uint8_t block_a
     return ESP_OK;
 }
 
+static esp_err_t rc522_mifare_verify_access_bits_integrity(const uint8_t trailer_bytes[RC522_MIFARE_BLOCK_SIZE])
+{
+    RC522_CHECK(trailer_bytes == NULL);
+
+    uint8_t c1 = 0, c2 = 0, c3 = 0;
+    uint8_t c1_ = 0, c2_ = 0, c3_ = 0;
+
+    RC522_RETURN_ON_ERROR(rc522_nibbles(trailer_bytes[6], &c2_, &c1_));
+    RC522_RETURN_ON_ERROR(rc522_nibbles(trailer_bytes[7], &c1, &c3_));
+    RC522_RETURN_ON_ERROR(rc522_nibbles(trailer_bytes[8], &c3, &c2));
+
+    if ((c1 != (~c1_ & 0x0F)) || (c2 != (~c2_ & 0x0F)) || (c3 != (~c3_ & 0x0F))) {
+        return RC522_ERR_MIFARE_ACCESS_BITS_INTEGRITY_VIOLATION;
+    }
+
+    return ESP_OK;
+}
+
 esp_err_t rc522_mifare_write(const rc522_handle_t rc522, const rc522_picc_t *picc, uint8_t block_address,
     const uint8_t buffer[RC522_MIFARE_BLOCK_SIZE])
 {
@@ -386,6 +404,8 @@ esp_err_t rc522_mifare_write(const rc522_handle_t rc522, const rc522_picc_t *pic
 
         return RC522_ERR_SECTOR_TRAILER_WRITE_NOT_ALLOWED;
 #endif
+
+        RC522_RETURN_ON_ERROR(rc522_mifare_verify_access_bits_integrity(buffer));
     }
 
     RC522_LOGD("MIFARE WRITE (block_address=%02" RC522_X ")", block_address);
@@ -419,24 +439,6 @@ esp_err_t rc522_mifare_get_desc(const rc522_picc_t *picc, rc522_mifare_desc_t *o
     RC522_RETURN_ON_ERROR(rc522_mifare_get_number_of_sectors(picc->type, &desc.number_of_sectors));
 
     memcpy(out_mifare_desc, &desc, sizeof(rc522_mifare_desc_t));
-
-    return ESP_OK;
-}
-
-static esp_err_t rc522_mifare_verify_access_bits_integrity(const uint8_t trailer_bytes[RC522_MIFARE_BLOCK_SIZE])
-{
-    RC522_CHECK(trailer_bytes == NULL);
-
-    uint8_t c1 = 0, c2 = 0, c3 = 0;
-    uint8_t c1_ = 0, c2_ = 0, c3_ = 0;
-
-    RC522_RETURN_ON_ERROR(rc522_nibbles(trailer_bytes[6], &c2_, &c1_));
-    RC522_RETURN_ON_ERROR(rc522_nibbles(trailer_bytes[7], &c1, &c3_));
-    RC522_RETURN_ON_ERROR(rc522_nibbles(trailer_bytes[8], &c3, &c2));
-
-    if ((c1 != (~c1_ & 0x0F)) || (c2 != (~c2_ & 0x0F)) || (c3 != (~c3_ & 0x0F))) {
-        return RC522_ERR_MIFARE_ACCESS_BITS_INTEGRITY_VIOLATION;
-    }
 
     return ESP_OK;
 }
