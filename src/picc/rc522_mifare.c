@@ -402,7 +402,7 @@ esp_err_t rc522_mifare_write(const rc522_handle_t rc522, const rc522_picc_t *pic
         ESP_LOGE(TAG, "If you know what you are doing, please use menuconfig to disable this protection.");
         ESP_LOGE(TAG, "");
 
-        return RC522_ERR_SECTOR_TRAILER_WRITE_NOT_ALLOWED;
+        return RC522_ERR_MIFARE_SECTOR_TRAILER_WRITE_NOT_ALLOWED;
 #endif
 
         RC522_RETURN_ON_ERROR(rc522_mifare_verify_access_bits_integrity(buffer));
