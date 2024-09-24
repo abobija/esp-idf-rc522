@@ -12,21 +12,22 @@ extern "C" {
 
 #define RC522_X "X"
 
-#define RC522_ERR_BASE                          (0xF522)
-#define RC522_ERR_COLLISION                     (RC522_ERR_BASE + 1)
-#define RC522_ERR_COLLISION_UNSOLVABLE          (RC522_ERR_BASE + 2)
-#define RC522_ERR_CRC_WRONG                     (RC522_ERR_BASE + 3)
-#define RC522_ERR_INVALID_ATQA                  (RC522_ERR_BASE + 4)
-#define RC522_ERR_RX_TIMEOUT                    (RC522_ERR_BASE + 5)
-#define RC522_ERR_RX_TIMER_TIMEOUT              (RC522_ERR_BASE + 6)
-#define RC522_ERR_INVALID_SAK                   (RC522_ERR_BASE + 7)
-#define RC522_ERR_PICC_POST_HEARTBEAT_MISSMATCH (RC522_ERR_BASE + 8)
-#define RC522_ERR_PCD_FIFO_BUFFER_OVERFLOW      (RC522_ERR_BASE + 9)
-#define RC522_ERR_PCD_PARITY_CHECK_FAILED       (RC522_ERR_BASE + 10)
-#define RC522_ERR_PCD_PROTOCOL_ERROR            (RC522_ERR_BASE + 11)
-#define RC522_ERR_RST_PIN_UNUSED                (RC522_ERR_BASE + 12)
-#define RC522_ERR_PCD_FIFO_EMPTY                (RC522_ERR_BASE + 13)
-#define RC522_ERR_HLTA_NOT_ACKED                (RC522_ERR_BASE + 14)
+#define RC522_ERR_BASE                             (0xF522)
+#define RC522_ERR_COLLISION                        (RC522_ERR_BASE + 1)
+#define RC522_ERR_COLLISION_UNSOLVABLE             (RC522_ERR_BASE + 2)
+#define RC522_ERR_CRC_WRONG                        (RC522_ERR_BASE + 3)
+#define RC522_ERR_INVALID_ATQA                     (RC522_ERR_BASE + 4)
+#define RC522_ERR_RX_TIMEOUT                       (RC522_ERR_BASE + 5)
+#define RC522_ERR_RX_TIMER_TIMEOUT                 (RC522_ERR_BASE + 6)
+#define RC522_ERR_INVALID_SAK                      (RC522_ERR_BASE + 7)
+#define RC522_ERR_PICC_POST_HEARTBEAT_MISSMATCH    (RC522_ERR_BASE + 8)
+#define RC522_ERR_PCD_FIFO_BUFFER_OVERFLOW         (RC522_ERR_BASE + 9)
+#define RC522_ERR_PCD_PARITY_CHECK_FAILED          (RC522_ERR_BASE + 10)
+#define RC522_ERR_PCD_PROTOCOL_ERROR               (RC522_ERR_BASE + 11)
+#define RC522_ERR_RST_PIN_UNUSED                   (RC522_ERR_BASE + 12)
+#define RC522_ERR_PCD_FIFO_EMPTY                   (RC522_ERR_BASE + 13)
+#define RC522_ERR_HLTA_NOT_ACKED                   (RC522_ERR_BASE + 14)
+#define RC522_ERR_SECTOR_TRAILER_WRITE_NOT_ALLOWED (RC522_ERR_BASE + 15)
 
 typedef struct rc522 *rc522_handle_t;
 

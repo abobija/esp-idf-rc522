@@ -345,20 +345,33 @@ esp_err_t rc522_mifare_get_sector_desc(uint8_t sector_index, rc522_mifare_sector
     return ESP_OK;
 }
 
-/**
- * Returns ESP_OK if writing to Sector Trailer block is allowed by the configuration
- */
-static esp_err_t rc522_mifare_confirm_sector_trailer_write_permission_config(uint8_t block_address)
+static esp_err_t rc522_mifare_block_at_address_is_sector_trailer(uint8_t block_address, bool *result)
 {
-#ifdef CONFIG_RC522_PREVENT_SECTOR_TRAILER_WRITE
+    RC522_CHECK(result == NULL);
+
     uint8_t sector_index = rc522_mifare_get_sector_index_by_block_address(block_address);
 
-    rc522_mifare_sector_desc_t sector;
+    rc522_mifare_sector_desc_t sector = { 0 };
     RC522_RETURN_ON_ERROR(rc522_mifare_get_sector_desc(sector_index, &sector));
 
-    uint8_t trailer_address = sector.block_0_address + sector.number_of_blocks - 1;
+    *result = (block_address == (sector.block_0_address + sector.number_of_blocks - 1));
 
-    if (block_address == trailer_address) {
+    return ESP_OK;
+}
+
+esp_err_t rc522_mifare_write(const rc522_handle_t rc522, const rc522_picc_t *picc, uint8_t block_address,
+    const uint8_t buffer[RC522_MIFARE_BLOCK_SIZE])
+{
+    RC522_CHECK(rc522 == NULL);
+    RC522_CHECK(picc == NULL);
+    RC522_CHECK(buffer == NULL);
+    RC522_CHECK(!rc522_mifare_type_is_classic_compatible(picc->type));
+
+    bool is_trailer = false;
+    RC522_RETURN_ON_ERROR(rc522_mifare_block_at_address_is_sector_trailer(block_address, &is_trailer));
+
+    if (is_trailer) {
+#ifdef CONFIG_RC522_PREVENT_SECTOR_TRAILER_WRITE
         ESP_LOGE(TAG, "");
         ESP_LOGE(TAG,
             "The block at address %d that you are trying to update is a Sector Trailer block.",
@@ -371,21 +384,9 @@ static esp_err_t rc522_mifare_confirm_sector_trailer_write_permission_config(uin
         ESP_LOGE(TAG, "If you know what you are doing, please use menuconfig to enable this option.");
         ESP_LOGE(TAG, "");
 
-        return ESP_FAIL;
-    }
+        return RC522_ERR_SECTOR_TRAILER_WRITE_NOT_ALLOWED;
 #endif
-
-    return ESP_OK;
-}
-
-esp_err_t rc522_mifare_write(const rc522_handle_t rc522, const rc522_picc_t *picc, uint8_t block_address,
-    const uint8_t buffer[RC522_MIFARE_BLOCK_SIZE])
-{
-    RC522_CHECK(rc522 == NULL);
-    RC522_CHECK(picc == NULL);
-    RC522_CHECK(buffer == NULL);
-    RC522_CHECK(!rc522_mifare_type_is_classic_compatible(picc->type));
-    RC522_CHECK(rc522_mifare_confirm_sector_trailer_write_permission_config(block_address) != ESP_OK);
+    }
 
     RC522_LOGD("MIFARE WRITE (block_address=%02" RC522_X ")", block_address);
 
