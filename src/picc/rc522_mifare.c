@@ -1,6 +1,52 @@
+/**
+ * ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+ * # Memory access management via access bits
+ * ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+ *
+ * The access conditions for every data block and sector trailer are defined by 3 bits, which
+ * are stored non-inverted and inverted in the sector trailer of the specified sector.
+ *
+ * The access bits control the rights of memory access using the secret keys A and B. The
+ * access conditions may be altered, provided one knows the relevant key and the current
+ * access condition allows this operation.
+ *
+ * @warning
+ * With each memory access the internal logic verifies the format of the access
+ * conditions. If it detects a format violation the whole sector is irreversibly blocked.
+ *
+ * +-----------------------------------------------------------------------------------+
+ * |                                   Sector Trailer                                  |
+ * +=============+===+===+===+===+===+===+===+===+===+===+====+====+====+====+====+====+
+ * | Byte number | 0 | 1 | 2 | 3 | 4 | 5 | 6 | 7 | 8 | 9 | 10 | 11 | 12 | 13 | 14 | 15 |
+ * +-------------+---+---+---+---+---+---+---+---+---+---+----+----+----+----+----+----+
+ * | Description |         Key A         |  Access Bits  |       Key B (optional)      |
+ * +-------------+-----------------------+---------------+-----------------------------+
+ *
+ * Bytes 6, 7 and 8 of sector trailer block are bytes that holds access bits.
+ * Next table shows descriptions for each bit of those bytes.
+ *
+ * +-----+------+------+------+------+------+------+------+------+
+ * |     |   7  |   6  |   5  |   4  |   3  |   2  |   1  |   0  |
+ * +-----+------+------+------+------+------+------+------+------+
+ * | [6] | ~C23 | ~C22 | ~C21 | ~C20 | ~C13 | ~C12 | ~C11 | ~C10 |
+ * +-----+------+------+------+------+------+------+------+------+
+ * | [7] |  C13 |  C12 |  C11 |  C10 | ~C33 | ~C32 | ~C31 | ~C30 |
+ * +-----+------+------+------+------+------+------+------+------+
+ * | [8] |  C33 |  C32 |  C31 |  C30 |  C23 |  C22 |  C21 |  C20 |
+ * +-----+------+------+------+------+------+------+------+------+
+ *
+ * Where Cxy is access bit Cx for the block (group) y, for example:
+ *  - C10 is the access bit C1 for the block (group) 0,
+ *  - C20 is the access bit C2 for the block (group) 0,
+ *  - ...,
+ *  - C33 is the access bit C3 for the sector trailer,
+ *  - ~C10 is the inverted bit C10.
+ */
+
 #include <string.h>
 #include "rc522_types_internal.h"
 #include "rc522_internal.h"
+#include "rc522_helpers_internal.h"
 #include "rc522_pcd_internal.h"
 #include "rc522_picc_internal.h"
 #include "picc/rc522_mifare.h"
@@ -376,28 +422,41 @@ esp_err_t rc522_mifare_get_desc(const rc522_picc_t *picc, rc522_mifare_desc_t *o
     return ESP_OK;
 }
 
-/**
- * Bytes 6, 7 and 8 of sector trailer block are bytes that holds access bits.
- * Next table shows descriptions for each bit of those bytes.
- *
- *
- * +-----+------+------+------+------+------+------+------+------+
- * |     |   7  |   6  |   5  |   4  |   3  |   2  |   1  |   0  |
- * +-----+------+------+------+------+------+------+------+------+
- * | [6] | ~C23 | ~C22 | ~C21 | ~C20 | ~C13 | ~C12 | ~C11 | ~C10 |
- * +-----+------+------+------+------+------+------+------+------+
- * | [7] |  C13 |  C12 |  C11 |  C10 | ~C33 | ~C32 | ~C31 | ~C30 |
- * +-----+------+------+------+------+------+------+------+------+
- * | [8] |  C33 |  C32 |  C31 |  C30 |  C23 |  C22 |  C21 |  C20 |
- * +-----+------+------+------+------+------+------+------+------+
- *
- *
- * Where Cxy is access bit Cx for the block (group) y, for example:
- *  - C10 is the access bit C1 for the block (group) 0,
- *  - C20 is the access bit C2 for the block (group) 0,
- *  - ...,
- *  - C33 is the access bit C3 for the sector trailer.
- */
+static esp_err_t rc522_mifare_verify_access_bits_integrity(const uint8_t trailer_bytes[RC522_MIFARE_BLOCK_SIZE])
+{
+    RC522_CHECK(trailer_bytes == NULL);
+
+    uint8_t c1 = 0, c2 = 0, c3 = 0;
+    uint8_t c1_ = 0, c2_ = 0, c3_ = 0;
+
+    RC522_RETURN_ON_ERROR(rc522_nibbles(trailer_bytes[6], &c2_, &c1_));
+    RC522_RETURN_ON_ERROR(rc522_nibbles(trailer_bytes[7], &c1, &c3_));
+    RC522_RETURN_ON_ERROR(rc522_nibbles(trailer_bytes[8], &c3, &c2));
+
+    if ((c1 != (~c1_ & 0x0F)) || (c2 != (~c2_ & 0x0F)) || (c3 != (~c3_ & 0x0F))) {
+        return RC522_ERR_MIFARE_ACCESS_BITS_INTEGRITY_VIOLATION;
+    }
+
+    return ESP_OK;
+}
+
+static esp_err_t rc522_mifare_nibbles_to_access_bits(
+    uint8_t c1, uint8_t c2, uint8_t c3, uint8_t offset, rc522_mifare_access_bits_t *access_bits)
+{
+    RC522_CHECK(offset > 3);
+    RC522_CHECK(access_bits == NULL);
+
+    rc522_mifare_access_bits_t bits = { 0 };
+
+    bits.c1 = (c1 & (1 << offset)) >> offset;
+    bits.c2 = (c2 & (1 << offset)) >> offset;
+    bits.c3 = (c3 & (1 << offset)) >> offset;
+
+    memcpy(access_bits, &bits, sizeof(bits));
+
+    return ESP_OK;
+}
+
 static esp_err_t rc522_mifare_parse_sector_trailer(
     const uint8_t *trailer_bytes, uint8_t trailer_bytes_size, rc522_mifare_sector_trailer_info_t *out_trailer_info)
 {
@@ -405,41 +464,20 @@ static esp_err_t rc522_mifare_parse_sector_trailer(
     RC522_CHECK(trailer_bytes_size != RC522_MIFARE_BLOCK_SIZE);
     RC522_CHECK(out_trailer_info == NULL);
 
-    rc522_mifare_sector_trailer_info_t trailer_info;
-    memset(&trailer_info, 0, sizeof(trailer_info));
+    RC522_RETURN_ON_ERROR(rc522_mifare_verify_access_bits_integrity(trailer_bytes));
 
-    uint8_t c3 = trailer_bytes[8] >> 4;
-    uint8_t c2 = trailer_bytes[8] & 0x0F;
-    uint8_t c1 = trailer_bytes[7] >> 4;
-    uint8_t c3_ = trailer_bytes[7] & 0x0F;
-    uint8_t c2_ = trailer_bytes[6] >> 4;
-    uint8_t c1_ = trailer_bytes[6] & 0x0F;
+    uint8_t c1 = 0, c2 = 0, c3 = 0;
 
-    if ((c1 != (~c1_ & 0xF)) || (c2 != (~c2_ & 0xF)) || (c3 != (~c3_ & 0xF))) {
-        return RC522_ERR_MIFARE_ACCESS_BITS_INTEGRITY_VIOLATION;
+    RC522_RETURN_ON_ERROR(rc522_nibbles(trailer_bytes[7], &c1, NULL));
+    RC522_RETURN_ON_ERROR(rc522_nibbles(trailer_bytes[8], &c3, &c2));
+
+    rc522_mifare_sector_trailer_info_t info = { 0 };
+
+    for (uint8_t i = 0; i < 4; i++) {
+        RC522_RETURN_ON_ERROR(rc522_mifare_nibbles_to_access_bits(c1, c2, c3, i, &info.access_bits[i]));
     }
 
-    // trailer
-    trailer_info.access_bits[3].c1 = (c1 & 8) >> 3;
-    trailer_info.access_bits[3].c2 = (c2 & 8) >> 3;
-    trailer_info.access_bits[3].c3 = (c3 & 8) >> 3;
-
-    // block 2
-    trailer_info.access_bits[2].c1 = (c1 & 4) >> 2;
-    trailer_info.access_bits[2].c2 = (c2 & 4) >> 2;
-    trailer_info.access_bits[2].c3 = (c3 & 4) >> 2;
-
-    // block 1
-    trailer_info.access_bits[1].c1 = (c1 & 2) >> 1;
-    trailer_info.access_bits[1].c2 = (c2 & 2) >> 1;
-    trailer_info.access_bits[1].c3 = (c3 & 2) >> 1;
-
-    // block 0
-    trailer_info.access_bits[0].c1 = (c1 & 1) >> 0;
-    trailer_info.access_bits[0].c2 = (c2 & 1) >> 0;
-    trailer_info.access_bits[0].c3 = (c3 & 1) >> 0;
-
-    memcpy(out_trailer_info, &trailer_info, sizeof(trailer_info));
+    memcpy(out_trailer_info, &info, sizeof(info));
 
     return ESP_OK;
 }

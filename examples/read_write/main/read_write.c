@@ -42,78 +42,54 @@ static void dump_block(uint8_t buffer[RC522_MIFARE_BLOCK_SIZE])
 
 static esp_err_t read_write(rc522_handle_t scanner, rc522_picc_t *picc)
 {
-    const char *data_to_write = "rc522 is dope";
-    const uint8_t block_address = 4;
     rc522_mifare_key_t key = {
         .value = { RC522_MIFARE_KEY_VALUE_DEFAULT },
+        .type = RC522_MIFARE_KEY_A,
     };
 
-    if (strlen(data_to_write) > 14) {
-        ESP_LOGW(TAG, "Please make sure that data length is no more than 14 characters");
-        ESP_LOGW(TAG, "since we are going to use random values for last two bytes");
+    ESP_RETURN_ON_ERROR(rc522_mifare_auth(scanner, picc, 3, &key), TAG, "auth fail");
 
-        return ESP_ERR_INVALID_ARG;
-    }
+    uint8_t buffer[RC522_MIFARE_BLOCK_SIZE];
+    ESP_RETURN_ON_ERROR(rc522_mifare_read(scanner, picc, 3, buffer), TAG, "");
 
-    ESP_RETURN_ON_ERROR(rc522_mifare_auth(scanner, picc, block_address, &key), TAG, "auth fail");
+    ESP_LOGI(TAG, "Block 3 init:");
+    dump_block(buffer);
 
-    uint8_t read_buffer[RC522_MIFARE_BLOCK_SIZE];
-    uint8_t write_buffer[RC522_MIFARE_BLOCK_SIZE];
+    memcpy(buffer, key.value, sizeof(key.value));         // set key a
+    memcpy(buffer + 6 + 4, key.value, sizeof(key.value)); // set key b
 
-    // Read
-    ESP_LOGI(TAG, "Reading data from the block %d", block_address);
-    ESP_RETURN_ON_ERROR(rc522_mifare_read(scanner, picc, block_address, read_buffer), TAG, "read fail");
-    ESP_LOGI(TAG, "Current data:");
-    dump_block(read_buffer);
-    // ~Read
+    ESP_LOGI(TAG, "Block 3 after keys are set:");
+    dump_block(buffer);
 
-    // Write
-    strncpy((char *)write_buffer, data_to_write, RC522_MIFARE_BLOCK_SIZE);
+    /**
+     * [6]: 1111 1111
+     * [7]: 0000 0111
+     * [8]: 1000 0000
+     */
 
-    // Set random values for the last two bytes in the write buffer
-    // so we are using new data on each call of read_write function
-    int r = rand();
-    write_buffer[RC522_MIFARE_BLOCK_SIZE - 2] = ((r >> 8) & 0xFF);
-    write_buffer[RC522_MIFARE_BLOCK_SIZE - 1] = ((r >> 0) & 0xFF);
+    buffer[7] |= 0x40;    // C12 = 1
+    buffer[8] |= 0x04;    // C22 = 1
+    buffer[8] &= (~0x40); // C32 = 0
 
-    ESP_LOGI(TAG, "Writing data (%s) to the block %d:", data_to_write, block_address);
-    dump_block(write_buffer);
-    ESP_RETURN_ON_ERROR(rc522_mifare_write(scanner, picc, block_address, write_buffer), TAG, "write fail");
-    // ~Write
+    buffer[6] &= (~0x04); // ~C12 = 0
+    buffer[6] &= (~0x40); // ~C22 = 0
+    buffer[7] |= 0x04;    // ~C32 = 1
 
-    // Read again
-    ESP_LOGI(TAG, "Write done. Verifying...");
-    ESP_RETURN_ON_ERROR(rc522_mifare_read(scanner, picc, block_address, read_buffer), TAG, "read fail");
-    ESP_LOGI(TAG, "New data in the block %d:", block_address);
-    dump_block(read_buffer);
-    // ~Read again
+    /**
+     * [6]: 1011 1011
+     * [7]: 0100 0111
+     * [8]: 1000 0100
+     */
 
-    // Validate
-    bool rw_missmatch = false;
-    uint8_t i;
-    for (i = 0; i < RC522_MIFARE_BLOCK_SIZE; i++) {
-        if (write_buffer[i] != read_buffer[i]) {
-            rw_missmatch = true;
-            break;
-        }
-    }
-    // ~Validate
+    ESP_LOGI(TAG, "Block 3 before write:");
+    dump_block(buffer);
 
-    // Feedback
-    if (!rw_missmatch) {
-        ESP_LOGI(TAG, "Verified.");
-    }
-    else {
-        ESP_LOGE(TAG,
-            "Write failed. RW missmatch on the byte %d (w:%02" RC522_X ", r:%02" RC522_X ")",
-            i,
-            write_buffer[i],
-            read_buffer[i]);
+    ESP_RETURN_ON_ERROR(rc522_mifare_write(scanner, picc, 3, buffer), TAG, "");
 
-        dump_block(write_buffer);
-        dump_block(read_buffer);
-    }
-    // ~Feedback
+    ESP_RETURN_ON_ERROR(rc522_mifare_read(scanner, picc, 3, buffer), TAG, "");
+
+    ESP_LOGI(TAG, "Block 3 after write:");
+    dump_block(buffer);
 
     return ESP_OK;
 }
