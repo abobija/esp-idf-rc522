@@ -45,3 +45,18 @@ esp_err_t rc522_buffer_to_hex_str(
 
     return ESP_OK;
 }
+
+inline esp_err_t rc522_nibbles(uint8_t byte, uint8_t *msb, uint8_t *lsb)
+{
+    RC522_CHECK(msb == NULL && lsb == NULL);
+
+    if (msb) {
+        *msb = byte >> 4;
+    }
+
+    if (lsb) {
+        *lsb = byte & 0x0F;
+    }
+
+    return ESP_OK;
+}
