@@ -2,10 +2,10 @@
 #include <esp_check.h>
 #include <string.h>
 
-#include "rc522_types_private.h"
-#include "rc522_helpers_private.h"
-#include "rc522_driver_private.h"
-#include "rc522_pcd_private.h"
+#include "rc522_types_internal.h"
+#include "rc522_helpers_internal.h"
+#include "rc522_driver_internal.h"
+#include "rc522_pcd_internal.h"
 
 RC522_LOG_DEFINE_BASE();
 

@@ -6,8 +6,8 @@
 #include <freertos/FreeRTOS.h>
 #include <freertos/task.h>
 
-#include "rc522_types_private.h"
-#include "rc522_helpers_private.h"
+#include "rc522_types_internal.h"
+#include "rc522_helpers_internal.h"
 
 RC522_LOG_DEFINE_BASE();
 
