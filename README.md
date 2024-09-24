@@ -26,7 +26,7 @@ Read more about esp-idf component manager in [official documentation](https://do
 - Communication protocols: `SPI` and `I2C`
 - ESP-IDF version: `^5`
 
-## Example
+## Create project from example
 
 > [!TIP]
 > To find more interesting examples (like [`memory_dump`](examples/memory_dump)), go to [examples](examples) folder.
