@@ -2,6 +2,26 @@
 
 #include "picc/rc522_mifare.c"
 
+TEST_CASE("test_Block_at_address_is_sector_trailer", "[mifare]")
+{
+    bool result = true;
+
+    TEST_ASSERT_EQUAL(ESP_OK, rc522_mifare_block_at_address_is_sector_trailer(0, &result));
+    TEST_ASSERT_FALSE(result);
+
+    TEST_ASSERT_EQUAL(ESP_OK, rc522_mifare_block_at_address_is_sector_trailer(3, &result));
+    TEST_ASSERT_TRUE(result);
+
+    TEST_ASSERT_EQUAL(ESP_OK, rc522_mifare_block_at_address_is_sector_trailer(4, &result));
+    TEST_ASSERT_FALSE(result);
+
+    TEST_ASSERT_EQUAL(ESP_OK, rc522_mifare_block_at_address_is_sector_trailer(5, &result));
+    TEST_ASSERT_FALSE(result);
+
+    TEST_ASSERT_EQUAL(ESP_OK, rc522_mifare_block_at_address_is_sector_trailer(7, &result));
+    TEST_ASSERT_TRUE(result);
+}
+
 TEST_CASE("test_Sector_block_group_index", "[mifare]")
 {
     rc522_mifare_sector_desc_t sector;
