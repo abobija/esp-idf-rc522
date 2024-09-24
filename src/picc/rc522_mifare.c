@@ -399,7 +399,7 @@ esp_err_t rc522_mifare_write(const rc522_handle_t rc522, const rc522_picc_t *pic
         ESP_LOGE(TAG, "to protect inexperienced users from accidentally overwriting keys");
         ESP_LOGE(TAG, "or writing incorrect access bits, which could make the sector unusable.");
         ESP_LOGE(TAG, "");
-        ESP_LOGE(TAG, "If you know what you are doing, please use menuconfig to enable this option.");
+        ESP_LOGE(TAG, "If you know what you are doing, please use menuconfig to disable this protection.");
         ESP_LOGE(TAG, "");
 
         return RC522_ERR_SECTOR_TRAILER_WRITE_NOT_ALLOWED;
