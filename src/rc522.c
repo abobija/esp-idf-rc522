@@ -212,10 +212,21 @@ void rc522_task(void *arg)
     const uint32_t task_delay_ms = 50;
     const uint32_t picc_heartbeat_failure_threshold_ms = (2 * task_delay_ms);
     uint32_t picc_heartbeat_failure_at_ms = 0;
+    bool mutex_taken = false;
+    const uint16_t mutex_take_timeout_ms = 4000;
 
     xEventGroupClearBits(rc522->bits, RC522_TASK_STOPPED_BIT);
 
     while (!rc522->exit_requested) {
+        if (mutex_taken && rc522->config->task_mutex != NULL) {
+            if (xSemaphoreGive(rc522->config->task_mutex) == pdTRUE) {
+                mutex_taken = false;
+            }
+            else {
+                RC522_LOGW("failed to give mutex");
+            }
+        }
+
         if (rc522->state != RC522_STATE_POLLING) {
             // waiting for state change to polling
             rc522_delay_ms(100);
@@ -223,6 +234,16 @@ void rc522_task(void *arg)
         }
 
         rc522_delay_ms(task_delay_ms);
+
+        if (rc522->config->task_mutex != NULL) {
+            if (xSemaphoreTake(rc522->config->task_mutex, pdMS_TO_TICKS(mutex_take_timeout_ms)) == pdTRUE) {
+                mutex_taken = true;
+            }
+            else {
+                RC522_LOGW("failed to take mutex in %d ms", mutex_take_timeout_ms);
+                continue;
+            }
+        }
 
         bool should_poll = (rc522_millis() - last_poll_ms) > rc522->config->poll_interval_ms;
 

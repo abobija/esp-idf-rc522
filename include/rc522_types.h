@@ -3,6 +3,7 @@
 #include <esp_err.h>
 #include <esp_event.h>
 #include <inttypes.h>
+#include "freertos/FreeRTOS.h"
 #include "rc522_driver.h"
 #include "rc522_picc.h"
 
@@ -33,9 +34,10 @@ typedef struct rc522 *rc522_handle_t;
 typedef struct
 {
     rc522_driver_handle_t driver;
-    uint16_t poll_interval_ms; /*<! Delay (in milliseconds) between polls */
-    size_t task_stack_size;    /*<! Stack size of rc522 task */
-    uint8_t task_priority;     /*<! Priority of rc522 task */
+    uint16_t poll_interval_ms;    /*<! Delay (in milliseconds) between polls */
+    size_t task_stack_size;       /*<! Stack size of rc522 task */
+    uint8_t task_priority;        /*<! Priority of rc522 task */
+    SemaphoreHandle_t task_mutex; /*<! Mutex for rc522 task */
 } rc522_config_t;
 
 typedef enum
