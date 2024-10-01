@@ -178,6 +178,14 @@ esp_err_t rc522_mifare_read_sector_block(const rc522_handle_t rc522, const rc522
     const rc522_mifare_sector_desc_t *sector_desc, const rc522_mifare_sector_block_t *trailer, uint8_t block_offset,
     rc522_mifare_sector_block_t *out_block);
 
+esp_err_t rc522_mifare_get_number_of_sectors(rc522_picc_type_t type, uint8_t *out_result);
+
+uint8_t rc522_mifare_get_sector_index_by_block_address(uint8_t block_address);
+
+esp_err_t rc522_mifare_get_number_of_blocks_in_sector(uint8_t sector_index, uint8_t *out_result);
+
+esp_err_t rc522_mifare_get_sector_block_0_address(uint8_t sector_index, uint8_t *out_result);
+
 // }}
 
 #ifdef __cplusplus

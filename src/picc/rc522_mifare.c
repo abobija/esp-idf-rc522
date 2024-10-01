@@ -265,7 +265,7 @@ static esp_err_t rc522_mifare_send(const rc522_handle_t rc522, const uint8_t *se
     return ESP_OK;
 }
 
-static esp_err_t rc522_mifare_get_number_of_sectors(rc522_picc_type_t type, uint8_t *out_result)
+esp_err_t rc522_mifare_get_number_of_sectors(rc522_picc_type_t type, uint8_t *out_result)
 {
     RC522_CHECK(rc522_mifare_type_is_classic_compatible(type) == false);
     RC522_CHECK(out_result == NULL);
@@ -288,7 +288,7 @@ static esp_err_t rc522_mifare_get_number_of_sectors(rc522_picc_type_t type, uint
     }
 }
 
-inline static uint8_t rc522_mifare_get_sector_index_by_block_address(uint8_t block_address)
+inline uint8_t rc522_mifare_get_sector_index_by_block_address(uint8_t block_address)
 {
     if (block_address < 128) {
         return block_address / 4;
@@ -298,7 +298,7 @@ inline static uint8_t rc522_mifare_get_sector_index_by_block_address(uint8_t blo
     }
 }
 
-inline static esp_err_t rc522_mifare_get_number_of_blocks_in_sector(uint8_t sector_index, uint8_t *out_result)
+inline esp_err_t rc522_mifare_get_number_of_blocks_in_sector(uint8_t sector_index, uint8_t *out_result)
 {
     RC522_CHECK(sector_index > RC522_MIFARE_SECTOR_INDEX_MAX);
     RC522_CHECK(out_result == NULL);
@@ -313,7 +313,7 @@ inline static esp_err_t rc522_mifare_get_number_of_blocks_in_sector(uint8_t sect
     return ESP_OK;
 }
 
-inline static esp_err_t rc522_mifare_get_sector_block_0_address(uint8_t sector_index, uint8_t *out_result)
+inline esp_err_t rc522_mifare_get_sector_block_0_address(uint8_t sector_index, uint8_t *out_result)
 {
     RC522_CHECK(sector_index > RC522_MIFARE_SECTOR_INDEX_MAX);
     RC522_CHECK(out_result == NULL);
