@@ -1,4 +1,4 @@
-version: "3.2.2"
+version: "3.2.3"
 description: "Library for communication with RFID / NFC cards using MFRC522 module"
 url: "https://github.com/abobija/esp-idf-rc522"
 repository: "https://github.com/abobija/esp-idf-rc522.git"
