@@ -19,7 +19,7 @@ static const char *TAG = "rc522-multiple-scanners-example";
 // {{ Scanner configurations
 
 static rc522_spi_config_t scanner_1_config = {
-    .host_id = VSPI_HOST,
+    .host_id = SPI3_HOST,
     .bus_config = &(spi_bus_config_t){
         .miso_io_num = RC522_SPI_BUS_GPIO_MISO,
         .mosi_io_num = RC522_SPI_BUS_GPIO_MOSI,
@@ -35,7 +35,7 @@ static rc522_spi_config_t scanner_1_config = {
 // since first scanner will initialize the bus.
 
 static rc522_spi_config_t scanner_2_config = {
-    .host_id = VSPI_HOST,
+    .host_id = SPI3_HOST,
     .dev_config = {
         .spics_io_num = RC522_SPI_SCANNER_2_GPIO_SDA,
     },
