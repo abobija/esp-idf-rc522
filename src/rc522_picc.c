@@ -381,15 +381,8 @@ esp_err_t rc522_picc_select(const rc522_handle_t rc522, rc522_picc_uid_t *out_ui
         RC522_LOGD("cl=%d, uid_index=%d, use_cascade_tag=%d", cascade_level, uid_index, use_cascade_tag);
 
         // How many UID bits are known in this Cascade Level?
-        if (skip_anticoll) {
-            current_level_known_bits = (4 * 8);
-        }
-        else {
-            current_level_known_bits = (8 * uid_index);
-            if (current_level_known_bits < 0) {
-                current_level_known_bits = 0;
-            }
-        }
+        current_level_known_bits = skip_anticoll ? (4 * 8) : 0;
+
         // Copy the known bits from uid.uidByte[] to buffer[]
         index = 2; // destination index in buffer[]
         if (use_cascade_tag) {
