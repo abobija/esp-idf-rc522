@@ -29,6 +29,16 @@ typedef enum
     RC522_PICC_TYPE_MIFARE_PLUS,    // MIFARE Plus
     RC522_PICC_TYPE_MIFARE_DESFIRE, // MIFARE DESFire
     RC522_PICC_TYPE_TNP3XXX,        // Only mentioned in NXP AN 10833 MIFARE Type Identification Procedure
+    RC522_PICC_TYPE_MIFARE_UL_,     // Ultralight MF0ICU1; 16x 4-byte pages
+    RC522_PICC_TYPE_MIFARE_UL_C,    // Ultralight C MF0ICU2; 48x 4-byte pages
+    RC522_PICC_TYPE_MIFARE_UL_EV1_1,// Ultralight EV1 MF0UL11; 20x 4-byte pages
+    RC522_PICC_TYPE_MIFARE_UL_EV1_2,// Ultralight EV1 MF0UL21; 41x 4-byte pages
+    RC522_PICC_TYPE_MIFARE_UL_NANO, // Ultralight NANO; 40 bytes (probably 10x 4-byte pages)
+    RC522_PICC_TYPE_MIFARE_UL_AES,  // Ultralight AES MF0AES(H)20; 60x 4-byte pages
+    RC522_PICC_TYPE_NTAG2xx,        // NTAG 2xx; further information unknown
+    RC522_PICC_TYPE_NTAG213,        // NTAG213; 45x 4-byte pages
+    RC522_PICC_TYPE_NTAG215,        // NTAG215; 135x 4-byte pages
+    RC522_PICC_TYPE_NTAG216,        // NTAG216; 231x 4-byte pages
 } rc522_picc_type_t;
 
 typedef enum
@@ -145,6 +155,7 @@ esp_err_t rc522_picc_uid_to_str(const rc522_picc_uid_t *uid, char *buffer, uint8
  * @brief Print PICC information in a fancy way
  */
 esp_err_t rc522_picc_print(const rc522_picc_t *picc);
+
 
 #ifdef __cplusplus
 }

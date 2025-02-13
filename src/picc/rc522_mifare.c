@@ -180,6 +180,39 @@ esp_err_t rc522_mifare_auth(
     return ret;
 }
 
+// Check if this chip supports (3DES/AES) authentication
+// Used to distinguish between the Ultralight and Ultralight C
+// Note the actual authentication algorithm is not implemented
+static esp_err_t rc522_mifare_ul_auth_supported(
+        const rc522_handle_t rc522,
+        const rc522_picc_t *picc
+) {
+    RC522_CHECK(rc522 == NULL);
+    RC522_CHECK(picc == NULL);
+    RC522_LOGD("AUTHENTICATE (support check)");
+
+    uint8_t buffer[11]; // initial response is 11 bytes
+    memset(buffer, 0, sizeof(buffer));
+    buffer[0] = RC522_PICC_CMD_UL_AUTH;
+
+    rc522_pcd_crc_t crc = { 0 };
+    RC522_RETURN_ON_ERROR(
+        rc522_pcd_calculate_crc(rc522, &(rc522_bytes_t) { .ptr = buffer, .length = 2 }, &crc));
+
+    buffer[2] = crc.lsb;
+    buffer[3] = crc.msb;
+
+    rc522_picc_transaction_t transaction = {
+        .bytes = { .ptr = buffer, .length = 4 },
+    };
+
+    rc522_picc_transaction_result_t result = {
+        .bytes = { .ptr = buffer, .length = sizeof(buffer) },
+    };
+
+    return rc522_picc_transceive(rc522, &transaction, &result);
+}
+
 esp_err_t rc522_mifare_read(const rc522_handle_t rc522, const rc522_picc_t *picc, uint8_t block_address,
     uint8_t out_buffer[RC522_MIFARE_BLOCK_SIZE])
 {
@@ -602,3 +635,127 @@ esp_err_t rc522_mifare_read_sector_block(const rc522_handle_t rc522, const rc522
 
     return ESP_OK;
 }
+
+esp_err_t rc522_mifare_get_version(
+        const rc522_handle_t rc522,
+        const rc522_picc_t *picc,
+        rc522_picc_version_t *out_version
+) {
+    RC522_CHECK(rc522 == NULL);
+    RC522_CHECK(picc == NULL);
+    RC522_CHECK(out_version == NULL);
+
+    RC522_LOGD("GET_VERSION");
+
+    uint8_t buffer[10]; // Response is 8-byte data + 2-byte CRC
+    buffer[0] = RC522_PICC_CMD_GETV;
+    rc522_pcd_crc_t crc = { 0 };
+    RC522_RETURN_ON_ERROR(
+        rc522_pcd_calculate_crc(rc522, &(rc522_bytes_t) { .ptr = buffer, .length = 1 }, &crc));
+
+    buffer[1] = crc.lsb;
+    buffer[2] = crc.msb;
+
+    rc522_picc_transaction_t transaction = {
+        .bytes = { .ptr = buffer, .length = 3 },
+    };
+
+    rc522_picc_transaction_result_t result = {
+        .bytes = { .ptr = buffer, .length = 10 },
+    };
+
+    RC522_RETURN_ON_ERROR(
+        rc522_picc_transceive(rc522, &transaction, &result));
+
+    memcpy(out_version, buffer, sizeof(rc522_picc_version_t));
+    return ESP_OK;
+}
+
+rc522_picc_type_t rc522_picc_type_from_version(rc522_picc_version_t *version)
+{
+    // TODO: Factor these magic numbers out into appropriate constants
+    uint8_t type = version->product_type;
+    uint8_t major_version = version->major_version;
+    uint8_t size = version->storage_size;
+    if(type == 0x04) { // NTAG
+        if(major_version != 1) { // Not an NTAG21x
+            RC522_LOGW("Unknown NTAG product version: %02" RC522_X, major_version);
+        } else if(size == 0x0F) { // 0x0F => between 128 and 256 user bytes
+            return RC522_PICC_TYPE_NTAG213;
+        } else if(size == 0x11) { // 0x11 => between 256 and 512 user bytes
+            return RC522_PICC_TYPE_NTAG215;
+        } else if(size == 0x13) { // 0x13 => between 512 and 1024 user byets
+            return RC522_PICC_TYPE_NTAG216;
+        } else { // Unknown size?
+            RC522_LOGW("Unknown NTAG size: %02" RC522_X, size);
+        }
+    } else if(type == 0x03) { // Ultralight
+        if(major_version == 0x01) { // Ultralight EV1
+            if(size == 0x0B) { // 0x0B => between 32 and 64 user bytes
+                return RC522_PICC_TYPE_MIFARE_UL_EV1_1;
+            } else if(size == 0x0E) { // 0x0E => 128 user bytes
+                return RC522_PICC_TYPE_MIFARE_UL_EV1_2;
+            }
+        } else if(major_version == 0x02) { // Ultralight NANO
+            return RC522_PICC_TYPE_MIFARE_UL_NANO;
+        } else if(major_version == 0x04) { // Ultralight AES
+            return RC522_PICC_TYPE_MIFARE_UL_AES;
+        } else {
+            RC522_LOGW("Unknown UL product version: %02" RC522_X, major_version);
+        }
+    } else {
+        RC522_LOGE("Unknown product type: %02" RC522_X, type);
+    }
+    return RC522_PICC_TYPE_UNKNOWN;
+}
+
+// See NXP Application Note 10833 "MIFARE type identification procedure", Fig. 1
+esp_err_t rc522_mifare_get_ul_type(
+        const rc522_handle_t rc522,
+        const rc522_picc_t *picc,
+        rc522_picc_type_t *out_type
+) {
+    RC522_CHECK(rc522 == NULL);
+    RC522_CHECK(picc == NULL);
+    RC522_CHECK(out_type == NULL);
+    RC522_LOGD("Attempting to determine UL type");
+    RC522_LOGD("Checking for GET_VERSION support...");
+
+    // In case of early exit due to errors
+    rc522_picc_type_t type = RC522_PICC_TYPE_MIFARE_UL;
+    rc522_picc_version_t version_info = {0};
+    esp_err_t ret = rc522_mifare_get_version(rc522, picc, &version_info);
+
+    if(ret == ESP_OK) { // GET_VERSION supported
+        type = rc522_picc_type_from_version(&version_info);
+    } else if(ret == RC522_ERR_RX_TIMER_TIMEOUT) { // No GET_VERSION
+        // Failure probably resulted in a HALT, so make sure we can still connect
+        RC522_LOGD("No L3 GET_VERSION; reselecting");
+        rc522_picc_uid_t uid;
+        uint8_t sak;
+        rc522_picc_heartbeat(rc522, picc, &uid, &sak);
+
+        // Fall back to checking for authentication availability (C)
+        RC522_LOGD("Checking for authentication support...");
+        ret = rc522_mifare_ul_auth_supported(rc522, picc);
+        if(ret == ESP_OK) {
+            // Chip supports authentication
+            // TODO: Do we need to complete authentication, or can we leave it here?
+            // Note datasheet also mentions a "MIFARE Hospitality" here, but there
+            // doesn't seem to be any more information about it
+            type = RC522_PICC_TYPE_MIFARE_UL_C;
+        } else if(ret == RC522_ERR_RX_TIMER_TIMEOUT) { // Not supported
+            // Only Ultralight without auth is the original
+            type = RC522_PICC_TYPE_MIFARE_UL_;
+        } else { // Some other error in AUTHENTICATE
+            RC522_RETURN_ON_ERROR(ret);
+        }
+        rc522_picc_heartbeat(rc522, picc, &uid, &sak);
+    } else { // A different error occured in GET_VERSION
+        RC522_RETURN_ON_ERROR(ret);
+    }
+    RC522_LOGD("Found %s", rc522_picc_type_name(type));
+    *out_type = type;
+    return ESP_OK;
+}
+

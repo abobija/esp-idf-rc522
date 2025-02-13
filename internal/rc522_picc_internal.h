@@ -56,6 +56,17 @@ typedef enum
      *
      */
     RC522_PICC_CMD_RATS = 0xE0,
+
+    /**
+     * AUTHenticate command for Ultralight C & AES.
+     *
+     */
+    RC522_PICC_CMD_UL_AUTH = 0x1A,
+
+    /**
+     * GET Version level 3 command for Ultralight EV1 & NANO, and NTAGs.
+     */
+    RC522_PICC_CMD_GETV = 0x60,
 } rc522_picc_command_t;
 
 typedef struct
@@ -67,6 +78,19 @@ typedef struct
     uint8_t valid_bits;
     bool check_crc;
 } rc522_picc_transaction_t;
+
+// TODO: Factor out some constant types here
+typedef struct
+{
+    uint8_t header;
+    uint8_t vendor;
+    uint8_t product_type;
+    uint8_t procut_subtype;
+    uint8_t major_version;
+    uint8_t minor_version;
+    uint8_t storage_size;
+    uint8_t protocol_type;
+} rc522_picc_version_t;
 
 typedef struct rc522_picc_transaction_context rc522_picc_transaction_context_t;
 
