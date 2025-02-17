@@ -114,6 +114,17 @@ typedef enum
      * The PICC enters the HALT State when a valid HLTA Command is received.
      */
     RC522_PICC_STATE_ACTIVE_H,
+
+    /**
+     * AUTHENTICATED State
+     *
+     * PICC has been authenticated, via either keys or passwords, and accessing
+     * protected areas is now possible. This is a Level 3 extension on some NXP
+     * PICCs.
+     *
+     * The PICC enters the HALT state when a valid HLTA command is recieved.
+     */
+    RC522_PICC_STATE_AUTHENTICATED,
 } rc522_picc_state_t;
 
 /**
