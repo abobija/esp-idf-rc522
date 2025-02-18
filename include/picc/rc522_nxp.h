@@ -47,6 +47,11 @@ extern "C" {
 
 #define RC522_NXP_PWD_SIZE  4
 #define RC522_NXP_PACK_SIZE 2
+#define RC522_NXP_PAGE_SIZE 4
+#define RC522_NXP_READ_SIZE (RC522_NXP_PAGE_SIZE * 4)
+
+extern const uint8_t RC522_NXP_DEFAULT_PWD[RC522_NXP_PWD_SIZE];
+extern const uint8_t RC522_NXP_DEFAULT_PACK[RC522_NXP_PACK_SIZE];
 
 enum {
     /**
@@ -182,8 +187,6 @@ typedef struct
     uint8_t sig_size;
 } rc522_nxp_sig_t;
 
-#define RC522_NXP_PAGE_SIZE 4
-
 /**
  * @brief Determine the total memory size of an NXP PICC
  *
@@ -206,6 +209,28 @@ uint8_t rc522_nxp_get_page_count(rc522_picc_type_t type);
  * For invalid types, unknown types, or types without pages, returns 0.
  */
 uint8_t rc522_nxp_get_user_page_count(rc522_picc_type_t type);
+
+/**
+ * @brief Determine the start page of user memory for an NXP PICC
+ *
+ * Currently this is 0x04 for all PICCs. It's unlikely to change in future
+ * for compatibility reasons, but this function exists in case (and also
+ * as a reference).
+ *
+ * For invalid or unknown types, returns 0.
+ */
+uint8_t rc522_nxp_get_user_mem_start(rc522_picc_type_t type);
+
+/**
+ * @brief Determine the final page of user memory for an NXP PICC
+ *
+ * Returns the address of the final page of user memory for a given PICC
+ * type. This is the last page that can be safely written to without changing
+ * the configuration of the PICC.
+ *
+ * For invalid or unknown types, returns 0.
+ */
+uint8_t rc522_nxp_get_user_mem_end(rc522_picc_type_t type);
 
 /**
  * @brief Determine the type of an NXP PICC

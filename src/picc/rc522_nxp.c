@@ -12,6 +12,9 @@
 
 RC522_LOG_DEFINE_BASE();
 
+const uint8_t RC522_NXP_DEFAULT_PWD[RC522_NXP_PWD_SIZE] = {0xFF, 0xFF, 0xFF, 0xFF};
+const uint8_t RC522_NXP_DEFAULT_PACK[RC522_NXP_PACK_SIZE] = {0x00};
+
 // Helper to check if the card responded with a NACK
 inline esp_err_t rc522_nxp_check_for_nak(rc522_picc_transaction_result_t *result)
 {
@@ -169,6 +172,51 @@ uint8_t rc522_nxp_get_user_page_count(rc522_picc_type_t type)
              return 222;
         default:
              return 0;
+    }
+}
+
+uint8_t rc522_nxp_get_user_mem_start(rc522_picc_type_t type)
+{
+    switch(type) {
+        case RC522_PICC_TYPE_MIFARE_UL_:
+        case RC522_PICC_TYPE_MIFARE_UL_C:
+        case RC522_PICC_TYPE_MIFARE_UL_EV1_1:
+        case RC522_PICC_TYPE_MIFARE_UL_EV1_2:
+        case RC522_PICC_TYPE_MIFARE_UL_NANO:
+        case RC522_PICC_TYPE_MIFARE_UL_AES:
+        case RC522_PICC_TYPE_NTAG2xx:
+        case RC522_PICC_TYPE_NTAG213:
+        case RC522_PICC_TYPE_NTAG215:
+        case RC522_PICC_TYPE_NTAG216:
+            return 0x04;
+        default:
+            return 0;
+    }
+}
+
+uint8_t rc522_nxp_get_user_mem_end(rc522_picc_type_t type)
+{
+    switch(type) {
+        case RC522_PICC_TYPE_MIFARE_UL_:
+            return 0x0F;
+        case RC522_PICC_TYPE_MIFARE_UL_C:
+            return 0x27;
+        case RC522_PICC_TYPE_MIFARE_UL_EV1_1:
+            return 0x0F;
+        case RC522_PICC_TYPE_MIFARE_UL_EV1_2:
+            return 0x23;
+        case RC522_PICC_TYPE_MIFARE_UL_NANO:
+            return 0x0D;
+        case RC522_PICC_TYPE_MIFARE_UL_AES:
+            return 0x27;
+        case RC522_PICC_TYPE_NTAG213:
+            return 0x27;
+        case RC522_PICC_TYPE_NTAG215:
+            return 0x81;
+        case RC522_PICC_TYPE_NTAG216:
+            return 0xE1;
+        default:
+            return 0;
     }
 }
 
