@@ -121,8 +121,6 @@ typedef enum
      * PICC has been authenticated, via either keys or passwords, and accessing
      * protected areas is now possible. This is a Level 3 extension on some NXP
      * PICCs.
-     *
-     * The PICC enters the HALT state when a valid HLTA command is recieved.
      */
     RC522_PICC_STATE_AUTHENTICATED,
 } rc522_picc_state_t;
@@ -166,7 +164,6 @@ esp_err_t rc522_picc_uid_to_str(const rc522_picc_uid_t *uid, char *buffer, uint8
  * @brief Print PICC information in a fancy way
  */
 esp_err_t rc522_picc_print(const rc522_picc_t *picc);
-
 
 #ifdef __cplusplus
 }

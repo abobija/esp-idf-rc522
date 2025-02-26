@@ -186,23 +186,6 @@ esp_err_t rc522_mifare_get_number_of_blocks_in_sector(uint8_t sector_index, uint
 
 esp_err_t rc522_mifare_get_sector_block_0_address(uint8_t sector_index, uint8_t *out_result);
 
-/**
- * @brief Determine the specific type of an Ultralight PICC.
- *
- * The SAK given by an Ultralight or NTAG only identifies it as part of the
- * Ultralight/NTAG family. This function uses the standard identification
- * procedure (NXP Application Note AN10833) to further determine the exact type;
- * this is required to identify the size of the user data memory block.
- *
- * @todo Document error return codes
- *
- * @param rc522 RC522 handle
- * @param picc PICC currently selected
- * @param out_type Determined type of the PICC. RC522_PICC_TYPE_MIFARE_UL if not
- * determined; otherwise RC522_PICC_TYPE_MIFARE_UL_* or RC522_PICC_TYPE_NTAG*
- */
-esp_err_t rc522_mifare_get_ul_type(const rc522_handle_t rc522, const rc522_picc_t *picc, rc522_picc_type_t *out_type);
-
 // }}
 
 #ifdef __cplusplus

@@ -23,7 +23,7 @@
  * COMPAT_WRITE |       y |       y |       y |         |       y |       y |
  * READ_CNT     |         |         |       3 |       3 |         |       1 |
  * INCR_CNT     |         |         |       y |       y |         |         |
- * READ_SIG     |         |         |      32 |      48 |      32 |      32 |
+ * READ_SIG     |         |         |      32 |      48 |      32 |      32 | (bytes)
  * WRITE_SIG    |         |         |         |       y |       y |         |
  * LOCK_SIG     |         |         |         |       y |       y |         |
  * AUTHENTICATE |         |    3DES |         |     AES |         |         |

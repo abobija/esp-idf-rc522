@@ -602,4 +602,3 @@ esp_err_t rc522_mifare_read_sector_block(const rc522_handle_t rc522, const rc522
 
     return ESP_OK;
 }
-
