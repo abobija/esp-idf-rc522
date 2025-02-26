@@ -13,20 +13,15 @@
 static const char *TAG = "rc522-picc-nxp-example";
 static char str_buf[128];
 
-const uint8_t SPI_MOSI = 15;
-const uint8_t SPI_MISO = 16;
-const uint8_t SPI_SCK = 17;
-const uint8_t RC522_CS = 1;
-
 static rc522_spi_config_t driver_config = {
-    .host_id = SPI2_HOST,
+    .host_id = SPI3_HOST,
     .bus_config = &(spi_bus_config_t){
-        .miso_io_num = SPI_MISO,
-        .mosi_io_num = SPI_MOSI,
-        .sclk_io_num = SPI_SCK,
+        .miso_io_num = 16,
+        .mosi_io_num = 15,
+        .sclk_io_num = 17,
     },
     .dev_config = {
-        .spics_io_num = RC522_CS,
+        .spics_io_num = 1,
     },
     .rst_io_num = -1, // soft-reset
 };
@@ -42,8 +37,11 @@ static void dump_header()
     //     00  | 10 20 30 40  50 60 70 80  90 A0 B0 C0  D0 E0 F0 11
 }
 
+// Dump four pages (size of a single READ) to output, annotating the start
+// and end pages of user memory if present
 static void dump_pages(uint8_t address, uint8_t page[RC522_NXP_READ_SIZE], rc522_picc_type_t picc_type)
 {
+    // Get the start and end pages of user memory so we can mark them in the dump
     uint8_t start_page = rc522_nxp_get_user_mem_start(picc_type);
     uint8_t end_page = rc522_nxp_get_user_mem_end(picc_type);
     // 0: nothing of interest, 1: start page, 2: end page
@@ -69,12 +67,15 @@ static void dump_pages(uint8_t address, uint8_t page[RC522_NXP_READ_SIZE], rc522
     DUMP("\n");
 }
 
+// Dump all memory to output
 static esp_err_t dump_memory(rc522_handle_t scanner, rc522_picc_t *picc)
 {
     DUMP("\n");
     dump_header();
 
     uint8_t page_count = rc522_nxp_get_page_count(picc->type);
+    // Standard read is 4 pages; allocate an appropriate buffer and increment by
+    // 4 pages on each loop
     uint8_t recv[RC522_NXP_PAGE_SIZE * 4];
     for(uint8_t i = 0; i < page_count; i += 4) {
         ESP_RETURN_ON_ERROR(rc522_nxp_read(scanner, picc, i, recv), TAG, "");
@@ -96,6 +97,7 @@ static void buf_to_hex(const uint8_t *buffer, uint8_t buflen, char *strbuf, uint
     strbuf[len - 1] = 0x00;
 }
 
+// Example: Get the total and user memory page count of an NXP PICC
 static void example_page_counts(rc522_handle_t rc522, rc522_picc_t *picc)
 {
     uint8_t page_count = rc522_nxp_get_page_count(picc->type);
@@ -103,6 +105,7 @@ static void example_page_counts(rc522_handle_t rc522, rc522_picc_t *picc)
     ESP_LOGI(TAG, "User pages: %d/%d", user_page_count, page_count);
 }
 
+// Example: Write to and read from user memory, verifying write works
 static esp_err_t example_read_write(rc522_handle_t rc522, rc522_picc_t *picc)
 {
     uint8_t page = 5;
@@ -127,6 +130,7 @@ static esp_err_t example_read_write(rc522_handle_t rc522, rc522_picc_t *picc)
     return ESP_OK;
 }
 
+// Example: Use of FAST_READ command for variable-size read
 static esp_err_t example_fast_read(rc522_handle_t rc522, rc522_picc_t *picc)
 {
     uint8_t page_count = 3;
@@ -157,6 +161,7 @@ static esp_err_t example_fast_read(rc522_handle_t rc522, rc522_picc_t *picc)
     return ESP_OK;
 }
 
+// Example: Password authentication with PWD/PACK
 static esp_err_t example_pwd_auth(rc522_handle_t rc522, rc522_picc_t *picc)
 {
     // Note both PWD and PACK can and should be programmed during initial
@@ -172,6 +177,7 @@ static esp_err_t example_pwd_auth(rc522_handle_t rc522, rc522_picc_t *picc)
     return ret;
 }
 
+// Example: Counter reading
 static esp_err_t example_read_cnt(rc522_handle_t rc522, rc522_picc_t *picc)
 {
 
@@ -201,6 +207,7 @@ static esp_err_t example_read_cnt(rc522_handle_t rc522, rc522_picc_t *picc)
     return ESP_OK;
 }
 
+// Example: Reading the originality signature from the PICC
 static esp_err_t example_get_signature(rc522_handle_t rc522, rc522_picc_t *picc)
 {
     // Signatures can be either 32 or 48 bytes - here we default to 48 and let
