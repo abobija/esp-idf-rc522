@@ -9,6 +9,7 @@ idf_component_register(
         src/rc522_pcd.c
         src/rc522_picc.c
         src/picc/rc522_mifare.c
+        src/picc/rc522_nxp.c
         src/rc522_driver.c
         src/driver/rc522_spi.c
         src/driver/rc522_i2c.c
