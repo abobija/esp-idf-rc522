@@ -47,21 +47,24 @@ static void dump_pages(uint8_t address, uint8_t page[RC522_NXP_READ_SIZE], rc522
     // 0: nothing of interest, 1: start page, 2: end page
     uint8_t found = 0;
     DUMP("  %02X |", address);
-    for(uint8_t i = 0; i < RC522_NXP_READ_SIZE; i++) {
+    for (uint8_t i = 0; i < RC522_NXP_READ_SIZE; i++) {
         DUMP(" %02X", page[i]);
-        if(i/4 + address == start_page && i % 4 == 3) {
+        if (i / 4 + address == start_page && i % 4 == 3) {
             found = 1;
             DUMP("*");
-        } else if(i/4 + address == end_page && i % 4 == 3) {
+        }
+        else if (i / 4 + address == end_page && i % 4 == 3) {
             found = 2;
             DUMP("*");
-        } else if(i % 4 == 3) {
+        }
+        else if (i % 4 == 3) {
             DUMP(" ");
         }
     }
-    if(found == 1) {
+    if (found == 1) {
         DUMP(" * Start of user memory (0x%02X)", start_page);
-    } else if(found == 2) {
+    }
+    else if (found == 2) {
         DUMP(" * End of user memory (0x%02X)", end_page);
     }
     DUMP("\n");
@@ -77,7 +80,7 @@ static esp_err_t dump_memory(rc522_handle_t scanner, rc522_picc_t *picc)
     // Standard read is 4 pages; allocate an appropriate buffer and increment by
     // 4 pages on each loop
     uint8_t recv[RC522_NXP_PAGE_SIZE * 4];
-    for(uint8_t i = 0; i < page_count; i += 4) {
+    for (uint8_t i = 0; i < page_count; i += 4) {
         ESP_RETURN_ON_ERROR(rc522_nxp_read(scanner, picc, i, recv), TAG, "");
         dump_pages(i, recv, picc->type);
     }
@@ -90,7 +93,7 @@ static void buf_to_hex(const uint8_t *buffer, uint8_t buflen, char *strbuf, uint
     const char *format = "%02X ";
 
     uint16_t len = 0;
-    for(uint16_t i = 0; i < buflen; i++) {
+    for (uint16_t i = 0; i < buflen; i++) {
         len += sprintf(strbuf + len, format, buffer[i]);
     }
 
@@ -109,24 +112,25 @@ static void example_page_counts(rc522_handle_t rc522, rc522_picc_t *picc)
 static esp_err_t example_read_write(rc522_handle_t rc522, rc522_picc_t *picc)
 {
     uint8_t page = 5;
-    uint8_t write_buf[4] = {0x10, 0x20, 0x30, 0x40};
+    uint8_t write_buf[4] = { 0x10, 0x20, 0x30, 0x40 };
     esp_err_t ret = rc522_nxp_write(scanner, picc, page, write_buf);
     ESP_LOGI(TAG, "Writing to address %02X: R=%02X", page, ret);
     ESP_RETURN_ON_ERROR(ret, TAG, "Error in WRITE");
 
-    uint8_t read_buf[16] = {0};
+    uint8_t read_buf[16] = { 0 };
     ret = rc522_nxp_read(scanner, picc, page, read_buf);
     ESP_LOGI(TAG, "Reading from address %02X: R=%02X", page, ret);
     ESP_RETURN_ON_ERROR(ret, TAG, "Error in READ");
 
-    if(memcmp(write_buf, read_buf, 4) == 0) {
+    if (memcmp(write_buf, read_buf, 4) == 0) {
         ESP_LOGI(TAG, "Data read/write match");
-    } else {
+    }
+    else {
         ESP_LOGW(TAG, "Data read/write mismatch");
     }
 
     buf_to_hex(read_buf, 16, str_buf, sizeof(str_buf));
-    ESP_LOGI(TAG, "Pages %d to %d: %s", page, page+3, str_buf);
+    ESP_LOGI(TAG, "Pages %d to %d: %s", page, page + 3, str_buf);
     return ESP_OK;
 }
 
@@ -140,22 +144,21 @@ static esp_err_t example_fast_read(rc522_handle_t rc522, rc522_picc_t *picc)
     ESP_RETURN_ON_FALSE(mem_buf != NULL, ESP_FAIL, TAG, "Out of memory");
 
     rc522_nxp_fast_read_data_t mem_data = {
-        .bytes = mem_buf, .buffer_size = page_count * 4,
+        .bytes = mem_buf,
+        .buffer_size = page_count * 4,
     };
 
-    esp_err_t ret = rc522_nxp_fast_read(
-            scanner,
-            picc,
-            start_page,
-            start_page + page_count - 1, // end is inclusive, so subtract 1
-            &mem_data
-            );
+    esp_err_t ret = rc522_nxp_fast_read(scanner,
+        picc,
+        start_page,
+        start_page + page_count - 1, // end is inclusive, so subtract 1
+        &mem_data);
     ESP_LOGI(TAG, "Dumping %d pages: R=%02X", page_count, ret);
     ESP_RETURN_ON_ERROR(ret, TAG, "Error in FAST_READ");
 
-    for(uint8_t i = 0; i < page_count; i++) {
-        buf_to_hex(&mem_buf[i*4], 4, str_buf, 128);
-        ESP_LOGI(TAG, "Page %03d: %s", start_page+i, str_buf);
+    for (uint8_t i = 0; i < page_count; i++) {
+        buf_to_hex(&mem_buf[i * 4], 4, str_buf, 128);
+        ESP_LOGI(TAG, "Page %03d: %s", start_page + i, str_buf);
     }
     free(mem_buf);
     return ESP_OK;
@@ -166,13 +169,12 @@ static esp_err_t example_pwd_auth(rc522_handle_t rc522, rc522_picc_t *picc)
 {
     // Note both PWD and PACK can and should be programmed during initial
     // PICC setup
-    esp_err_t ret = rc522_nxp_pwd_auth(
-            scanner,
-            picc,
-            RC522_NXP_DEFAULT_PWD,  // 4-byte password, default is 0xFFFFFFFF
-            RC522_NXP_DEFAULT_PACK, // 2-byte acknowledge, default is 0x0000
-            &picc->state  // Ensure the card state is updated if successful
-            );
+    esp_err_t ret = rc522_nxp_pwd_auth(scanner,
+        picc,
+        RC522_NXP_DEFAULT_PWD,  // 4-byte password, default is 0xFFFFFFFF
+        RC522_NXP_DEFAULT_PACK, // 2-byte acknowledge, default is 0x0000
+        &picc->state            // Ensure the card state is updated if successful
+    );
     ESP_LOGI(TAG, "Password auth: R=%02X", ret);
     return ret;
 }
@@ -180,7 +182,6 @@ static esp_err_t example_pwd_auth(rc522_handle_t rc522, rc522_picc_t *picc)
 // Example: Counter reading
 static esp_err_t example_read_cnt(rc522_handle_t rc522, rc522_picc_t *picc)
 {
-
     // Counters can only be read if they're enabled, otherwise the PICC will
     // just respond with a NAK. On the NTAG21x, the single counter can be
     // enabled in the config section, so read it and check if it's enabled.
@@ -193,7 +194,7 @@ static esp_err_t example_read_cnt(rc522_handle_t rc522, rc522_picc_t *picc)
     uint8_t count_en = (read_buf[4] >> 4) & 0x01;
     ESP_LOGI(TAG, "NFC_CNT_EN bit: %hhu", count_en);
 
-    if(count_en) { // Avoid a NAK since then we need to wake the chip back up
+    if (count_en) { // Avoid a NAK since then we need to wake the chip back up
         uint32_t counter = 0;
         // Counter argument is always 0x02 on NTAG21x; Ultralight PICCs with
         // counters usually have 3 and the argument selects which to read
@@ -201,7 +202,8 @@ static esp_err_t example_read_cnt(rc522_handle_t rc522, rc522_picc_t *picc)
         ESP_LOGI(TAG, "Read counter: R=%02X", ret);
         ESP_RETURN_ON_ERROR(ret, TAG, "Error in READ_CNT");
         ESP_LOGI(TAG, "Counter value: %lu", counter);
-    } else {
+    }
+    else {
         ESP_LOGI(TAG, "Counter disabled; skipping");
     }
     return ESP_OK;
@@ -214,7 +216,7 @@ static esp_err_t example_get_signature(rc522_handle_t rc522, rc522_picc_t *picc)
     // the library fill as appropriate. The sig_size field is updated with the
     // correct size
     uint8_t sig_buf[48];
-    rc522_nxp_sig_t sig = {.bytes = sig_buf, .buffer_size = sizeof(sig_buf)};
+    rc522_nxp_sig_t sig = { .bytes = sig_buf, .buffer_size = sizeof(sig_buf) };
 
     esp_err_t ret = rc522_nxp_read_sig(scanner, picc, &sig);
     ESP_LOGI(TAG, "Read signature: R=%02X", ret);
@@ -234,7 +236,7 @@ static void on_picc_state_changed(void *arg, esp_event_base_t base, int32_t even
         return;
     }
 
-    if(picc->type != RC522_PICC_TYPE_MIFARE_UL) {
+    if (picc->type != RC522_PICC_TYPE_MIFARE_UL) {
         return;
     }
 
@@ -268,4 +270,3 @@ void app_main()
     rc522_register_events(scanner, RC522_EVENT_PICC_STATE_CHANGED, on_picc_state_changed, NULL);
     rc522_start(scanner);
 }
-

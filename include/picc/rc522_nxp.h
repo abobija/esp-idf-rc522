@@ -53,7 +53,8 @@ extern "C" {
 extern const uint8_t RC522_NXP_DEFAULT_PWD[RC522_NXP_PWD_SIZE];
 extern const uint8_t RC522_NXP_DEFAULT_PACK[RC522_NXP_PACK_SIZE];
 
-enum {
+enum
+{
     /**
      * Get PICC information.
      */
@@ -247,15 +248,16 @@ esp_err_t rc522_nxp_get_type(const rc522_handle_t rc522, const rc522_picc_t *pic
  * If supported, returns information about the PICC, including manufacturer,
  * product, and memory size.
  */
-esp_err_t rc522_nxp_get_version(const rc522_handle_t rc522, const rc522_picc_t *picc, rc522_nxp_picc_version_t *out_version);
+esp_err_t rc522_nxp_get_version(
+    const rc522_handle_t rc522, const rc522_picc_t *picc, rc522_nxp_picc_version_t *out_version);
 
 /**
  * @brief NXP Level 3 READ
  *
  * Reads 4 pages (16 bytes) from a given page address on the PICC.
  */
-esp_err_t rc522_nxp_read(const rc522_handle_t rc522, const rc522_picc_t *picc,
-        uint8_t address, uint8_t out_buffer[RC522_NXP_PAGE_SIZE * 4]);
+esp_err_t rc522_nxp_read(
+    const rc522_handle_t rc522, const rc522_picc_t *picc, uint8_t address, uint8_t out_buffer[RC522_NXP_PAGE_SIZE * 4]);
 
 /**
  * NXP Level 3 FAST_READ
@@ -269,16 +271,16 @@ esp_err_t rc522_nxp_read(const rc522_handle_t rc522, const rc522_picc_t *picc,
  *
  * Supported PICCs: UL EV1, UL AES, NTAG21x
  */
-esp_err_t rc522_nxp_fast_read(const rc522_handle_t rc522, const rc522_picc_t *picc,
-        uint8_t start, uint8_t end, rc522_nxp_fast_read_data_t *out_buffer);
+esp_err_t rc522_nxp_fast_read(const rc522_handle_t rc522, const rc522_picc_t *picc, uint8_t start, uint8_t end,
+    rc522_nxp_fast_read_data_t *out_buffer);
 
 /**
  * @brief NXP Level 3 WRITE
  *
  * Writes 4 bytes of data to a single page.
  */
-esp_err_t rc522_nxp_write(const rc522_handle_t rc522, const rc522_picc_t *picc,
-        uint8_t address, const uint8_t buffer[RC522_NXP_PAGE_SIZE]);
+esp_err_t rc522_nxp_write(
+    const rc522_handle_t rc522, const rc522_picc_t *picc, uint8_t address, const uint8_t buffer[RC522_NXP_PAGE_SIZE]);
 
 /**
  * @brief NXP Level 3 READ_CNT
@@ -288,8 +290,8 @@ esp_err_t rc522_nxp_write(const rc522_handle_t rc522, const rc522_picc_t *picc,
  *
  * Supported PICCs: UL EV1 (3), UL AES (3), NTAG21x (1)
  */
-esp_err_t rc522_nxp_read_cnt(const rc522_handle_t rc522, const rc522_picc_t *picc,
-        uint8_t counter_no, uint32_t *out_count);
+esp_err_t rc522_nxp_read_cnt(
+    const rc522_handle_t rc522, const rc522_picc_t *picc, uint8_t counter_no, uint32_t *out_count);
 
 /**
  * @brief NXP Level 3 INCR_CNT
@@ -299,8 +301,8 @@ esp_err_t rc522_nxp_read_cnt(const rc522_handle_t rc522, const rc522_picc_t *pic
  *
  * TODO
  */
-//esp_err_t rc522_nxp_incr_cnt(const rc522_handle_t rc522, const rc522_picc_t *picc,
-//        uint8_t counter_no);
+// esp_err_t rc522_nxp_incr_cnt(const rc522_handle_t rc522, const rc522_picc_t *picc,
+//         uint8_t counter_no);
 
 /**
  * @brief Checks for support for AUTHENTICATE in L3 on a PICC
@@ -315,11 +317,11 @@ esp_err_t rc522_nxp_keyauth_supported(const rc522_handle_t rc522, const rc522_pi
  *
  * If supported, performs key-based authentication with a PICC. Note support
  * for DES and/or AES algorithms is required.
- * 
+ *
  * TODO
  */
-//esp_err_t rc522_nxp_key_auth(const rc522_handle_t rc522, const rc522_picc_t *picc,
-//        rc522_nxp_key_t *key);
+// esp_err_t rc522_nxp_key_auth(const rc522_handle_t rc522, const rc522_picc_t *picc,
+//         rc522_nxp_key_t *key);
 
 /**
  * @brief NXP Level 3 PWD_AUTH
@@ -334,8 +336,7 @@ esp_err_t rc522_nxp_keyauth_supported(const rc522_handle_t rc522, const rc522_pi
  * Supported PICCs: UL EV1, NTAG21x
  */
 esp_err_t rc522_nxp_pwd_auth(const rc522_handle_t rc522, const rc522_picc_t *picc,
-        const uint8_t pwd[RC522_NXP_PWD_SIZE], const uint8_t pack[RC522_NXP_PACK_SIZE],
-        rc522_picc_state_t *out_state);
+    const uint8_t pwd[RC522_NXP_PWD_SIZE], const uint8_t pack[RC522_NXP_PACK_SIZE], rc522_picc_state_t *out_state);
 
 /**
  * @brief NXP Level 3 READ_SIG
@@ -347,8 +348,7 @@ esp_err_t rc522_nxp_pwd_auth(const rc522_handle_t rc522, const rc522_picc_t *pic
  *
  * Supported PICCs: UL EV1, UL AES, UL Nano, NTAG21x
  */
-esp_err_t rc522_nxp_read_sig(const rc522_handle_t rc522, const rc522_picc_t *picc,
-        rc522_nxp_sig_t *out_sig);
+esp_err_t rc522_nxp_read_sig(const rc522_handle_t rc522, const rc522_picc_t *picc, rc522_nxp_sig_t *out_sig);
 
 /**
  * @brief NXP Level 3 WRITE_SIG
@@ -357,8 +357,8 @@ esp_err_t rc522_nxp_read_sig(const rc522_handle_t rc522, const rc522_picc_t *pic
  *
  * TODO
  */
-//esp_err_t rc522_nxp_write_sig(const rc522_handle_t rc522, const rc522_picc_t *picc,
-//        rc522_nxp_sig_t *sig);
+// esp_err_t rc522_nxp_write_sig(const rc522_handle_t rc522, const rc522_picc_t *picc,
+//         rc522_nxp_sig_t *sig);
 
 /**
  * @brief NXP Level 3 LOCK_SIG
@@ -369,10 +369,9 @@ esp_err_t rc522_nxp_read_sig(const rc522_handle_t rc522, const rc522_picc_t *pic
  *
  * TODO
  */
-//esp_err_t rc522_nxp_lock_sig(const rc522_handle_t rc522, const rc522_picc_t *picc,
-//        rc522_nxp_sig_arg_t argument);
+// esp_err_t rc522_nxp_lock_sig(const rc522_handle_t rc522, const rc522_picc_t *picc,
+//         rc522_nxp_sig_arg_t argument);
 
 #ifdef __cplusplus
 }
 #endif
-
