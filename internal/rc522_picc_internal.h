@@ -56,6 +56,17 @@ typedef enum
      *
      */
     RC522_PICC_CMD_RATS = 0xE0,
+
+    /**
+     * AUTHenticate command for Ultralight C & AES.
+     *
+     */
+    RC522_PICC_CMD_UL_AUTH = 0x1A,
+
+    /**
+     * GET Version level 3 command for Ultralight EV1 & NANO, and NTAGs.
+     */
+    RC522_PICC_CMD_GETV = 0x60,
 } rc522_picc_command_t;
 
 typedef struct
