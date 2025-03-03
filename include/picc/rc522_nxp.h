@@ -126,7 +126,7 @@ enum
 /**
  * L3 GET_VERSION: product_type field
  */
-typedef enum: uint8_t
+typedef enum
 {
     RC522_NXP_PRODUCT_TYPE_UNKNOWN,
     RC522_NXP_PRODUCT_TYPE_UL = 0x03,
@@ -136,7 +136,7 @@ typedef enum: uint8_t
 /**
  * L3 GET_VERSION: major_version field
  */
-typedef enum: uint8_t
+typedef enum
 {
     RC522_NXP_MAJ_VER_UNKNOWN = 0,
     RC522_NXP_MAJ_VER_NTAG21 = 0x01,
