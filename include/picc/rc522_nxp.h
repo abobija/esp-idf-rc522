@@ -152,9 +152,9 @@ typedef struct
 {
     uint8_t header;
     uint8_t vendor;
-    rc522_nxp_product_type_t product_type;
+    rc522_nxp_product_type_t product_type :8;
     uint8_t product_subtype;
-    rc522_nxp_major_version_t major_version;
+    rc522_nxp_major_version_t major_version :8;
     uint8_t minor_version;
     uint8_t storage_size;
     uint8_t protocol_type;
