@@ -20,10 +20,8 @@ Read more about esp-idf component manager in [official documentation](https://do
 
 ## Support
 
-- Full support: `MIFARE 1K`, `MIFARE 4K`, `MIFARE Mini`; use
-  [`picc/rc522_mifare.h`](picc/rc522_mifare.h)
-- Partial support: Ultralight & NTAG families; use
-  [`picc/rc522_nxp.h`](picc/rc522_nxp.h)
+- Full support: `MIFARE 1K`, `MIFARE 4K`, `MIFARE Mini`
+- Partial support: Ultralight & NTAG families
   - Supported commands: `GET_VERSION`, `READ`, `FAST_READ`, `WRITE`, `READ_CNT`,
     `READ_SIG`, `PWD_AUTH`
   - Supported features: PICC identification, read/write, page counts, password
@@ -34,7 +32,6 @@ Read more about esp-idf component manager in [official documentation](https://do
     configuration access (raw read + bit-manipulation only)
 - No support: ISO-14443-4 compatible PICCs, other proprietary PICC protocols
 - Communication protocols: `SPI` and `I2C`
-- ESP-IDF version: `^5`
 
 See [examples](examples/) for example projects.
 
