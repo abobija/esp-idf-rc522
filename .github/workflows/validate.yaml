@@ -61,7 +61,6 @@ jobs:
           - release-v5.1
           - release-v5.2
           - release-v5.3
-          - release-v5.4
         idf_target:
           - esp32
 
