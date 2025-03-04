@@ -20,15 +20,25 @@ typedef enum
 {
     RC522_PICC_TYPE_UNKNOWN = -1,
     RC522_PICC_TYPE_UNDEFINED = 0,
-    RC522_PICC_TYPE_ISO_14443_4,    // PICC compliant with ISO/IEC 14443-4
-    RC522_PICC_TYPE_ISO_18092,      // PICC compliant with ISO/IEC 18092 (NFC)
-    RC522_PICC_TYPE_MIFARE_MINI,    // MIFARE Classic protocol, 320 bytes
-    RC522_PICC_TYPE_MIFARE_1K,      // MIFARE Classic protocol, 1KB
-    RC522_PICC_TYPE_MIFARE_4K,      // MIFARE Classic protocol, 4KB
-    RC522_PICC_TYPE_MIFARE_UL,      // MIFARE Ultralight or Ultralight C
-    RC522_PICC_TYPE_MIFARE_PLUS,    // MIFARE Plus
-    RC522_PICC_TYPE_MIFARE_DESFIRE, // MIFARE DESFire
-    RC522_PICC_TYPE_TNP3XXX,        // Only mentioned in NXP AN 10833 MIFARE Type Identification Procedure
+    RC522_PICC_TYPE_ISO_14443_4,     // PICC compliant with ISO/IEC 14443-4
+    RC522_PICC_TYPE_ISO_18092,       // PICC compliant with ISO/IEC 18092 (NFC)
+    RC522_PICC_TYPE_MIFARE_MINI,     // MIFARE Classic protocol, 320 bytes
+    RC522_PICC_TYPE_MIFARE_1K,       // MIFARE Classic protocol, 1KB
+    RC522_PICC_TYPE_MIFARE_4K,       // MIFARE Classic protocol, 4KB
+    RC522_PICC_TYPE_MIFARE_UL,       // MIFARE Ultralight or Ultralight C
+    RC522_PICC_TYPE_MIFARE_PLUS,     // MIFARE Plus
+    RC522_PICC_TYPE_MIFARE_DESFIRE,  // MIFARE DESFire
+    RC522_PICC_TYPE_TNP3XXX,         // Only mentioned in NXP AN 10833 MIFARE Type Identification Procedure
+    RC522_PICC_TYPE_MIFARE_UL_,      // Ultralight MF0ICU1; 16x 4-byte pages
+    RC522_PICC_TYPE_MIFARE_UL_C,     // Ultralight C MF0ICU2; 48x 4-byte pages
+    RC522_PICC_TYPE_MIFARE_UL_EV1_1, // Ultralight EV1 MF0UL11; 20x 4-byte pages
+    RC522_PICC_TYPE_MIFARE_UL_EV1_2, // Ultralight EV1 MF0UL21; 41x 4-byte pages
+    RC522_PICC_TYPE_MIFARE_UL_NANO,  // Ultralight NANO; 40 bytes (probably 10x 4-byte pages)
+    RC522_PICC_TYPE_MIFARE_UL_AES,   // Ultralight AES MF0AES(H)20; 60x 4-byte pages
+    RC522_PICC_TYPE_NTAG2xx,         // NTAG 2xx; further information unknown
+    RC522_PICC_TYPE_NTAG213,         // NTAG213; 45x 4-byte pages
+    RC522_PICC_TYPE_NTAG215,         // NTAG215; 135x 4-byte pages
+    RC522_PICC_TYPE_NTAG216,         // NTAG216; 231x 4-byte pages
 } rc522_picc_type_t;
 
 typedef enum
@@ -104,6 +114,15 @@ typedef enum
      * The PICC enters the HALT State when a valid HLTA Command is received.
      */
     RC522_PICC_STATE_ACTIVE_H,
+
+    /**
+     * AUTHENTICATED State
+     *
+     * PICC has been authenticated, via either keys or passwords, and accessing
+     * protected areas is now possible. This is a Level 3 extension on some NXP
+     * PICCs.
+     */
+    RC522_PICC_STATE_AUTHENTICATED,
 } rc522_picc_state_t;
 
 /**

@@ -381,15 +381,8 @@ esp_err_t rc522_picc_select(const rc522_handle_t rc522, rc522_picc_uid_t *out_ui
         RC522_LOGD("cl=%d, uid_index=%d, use_cascade_tag=%d", cascade_level, uid_index, use_cascade_tag);
 
         // How many UID bits are known in this Cascade Level?
-        if (skip_anticoll) {
-            current_level_known_bits = (4 * 8);
-        }
-        else {
-            current_level_known_bits = (8 * uid_index);
-            if (current_level_known_bits < 0) {
-                current_level_known_bits = 0;
-            }
-        }
+        current_level_known_bits = skip_anticoll ? (4 * 8) : 0;
+
         // Copy the known bits from uid.uidByte[] to buffer[]
         index = 2; // destination index in buffer[]
         if (use_cascade_tag) {
@@ -791,6 +784,7 @@ rc522_picc_type_t rc522_picc_get_type(const rc522_picc_t *picc)
 char *rc522_picc_type_name(rc522_picc_type_t type)
 {
     switch (type) {
+        /* SAK-determined */
         case RC522_PICC_TYPE_ISO_14443_4:
             return "PICC compliant with ISO/IEC 14443-4";
         case RC522_PICC_TYPE_ISO_18092:
@@ -802,13 +796,36 @@ char *rc522_picc_type_name(rc522_picc_type_t type)
         case RC522_PICC_TYPE_MIFARE_4K:
             return "MIFARE 4K";
         case RC522_PICC_TYPE_MIFARE_UL:
-            return "MIFARE Ultralight or Ultralight C";
+            // SAK=0x00 for both of these families
+            return "MIFARE Ultralight or NXP NTAG";
         case RC522_PICC_TYPE_MIFARE_PLUS:
             return "MIFARE Plus";
         case RC522_PICC_TYPE_MIFARE_DESFIRE:
             return "MIFARE DESFire";
         case RC522_PICC_TYPE_TNP3XXX:
             return "MIFARE TNP3XXX";
+
+        /* Further ID processing */
+        case RC522_PICC_TYPE_MIFARE_UL_:
+            return "MIFARE Ultralight";
+        case RC522_PICC_TYPE_MIFARE_UL_C:
+            return "MIFARE Ultralight C";
+        case RC522_PICC_TYPE_MIFARE_UL_EV1_1:
+            return "MIFARE Ultralight EV1 (80 bytes)";
+        case RC522_PICC_TYPE_MIFARE_UL_EV1_2:
+            return "MIFARE Ultralight EV1 (164 bytes)";
+        case RC522_PICC_TYPE_MIFARE_UL_NANO:
+            return "MIFARE Ultralight NANO";
+        case RC522_PICC_TYPE_MIFARE_UL_AES:
+            return "MIFARE Ultralight AES";
+        case RC522_PICC_TYPE_NTAG2xx:
+            return "NTAG2xx";
+        case RC522_PICC_TYPE_NTAG213:
+            return "NTAG213";
+        case RC522_PICC_TYPE_NTAG215:
+            return "NTAG215";
+        case RC522_PICC_TYPE_NTAG216:
+            return "NTAG216";
         case RC522_PICC_TYPE_UNDEFINED:
         case RC522_PICC_TYPE_UNKNOWN:
         default:
