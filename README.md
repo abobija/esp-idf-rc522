@@ -32,7 +32,6 @@ Read more about esp-idf component manager in [official documentation](https://do
     configuration access (raw read + bit-manipulation only)
 - No support: ISO-14443-4 compatible PICCs, other proprietary PICC protocols
 - Communication protocols: `SPI` and `I2C`
-- ESP-IDF version: `^5`
 
 See [examples](examples/) for example projects.
 
