@@ -253,7 +253,12 @@ static void on_picc_state_changed(void *arg, esp_event_base_t base, int32_t even
     example_get_signature(scanner, picc);
 
     esp_err_t ret = dump_memory(scanner, picc);
-    ESP_RETURN_VOID_ON_ERROR(ret, TAG, "Memory dump failed: E=%02X", ret);
+
+    if (ret != ESP_OK) {
+        ESP_LOGE(TAG, "Memory dump failed: E=%02X", ret);
+        return;
+    }
+
     ESP_LOGI(TAG, "Memory dump success");
 }
 
