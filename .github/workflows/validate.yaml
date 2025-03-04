@@ -55,6 +55,7 @@ jobs:
           - memory_dump
           - read_write
           - multiple_scanners
+          - picc_nxp
         idf_ver:
           - release-v5.0
           - release-v5.1
