@@ -11,23 +11,29 @@
 #include "rc522_picc.h"
 
 static const char *TAG = "rc522-picc-nxp-example";
-static char str_buf[128];
+
+#define RC522_SPI_BUS_GPIO_MISO    (16)
+#define RC522_SPI_BUS_GPIO_MOSI    (15)
+#define RC522_SPI_BUS_GPIO_SCLK    (17)
+#define RC522_SPI_SCANNER_GPIO_SDA (1)
+#define RC522_SCANNER_GPIO_RST     (-1) // soft-reset
 
 static rc522_spi_config_t driver_config = {
     .host_id = SPI3_HOST,
     .bus_config = &(spi_bus_config_t){
-        .miso_io_num = 16,
-        .mosi_io_num = 15,
-        .sclk_io_num = 17,
+        .miso_io_num = RC522_SPI_BUS_GPIO_MISO,
+        .mosi_io_num = RC522_SPI_BUS_GPIO_MOSI,
+        .sclk_io_num = RC522_SPI_BUS_GPIO_SCLK,
     },
     .dev_config = {
-        .spics_io_num = 1,
+        .spics_io_num = RC522_SPI_SCANNER_GPIO_SDA,
     },
-    .rst_io_num = -1, // soft-reset
+    .rst_io_num = RC522_SCANNER_GPIO_RST,
 };
 
 static rc522_driver_handle_t driver;
 static rc522_handle_t scanner;
+static char str_buf[128];
 
 #define DUMP(format, ...) esp_log_write(ESP_LOG_INFO, TAG, format, ##__VA_ARGS__)
 
