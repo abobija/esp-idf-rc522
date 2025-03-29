@@ -5,6 +5,24 @@
 
 RC522_LOG_DEFINE_BASE();
 
+esp_err_t rc522_driver_init_ncs_pin(gpio_num_t rst_io_num)
+{
+    RC522_CHECK(rst_io_num < 0);
+
+    gpio_config_t io_conf = {
+        .intr_type = GPIO_INTR_DISABLE,
+        .mode = GPIO_MODE_OUTPUT,
+        .pin_bit_mask = (1ULL << rst_io_num),
+        .pull_down_en = GPIO_PULLDOWN_DISABLE,
+        .pull_up_en = GPIO_PULLUP_DISABLE,
+    };
+
+    RC522_RETURN_ON_ERROR(gpio_config(&io_conf));
+    RC522_RETURN_ON_ERROR(gpio_set_level(rst_io_num, !RC522_DRIVER_NCS_PIN_SELECT));
+
+    return ESP_OK;
+}
+
 esp_err_t rc522_driver_init_rst_pin(gpio_num_t rst_io_num)
 {
     RC522_CHECK(rst_io_num < 0);

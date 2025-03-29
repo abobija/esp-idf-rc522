@@ -68,6 +68,15 @@ typedef struct
     }                                                                                                                  \
     while (0)
 
+#define RC522_LOG_ON_ERROR(x)                                                                                          \
+    do {                                                                                                               \
+        esp_err_t err_rc_ = (x);                                                                                       \
+        if (unlikely(err_rc_ != ESP_OK)) {                                                                             \
+            ESP_LOGE(TAG, "%s(%d): %04" RC522_X "", __FUNCTION__, __LINE__, err_rc_);                                  \
+        }                                                                                                              \
+    }                                                                                                                  \
+    while (0)
+
 #define RC522_RETURN_ON_FALSE(a, err_code)   ESP_RETURN_ON_FALSE(a, err_code, TAG, "")
 #define RC522_CHECK_WITH_MESSAGE(a, message) ESP_RETURN_ON_FALSE(!(a), ESP_ERR_INVALID_ARG, TAG, message)
 #define RC522_CHECK_AND_RETURN(a, ret_val)   ESP_RETURN_ON_FALSE(!(a), ret_val, TAG, #a)

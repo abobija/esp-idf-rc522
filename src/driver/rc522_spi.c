@@ -6,6 +6,10 @@
 
 RC522_LOG_DEFINE_BASE();
 
+static void rc522_spi_transaction_pre_cb(spi_transaction_t *trans);
+static void rc522_spi_transaction_post_cb(spi_transaction_t *trans);
+
+
 static esp_err_t rc522_spi_install(const rc522_driver_handle_t driver)
 {
     RC522_CHECK(driver == NULL);
@@ -44,6 +48,13 @@ static esp_err_t rc522_spi_install(const rc522_driver_handle_t driver)
     conf->dev_config.dummy_bits = 1;
     // }}
 
+    if (conf->dev_config.spics_io_num == -1) {
+        RC522_CHECK(conf->ncs_io_num == -1);
+        conf->dev_config.spics_io_num = -1;
+        conf->dev_config.pre_cb = &rc522_spi_transaction_pre_cb;
+        conf->dev_config.post_cb = &rc522_spi_transaction_post_cb;
+    }
+
     RC522_RETURN_ON_ERROR(
         spi_bus_add_device(conf->host_id, &conf->dev_config, (spi_device_handle_t *)(&driver->device)));
 
@@ -66,6 +77,7 @@ static esp_err_t rc522_spi_send(const rc522_driver_handle_t driver, uint8_t addr
             .addr = address,
             .length = 8 * bytes->length,
             .tx_buffer = bytes->ptr,
+            .user = (void*) driver->config,
         });
 
     return ret;
@@ -87,6 +99,7 @@ static esp_err_t rc522_spi_receive(const rc522_driver_handle_t driver, uint8_t a
                 .addr = address,
                 .rxlength = 8,
                 .rx_buffer = (bytes->ptr + i),
+                .user = (void*) driver->config,
             }));
     }
 
@@ -146,4 +159,16 @@ esp_err_t rc522_spi_create(const rc522_spi_config_t *config, rc522_driver_handle
     (*driver)->uninstall = rc522_spi_uninstall;
 
     return ESP_OK;
+}
+
+static void rc522_spi_transaction_pre_cb(spi_transaction_t *trans)
+{
+    rc522_spi_config_t *conf = (rc522_spi_config_t*) trans->user;
+    RC522_LOG_ON_ERROR(gpio_set_level(conf->ncs_io_num, RC522_DRIVER_NCS_PIN_SELECT));
+}
+
+static void rc522_spi_transaction_post_cb(spi_transaction_t *trans)
+{
+    rc522_spi_config_t *conf = (rc522_spi_config_t*) trans->user;
+    RC522_LOG_ON_ERROR(gpio_set_level(conf->ncs_io_num, !RC522_DRIVER_NCS_PIN_SELECT));
 }
