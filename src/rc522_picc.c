@@ -300,9 +300,9 @@ esp_err_t rc522_picc_select(const rc522_handle_t rc522, rc522_picc_uid_t *out_ui
     uint8_t uid_index;               // The first index in uid->uidByte[] that is used in the current Cascade Level.
     int8_t current_level_known_bits; // The number of known UID bits in the current Cascade Level.
     uint8_t buffer[9];               // The SELECT/ANTICOLLISION commands uses a 7 byte standard frame + 2 bytes CRC_A
-    uint8_t buffer_used;  // The number of bytes used in the buffer, ie the number of bytes to transfer to the FIFO.
-    uint8_t rx_align;     // Used in BitFramingReg. Defines the bit position for the first bit received.
-    uint8_t tx_last_bits; // Used in BitFramingReg. The number of valid bits in the last transmitted byte.
+    uint8_t buffer_used;      // The number of bytes used in the buffer, ie the number of bytes to transfer to the FIFO.
+    uint8_t rx_align;         // Used in BitFramingReg. Defines the bit position for the first bit received.
+    uint8_t tx_last_bits = 0; // Used in BitFramingReg. The number of valid bits in the last transmitted byte.
     uint8_t *response_buffer;
     uint8_t response_length;
 
