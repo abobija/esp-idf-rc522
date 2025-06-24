@@ -27,7 +27,7 @@ typedef struct
      * GPIO number of the RC522 nCS pin.
      * This is used if you have more than 3 devices on your SPI bus (typically SPI3).
      * If you wish to use this parameter, you must set `dev_config.spics_io_num`
-     * to -1. For backwards compatability, this parameter is ignored if you have set
+     * to -1. For backwards compatibility, this parameter is ignored if you have set
      * `dev_config.spics_io_num` to any other value than -1.
      */
     gpio_num_t ncs_io_num;
