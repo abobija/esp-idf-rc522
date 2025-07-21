@@ -33,6 +33,8 @@ typedef struct
     gpio_num_t ncs_io_num;
 } rc522_spi_config_t;
 
+esp_err_t rc522_driver_init_ncs_pin(gpio_num_t ncs_io_num);
+
 esp_err_t rc522_spi_create(const rc522_spi_config_t *config, rc522_driver_handle_t *driver);
 
 #ifdef __cplusplus

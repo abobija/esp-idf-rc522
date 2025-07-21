@@ -9,6 +9,24 @@ RC522_LOG_DEFINE_BASE();
 static void rc522_spi_transaction_pre_cb(spi_transaction_t *trans);
 static void rc522_spi_transaction_post_cb(spi_transaction_t *trans);
 
+esp_err_t rc522_driver_init_ncs_pin(gpio_num_t ncs_io_num)
+{
+    RC522_CHECK(ncs_io_num < 0);
+
+    gpio_config_t io_conf = {
+        .intr_type = GPIO_INTR_DISABLE,
+        .mode = GPIO_MODE_OUTPUT,
+        .pin_bit_mask = (1ULL << ncs_io_num),
+        .pull_down_en = GPIO_PULLDOWN_DISABLE,
+        .pull_up_en = GPIO_PULLUP_DISABLE,
+    };
+
+    RC522_RETURN_ON_ERROR(gpio_config(&io_conf));
+    RC522_RETURN_ON_ERROR(gpio_set_level(ncs_io_num, !RC522_DRIVER_NCS_PIN_SELECT));
+
+    return ESP_OK;
+}
+
 static esp_err_t rc522_spi_install(const rc522_driver_handle_t driver)
 {
     RC522_CHECK(driver == NULL);

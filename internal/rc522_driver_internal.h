@@ -29,8 +29,6 @@ struct rc522_driver_handle
     rc522_driver_uninstall_handler_t uninstall;
 };
 
-esp_err_t rc522_driver_init_ncs_pin(gpio_num_t ncs_io_num);
-
 esp_err_t rc522_driver_init_rst_pin(gpio_num_t rst_io_num);
 
 esp_err_t rc522_driver_create(const void *config, size_t config_size, rc522_driver_handle_t *driver);
