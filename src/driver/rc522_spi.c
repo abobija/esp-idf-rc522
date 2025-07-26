@@ -66,8 +66,6 @@ static esp_err_t rc522_spi_install(const rc522_driver_handle_t driver)
 
         conf->dev_config.pre_cb = &rc522_spi_transaction_pre_cb;
         conf->dev_config.post_cb = &rc522_spi_transaction_post_cb;
-
-        RC522_RETURN_ON_ERROR(rc522_driver_init_ncs_pin(conf->ncs_io_num));
     }
 
     RC522_RETURN_ON_ERROR(
