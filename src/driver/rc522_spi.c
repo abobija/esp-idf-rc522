@@ -9,24 +9,6 @@ RC522_LOG_DEFINE_BASE();
 static void rc522_spi_transaction_pre_cb(spi_transaction_t *trans);
 static void rc522_spi_transaction_post_cb(spi_transaction_t *trans);
 
-esp_err_t rc522_driver_init_ncs_pin(gpio_num_t ncs_io_num)
-{
-    RC522_CHECK(ncs_io_num < 0);
-
-    gpio_config_t io_conf = {
-        .intr_type = GPIO_INTR_DISABLE,
-        .mode = GPIO_MODE_OUTPUT,
-        .pin_bit_mask = (1ULL << ncs_io_num),
-        .pull_down_en = GPIO_PULLDOWN_DISABLE,
-        .pull_up_en = GPIO_PULLUP_DISABLE,
-    };
-
-    RC522_RETURN_ON_ERROR(gpio_config(&io_conf));
-    RC522_RETURN_ON_ERROR(gpio_set_level(ncs_io_num, !RC522_DRIVER_NCS_PIN_SELECT));
-
-    return ESP_OK;
-}
-
 static esp_err_t rc522_spi_install(const rc522_driver_handle_t driver)
 {
     RC522_CHECK(driver == NULL);
@@ -65,14 +47,28 @@ static esp_err_t rc522_spi_install(const rc522_driver_handle_t driver)
     conf->dev_config.dummy_bits = 1;
     // }}
 
-    if (conf->dev_config.spics_io_num == -1) {
-        RC522_CHECK(conf->ncs_io_num == -1);
+    // ESP32 SPI bus has limitation of 3 CS lines, so we need to use
+    // software control for CS line in order to use more devices.
+    {
+        driver->cs_io_num = conf->dev_config.spics_io_num;
         conf->dev_config.spics_io_num = -1;
+
+        gpio_config_t cs_conf = {
+            .intr_type = GPIO_INTR_DISABLE,
+            .mode = GPIO_MODE_OUTPUT,
+            .pin_bit_mask = (1ULL << driver->cs_io_num),
+            .pull_down_en = GPIO_PULLDOWN_DISABLE,
+            .pull_up_en = GPIO_PULLUP_DISABLE,
+        };
+
+        RC522_RETURN_ON_ERROR(gpio_config(&cs_conf));
+        RC522_RETURN_ON_ERROR(gpio_set_level(driver->cs_io_num, 1));
+
         conf->dev_config.pre_cb = &rc522_spi_transaction_pre_cb;
         conf->dev_config.post_cb = &rc522_spi_transaction_post_cb;
-
+        
         RC522_RETURN_ON_ERROR(rc522_driver_init_ncs_pin(conf->ncs_io_num));
-    }
+     }
 
     RC522_RETURN_ON_ERROR(
         spi_bus_add_device(conf->host_id, &conf->dev_config, (spi_device_handle_t *)(&driver->device)));
@@ -96,7 +92,7 @@ static esp_err_t rc522_spi_send(const rc522_driver_handle_t driver, uint8_t addr
             .addr = address,
             .length = 8 * bytes->length,
             .tx_buffer = bytes->ptr,
-            .user = (void *)driver->config,
+            .user = driver,
         });
 
     return ret;
@@ -182,12 +178,12 @@ esp_err_t rc522_spi_create(const rc522_spi_config_t *config, rc522_driver_handle
 
 static void rc522_spi_transaction_pre_cb(spi_transaction_t *trans)
 {
-    rc522_spi_config_t *conf = (rc522_spi_config_t *)trans->user;
-    RC522_LOG_ON_ERROR(gpio_set_level(conf->ncs_io_num, RC522_DRIVER_NCS_PIN_SELECT));
+    rc522_driver_handle_t driver = (rc522_driver_handle_t)trans->user;
+    RC522_LOG_ON_ERROR(gpio_set_level(driver->cs_io_num, 0));
 }
 
 static void rc522_spi_transaction_post_cb(spi_transaction_t *trans)
 {
-    rc522_spi_config_t *conf = (rc522_spi_config_t *)trans->user;
-    RC522_LOG_ON_ERROR(gpio_set_level(conf->ncs_io_num, !RC522_DRIVER_NCS_PIN_SELECT));
+    rc522_driver_handle_t driver = (rc522_driver_handle_t)trans->user;
+    RC522_LOG_ON_ERROR(gpio_set_level(driver->cs_io_num, 1));
 }

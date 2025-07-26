@@ -23,17 +23,7 @@ typedef struct
      * Set to -1 if the RST pin is not connected.
      */
     gpio_num_t rst_io_num;
-    /**
-     * GPIO number of the RC522 nCS pin.
-     * This is used if you have more than 3 devices on your SPI bus (typically SPI3).
-     * If you wish to use this parameter, you must set `dev_config.spics_io_num`
-     * to -1. For backwards compatibility, this parameter is ignored if you have set
-     * `dev_config.spics_io_num` to any other value than -1.
-     */
-    gpio_num_t ncs_io_num;
 } rc522_spi_config_t;
-
-esp_err_t rc522_driver_init_ncs_pin(gpio_num_t ncs_io_num);
 
 esp_err_t rc522_spi_create(const rc522_spi_config_t *config, rc522_driver_handle_t *driver);
 

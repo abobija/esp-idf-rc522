@@ -2,7 +2,6 @@
 #include "rc522_types_internal.h"
 #include "rc522_driver.h"
 
-#define RC522_DRIVER_NCS_PIN_SELECT              (0)
 #define RC522_DRIVER_HARD_RST_PIN_PWR_DOWN_LEVEL (0)
 #define RC522_DRIVER_HARD_RST_PULSE_DURATION_MS  (15)
 
@@ -22,6 +21,7 @@ struct rc522_driver_handle
 {
     void *config;
     void *device;
+    gpio_num_t cs_io_num;
     rc522_driver_install_handler_t install;
     rc522_driver_send_handler_t send;
     rc522_driver_receive_handler_t receive;
