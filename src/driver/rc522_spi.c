@@ -112,7 +112,7 @@ static esp_err_t rc522_spi_receive(const rc522_driver_handle_t driver, uint8_t a
                 .addr = address,
                 .rxlength = 8,
                 .rx_buffer = (bytes->ptr + i),
-                .user = (void *)driver->config,
+                .user = driver,
             }));
     }
 
