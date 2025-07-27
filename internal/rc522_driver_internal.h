@@ -21,6 +21,7 @@ struct rc522_driver_handle
 {
     void *config;
     void *device;
+    gpio_num_t cs_io_num;
     rc522_driver_install_handler_t install;
     rc522_driver_send_handler_t send;
     rc522_driver_receive_handler_t receive;
