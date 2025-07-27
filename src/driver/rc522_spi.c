@@ -6,13 +6,23 @@
 
 RC522_LOG_DEFINE_BASE();
 
+typedef struct
+{
+    gpio_num_t cs_io_num;
+} rc522_spi_meta_t;
+
 static void rc522_spi_transaction_pre_cb(spi_transaction_t *trans);
+
 static void rc522_spi_transaction_post_cb(spi_transaction_t *trans);
 
 static esp_err_t rc522_spi_install(const rc522_driver_handle_t driver)
 {
     RC522_CHECK(driver == NULL);
     RC522_CHECK(driver->config == NULL);
+
+    rc522_spi_meta_t *meta = calloc(1, sizeof(rc522_spi_meta_t));
+    RC522_RETURN_ON_FALSE(meta != NULL, ESP_ERR_NO_MEM);
+    driver->meta = (void *)meta;
 
     rc522_spi_config_t *conf = (rc522_spi_config_t *)(driver->config);
 
@@ -50,19 +60,19 @@ static esp_err_t rc522_spi_install(const rc522_driver_handle_t driver)
     // ESP32 SPI bus has limitation of 3 CS lines, so we need to use
     // software control for CS line in order to use more devices.
     {
-        driver->cs_io_num = conf->dev_config.spics_io_num;
+        meta->cs_io_num = conf->dev_config.spics_io_num;
         conf->dev_config.spics_io_num = -1;
 
         gpio_config_t cs_conf = {
             .intr_type = GPIO_INTR_DISABLE,
             .mode = GPIO_MODE_OUTPUT,
-            .pin_bit_mask = (1ULL << driver->cs_io_num),
+            .pin_bit_mask = (1ULL << meta->cs_io_num),
             .pull_down_en = GPIO_PULLDOWN_DISABLE,
             .pull_up_en = GPIO_PULLUP_DISABLE,
         };
 
         RC522_RETURN_ON_ERROR(gpio_config(&cs_conf));
-        RC522_RETURN_ON_ERROR(gpio_set_level(driver->cs_io_num, 1));
+        RC522_RETURN_ON_ERROR(gpio_set_level(meta->cs_io_num, 1));
 
         conf->dev_config.pre_cb = &rc522_spi_transaction_pre_cb;
         conf->dev_config.post_cb = &rc522_spi_transaction_post_cb;
@@ -146,13 +156,20 @@ static esp_err_t rc522_spi_uninstall(const rc522_driver_handle_t driver)
     RC522_CHECK(driver->device == NULL);
     RC522_CHECK(driver->config == NULL);
 
-    RC522_RETURN_ON_ERROR(spi_bus_remove_device((spi_device_handle_t)(driver->device)));
-    driver->device = NULL;
+    if (driver->meta) {
+        free(driver->meta);
+        driver->meta = NULL;
+    }
+
+    if (driver->device) {
+        RC522_LOG_ON_ERROR(spi_bus_remove_device((spi_device_handle_t)(driver->device)));
+        driver->device = NULL;
+    }
 
     rc522_spi_config_t *conf = (rc522_spi_config_t *)(driver->config);
 
     if (conf->bus_config) {
-        RC522_RETURN_ON_ERROR(spi_bus_free(conf->host_id));
+        RC522_LOG_ON_ERROR(spi_bus_free(conf->host_id));
     }
 
     return ESP_OK;
@@ -177,11 +194,13 @@ esp_err_t rc522_spi_create(const rc522_spi_config_t *config, rc522_driver_handle
 static void rc522_spi_transaction_pre_cb(spi_transaction_t *trans)
 {
     rc522_driver_handle_t driver = (rc522_driver_handle_t)trans->user;
-    RC522_LOG_ON_ERROR(gpio_set_level(driver->cs_io_num, 0));
+    rc522_spi_meta_t *meta = (rc522_spi_meta_t *)(driver->meta);
+    RC522_LOG_ON_ERROR(gpio_set_level(meta->cs_io_num, 0));
 }
 
 static void rc522_spi_transaction_post_cb(spi_transaction_t *trans)
 {
     rc522_driver_handle_t driver = (rc522_driver_handle_t)trans->user;
-    RC522_LOG_ON_ERROR(gpio_set_level(driver->cs_io_num, 1));
+    rc522_spi_meta_t *meta = (rc522_spi_meta_t *)(driver->meta);
+    RC522_LOG_ON_ERROR(gpio_set_level(meta->cs_io_num, 1));
 }
