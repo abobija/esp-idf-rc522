@@ -28,8 +28,8 @@ static esp_err_t rc522_spi_install(const rc522_driver_handle_t driver)
 
     if (conf->bus_config) {
         // overwrite bus config
-        conf->bus_config->quadwp_io_num = -1;
-        conf->bus_config->quadhd_io_num = -1;
+        conf->bus_config->quadwp_io_num = GPIO_NUM_NC;
+        conf->bus_config->quadhd_io_num = GPIO_NUM_NC;
 
         RC522_RETURN_ON_ERROR(spi_bus_initialize(conf->host_id, conf->bus_config, conf->dma_chan));
     }
@@ -61,7 +61,7 @@ static esp_err_t rc522_spi_install(const rc522_driver_handle_t driver)
     // software control for CS line in order to use more devices.
     {
         meta->cs_io_num = conf->dev_config.spics_io_num;
-        conf->dev_config.spics_io_num = -1;
+        conf->dev_config.spics_io_num = GPIO_NUM_NC;
 
         gpio_config_t cs_conf = {
             .intr_type = GPIO_INTR_DISABLE,
