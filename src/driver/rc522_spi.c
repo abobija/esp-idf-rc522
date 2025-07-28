@@ -15,13 +15,17 @@ static void rc522_spi_transaction_pre_cb(spi_transaction_t *trans);
 
 static void rc522_spi_transaction_post_cb(spi_transaction_t *trans);
 
+static esp_err_t rc522_spi_uninstall(const rc522_driver_handle_t driver);
+
 static esp_err_t rc522_spi_install(const rc522_driver_handle_t driver)
 {
     RC522_CHECK(driver == NULL);
     RC522_CHECK(driver->config == NULL);
 
+    esp_err_t ret = ESP_OK;
+
     rc522_spi_meta_t *meta = calloc(1, sizeof(rc522_spi_meta_t));
-    RC522_RETURN_ON_FALSE(meta != NULL, ESP_ERR_NO_MEM);
+    ESP_GOTO_ON_FALSE(meta != NULL, ESP_ERR_NO_MEM, error, TAG, "nomem");
     driver->meta = (void *)meta;
 
     rc522_spi_config_t *conf = (rc522_spi_config_t *)(driver->config);
@@ -31,7 +35,10 @@ static esp_err_t rc522_spi_install(const rc522_driver_handle_t driver)
         conf->bus_config->quadwp_io_num = GPIO_NUM_NC;
         conf->bus_config->quadhd_io_num = GPIO_NUM_NC;
 
-        RC522_RETURN_ON_ERROR(spi_bus_initialize(conf->host_id, conf->bus_config, conf->dma_chan));
+        ESP_GOTO_ON_ERROR(spi_bus_initialize(conf->host_id, conf->bus_config, conf->dma_chan),
+            error,
+            TAG,
+            "spi bus initialization failed");
     }
     else {
         RC522_LOGD("skips spi bus initialization");
@@ -71,21 +78,27 @@ static esp_err_t rc522_spi_install(const rc522_driver_handle_t driver)
             .pull_up_en = GPIO_PULLUP_DISABLE,
         };
 
-        RC522_RETURN_ON_ERROR(gpio_config(&cs_conf));
-        RC522_RETURN_ON_ERROR(gpio_set_level(meta->cs_io_num, 1));
+        ESP_GOTO_ON_ERROR(gpio_config(&cs_conf), error, TAG, "cs gpio config failed");
+        ESP_GOTO_ON_ERROR(gpio_set_level(meta->cs_io_num, 1), error, TAG, "cs set level failed");
 
         conf->dev_config.pre_cb = &rc522_spi_transaction_pre_cb;
         conf->dev_config.post_cb = &rc522_spi_transaction_post_cb;
     }
 
-    RC522_RETURN_ON_ERROR(
-        spi_bus_add_device(conf->host_id, &conf->dev_config, (spi_device_handle_t *)(&driver->device)));
+    ESP_GOTO_ON_ERROR(spi_bus_add_device(conf->host_id, &conf->dev_config, (spi_device_handle_t *)(&driver->device)),
+        error,
+        TAG,
+        "spi bus add device failed");
 
     if (conf->rst_io_num > GPIO_NUM_NC) {
-        RC522_RETURN_ON_ERROR(rc522_driver_init_rst_pin(conf->rst_io_num));
+        ESP_GOTO_ON_ERROR(rc522_driver_init_rst_pin(conf->rst_io_num), error, TAG, "init rst pin failed");
     }
 
-    return ESP_OK;
+    goto exit;
+error:
+    RC522_LOG_ON_ERROR(rc522_spi_uninstall(driver));
+exit:
+    return ret;
 }
 
 static esp_err_t rc522_spi_send(const rc522_driver_handle_t driver, uint8_t address, const rc522_bytes_t *bytes)
@@ -153,8 +166,6 @@ static esp_err_t rc522_spi_reset(const rc522_driver_handle_t driver)
 static esp_err_t rc522_spi_uninstall(const rc522_driver_handle_t driver)
 {
     RC522_CHECK(driver == NULL);
-    RC522_CHECK(driver->device == NULL);
-    RC522_CHECK(driver->config == NULL);
 
     if (driver->meta) {
         free(driver->meta);
@@ -166,10 +177,12 @@ static esp_err_t rc522_spi_uninstall(const rc522_driver_handle_t driver)
         driver->device = NULL;
     }
 
-    rc522_spi_config_t *conf = (rc522_spi_config_t *)(driver->config);
+    if (driver->config) {
+        rc522_spi_config_t *conf = (rc522_spi_config_t *)(driver->config);
 
-    if (conf->bus_config) {
-        RC522_LOG_ON_ERROR(spi_bus_free(conf->host_id));
+        if (conf->bus_config) {
+            RC522_LOG_ON_ERROR(spi_bus_free(conf->host_id));
+        }
     }
 
     return ESP_OK;
