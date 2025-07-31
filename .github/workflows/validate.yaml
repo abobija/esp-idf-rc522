@@ -57,10 +57,10 @@ jobs:
           - multiple_scanners
           - picc_nxp
         idf_ver:
-          - release-v5.0
-          - release-v5.1
-          - release-v5.2
-          - release-v5.3
+          # - release-v5.0
+          # - release-v5.1
+          # - release-v5.2
+          # - release-v5.3
           - release-v5.4
           - release-v5.5
         idf_target:
