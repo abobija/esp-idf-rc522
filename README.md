@@ -99,6 +99,11 @@ idf.py build && ./build/test.elf
 - [MF1S50YYX_V1](https://www.nxp.com/docs/en/data-sheet/MF1S50YYX_V1.pdf) MIFARE Classic EV1 1K
 - [MF1S70YYX_V1](https://www.nxp.com/docs/en/data-sheet/MF1S70YYX_V1.pdf) MIFARE Classic EV1 4K
 
+## Author
+
+GitHub: [abobija](https://github.com/abobija)<br />
+Homepage: [abobija.com](https://abobija.com)
+
 ## License
 
 This component is provided under Apache 2.0 license, see [LICENSE](LICENSE) file for details.
