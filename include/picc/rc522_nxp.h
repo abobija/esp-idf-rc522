@@ -36,7 +36,7 @@
 #include "rc522_picc.h"
 #include "rc522_types.h"
 
-#ifdef __cplusus
+#ifdef __cplusplus
 extern "C" {
 #endif
 
