@@ -1,0 +1,4 @@
+dependencies:
+  abobija/rc522:
+    version: "*"
+    override_path: '../../../'
