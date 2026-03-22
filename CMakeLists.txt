@@ -18,6 +18,7 @@ idf_component_register(
         esp_event
         # esp_driver_spi # introduced in esp-idf 5.3, autoincluded in 'driver' component
         driver # required for i2c, TODO: migrate to the new API
+        esp_driver_i2c
 )
 
 target_compile_options(${COMPONENT_LIB} PRIVATE
