@@ -8,11 +8,6 @@
 
 static const char *TAG = "rc522-basic-i2c-example";
 
-#define RC522_I2C_ADDRESS      (0x28)
-#define RC522_I2C_GPIO_SDA     (18)
-#define RC522_I2C_GPIO_SCL     (21)
-#define RC522_SCANNER_GPIO_RST (-1) // soft-reset
-
 const i2c_master_bus_config_t i2c_bus_config = {
     .clk_source = I2C_CLK_SRC_DEFAULT,
     .i2c_port = I2C_NUM_0,
@@ -47,20 +42,8 @@ static void on_picc_state_changed(void *arg, esp_event_base_t base, int32_t even
     rc522_picc_print(event->picc);
 }
 
-void init_load_switch()
-{
-    gpio_set_direction(GPIO_NUM_17, GPIO_MODE_OUTPUT);
-}
-void enable_load_switch()
-{
-    gpio_set_level(GPIO_NUM_17, 1);
-}
-
 void app_main()
 {
-    init_load_switch();
-    enable_load_switch();
-
     rc522_new_i2c_create(&driver_config, &driver);
     rc522_driver_install(driver);
 
