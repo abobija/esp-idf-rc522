@@ -1,3 +1,4 @@
+#include <string.h>
 #include "driver/rc522_i2c_new.h"
 #include "driver/i2c_master.h"
 #include "driver/i2c_types.h"
