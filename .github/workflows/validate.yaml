@@ -67,3 +67,17 @@ jobs:
           path: rc522/examples/${{ matrix.example }}
           esp_idf_version: ${{ matrix.idf }}
           target: ${{ matrix.target }}
+
+  component:
+    name: "Component"
+    runs-on: ubuntu-latest
+    needs:
+      - examples
+    steps:
+      - uses: actions/checkout@v7
+      - uses: espressif/upload-components-ci-action@v2
+        with:
+          dry_run: true
+          components: "rc522:."
+          namespace: abobija
+          api_token: ${{ secrets.IDF_COMPONENTS_API_TOKEN }}
