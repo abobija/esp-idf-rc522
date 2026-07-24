@@ -37,7 +37,7 @@ jobs:
         uses: espressif/esp-idf-ci-action@v1
         with:
           path: rc522/test
-          esp_idf_version: ${ matrix.idf }
+          esp_idf_version: ${{ matrix.idf }}
           target: linux
           command: idf.py build && ./build/test.elf
 
