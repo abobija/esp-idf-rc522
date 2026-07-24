@@ -1,4 +1,4 @@
-name: Publish ESP-IDF Component
+name: Publish Component
 
 on:
   release:
@@ -9,9 +9,9 @@ jobs:
     runs-on: ubuntu-latest
 
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
       
-      - name: Upload component
+      - name: Upload
         uses: espressif/upload-components-ci-action@v2
         with:
           components: "rc522:."
