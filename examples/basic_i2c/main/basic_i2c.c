@@ -10,17 +10,19 @@ static const char *TAG = "rc522-basic-i2c-example";
 #define RC522_I2C_GPIO_SCL     (21)
 #define RC522_SCANNER_GPIO_RST (-1) // soft-reset
 
-static rc522_i2c_config_t driver_config = {
-    .port = I2C_NUM_0,
-    .device_address = RC522_I2C_ADDRESS,
-    .rw_timeout_ms = 1000,
-    .config = {
-        .mode = I2C_MODE_MASTER,
+static rc522_i2c_config_t driver_config = { 
+    .bus_config = &(i2c_master_bus_config_t){
+        .i2c_port = I2C_NUM_0,
         .sda_io_num = RC522_I2C_GPIO_SDA,
         .scl_io_num = RC522_I2C_GPIO_SCL,
-        .sda_pullup_en = GPIO_PULLUP_ENABLE,
-        .scl_pullup_en = GPIO_PULLUP_ENABLE,
-        .master.clk_speed = 100000,
+        .glitch_ignore_cnt = 7,
+        .flags.enable_internal_pullup = true,
+        .clk_source = I2C_CLK_SRC_DEFAULT,
+    },
+    .dev_config = {
+        .dev_addr_length = I2C_ADDR_BIT_LEN_7,
+        .device_address = RC522_I2C_ADDRESS,
+        .scl_speed_hz = 100000,
     },
     .rst_io_num = RC522_SCANNER_GPIO_RST,
 };
