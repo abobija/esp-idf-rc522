@@ -8,9 +8,8 @@ on:
   schedule:
     - cron: "0 0 * * 6"
 
-idf_versions: &idf_versions
-  - release-v5.4
-  - release-v6.0
+env:
+  IDF_VERSIONS: '["release-v5.4", "release-v6.0"]'
 
 jobs:
   format_check:
@@ -32,7 +31,7 @@ jobs:
       - format_check
     strategy:
       matrix:
-        idf: *idf_versions
+        idf: ${{ fromJSON(env.IDF_VERSIONS) }}
     steps:
       - uses: actions/checkout@v4
         with:
@@ -59,7 +58,7 @@ jobs:
           - read_write
           - multiple_scanners
           - picc_nxp
-        idf: *idf_versions
+        idf: ${{ fromJSON(env.IDF_VERSIONS) }}
         target:
           - esp32
     steps:
