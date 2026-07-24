@@ -11,9 +11,9 @@ jobs:
     steps:
       - uses: actions/checkout@v4
       
-      - name: Upload component to the registry
-        uses: espressif/upload-components-ci-action@v1
+      - name: Upload component
+        uses: espressif/upload-components-ci-action@v2
         with:
+          components: "rc522:."
           namespace: abobija
-          name: rc522
           api_token: ${{ secrets.IDF_COMPONENTS_API_TOKEN }}

@@ -148,7 +148,7 @@ inline static esp_err_t rc522_pcd_set_timer_reload_value(const rc522_handle_t rc
     return ESP_OK;
 }
 
-inline static esp_err_t rc522_pcd_set_rx_gain(const rc522_handle_t rc522, rc522_pcd_rx_gain_t gain)
+inline esp_err_t rc522_pcd_set_rx_gain(const rc522_handle_t rc522, rc522_pcd_rx_gain_t gain)
 {
     return rc522_pcd_set_bits(rc522, RC522_PCD_RF_CFG_REG, gain);
 }
