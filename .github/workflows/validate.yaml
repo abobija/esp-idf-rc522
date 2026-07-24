@@ -13,8 +13,8 @@ jobs:
     name: "Formatting"
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-python@v5
+      - uses: actions/checkout@v7
+      - uses: actions/setup-python@v7
         with:
            python-version: '3.x'
       - run: pip install clang-format~=18.0
@@ -30,7 +30,7 @@ jobs:
       matrix:
         idf: [ release-v5.5 ]
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
         with:
           path: rc522
       - uses: espressif/esp-idf-ci-action@v1
@@ -58,7 +58,7 @@ jobs:
         target:
           - esp32
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
         with:
           path: rc522
       - name: Build
