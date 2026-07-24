@@ -28,7 +28,7 @@ jobs:
       - format_check
     strategy:
       matrix:
-        idf: &idf_versions
+        idf_ver: &idf_versions
           - release-v5.4
           - release-v6.0
     steps:
@@ -39,7 +39,7 @@ jobs:
         uses: espressif/esp-idf-ci-action@v1
         with:
           path: rc522/test
-          esp_idf_version: ${ matrix.idf }
+          esp_idf_version: ${ matrix.idf_ver }
           target: linux
           command: idf.py build && ./build/test.elf
 
@@ -57,7 +57,7 @@ jobs:
           - read_write
           - multiple_scanners
           - picc_nxp
-        idf: *idf_versions
+        idf_ver: *idf_versions
         target:
           - esp32
     steps:
@@ -68,5 +68,5 @@ jobs:
         uses: espressif/esp-idf-ci-action@v1
         with:
           path: rc522/examples/${{ matrix.example }}
-          esp_idf_version: ${{ matrix.idf }}
+          esp_idf_version: ${{ matrix.idf_ver }}
           target: ${{ matrix.target }}
