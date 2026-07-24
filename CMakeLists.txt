@@ -1,3 +1,17 @@
+SET (RC522_REQUIRES
+    esp_event
+    esp_driver_gpio
+    driver # required for i2c, TODO: migrate to the new API
+)
+
+if(${IDF_TARGET} STREQUAL "linux") # unit tests
+    list(APPEND RC522_REQUIRES "")
+else()
+    list(APPEND RC522_REQUIRES
+        esp_driver_spi
+    )
+endif()
+
 idf_component_register(
     INCLUDE_DIRS
         include
@@ -14,10 +28,7 @@ idf_component_register(
         src/driver/rc522_spi.c
         src/driver/rc522_i2c.c
     REQUIRES
-        esp_event
-        esp_driver_gpio
-        esp_driver_spi
-        driver # required for i2c, TODO: migrate to the new API
+        ${RC522_REQUIRES}
 )
 
 target_compile_options(${COMPONENT_LIB} PRIVATE

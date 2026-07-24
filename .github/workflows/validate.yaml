@@ -28,7 +28,7 @@ jobs:
       - formatting
     strategy:
       matrix:
-        idf: [ release-v6.0 ]
+        idf: [ release-v5.5 ]
     steps:
       - uses: actions/checkout@v4
         with:
