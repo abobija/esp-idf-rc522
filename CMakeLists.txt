@@ -1,15 +1,13 @@
 SET (RC522_REQUIRES
     esp_event
     esp_driver_gpio
+    esp_driver_i2c
 )
 
-if(${IDF_TARGET} STREQUAL "linux") # unit tests
-    list(APPEND RC522_REQUIRES "")
+if(${IDF_TARGET} STREQUAL "linux") # tests
+    list(APPEND RC522_REQUIRES driver)
 else()
-    list(APPEND RC522_REQUIRES
-        esp_driver_spi
-        esp_driver_i2c
-    )
+    list(APPEND RC522_REQUIRES esp_driver_spi)
 endif()
 
 idf_component_register(
