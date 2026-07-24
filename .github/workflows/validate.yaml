@@ -8,6 +8,10 @@ on:
   schedule:
     - cron: "0 0 * * 6"
 
+idf_versions: &idf_versions
+  - release-v5.4
+  - release-v6.0
+
 jobs:
   format_check:
     name: "Check formatting"
@@ -26,6 +30,9 @@ jobs:
     runs-on: ubuntu-latest
     needs:
       - format_check
+    strategy:
+      matrix:
+        idf: *idf_versions
     steps:
       - uses: actions/checkout@v4
         with:
@@ -34,7 +41,7 @@ jobs:
         uses: espressif/esp-idf-ci-action@v1
         with:
           path: rc522/test
-          esp_idf_version: release-v5.3
+          esp_idf_version: ${ matrix.idf }
           target: linux
           command: idf.py build && ./build/test.elf
 
@@ -52,15 +59,8 @@ jobs:
           - read_write
           - multiple_scanners
           - picc_nxp
-        idf_ver:
-          # - release-v5.0
-          # - release-v5.1
-          # - release-v5.2
-          # - release-v5.3
-          # - release-v5.4
-          - release-v5.5
-          - release-v6.0
-        idf_target:
+        idf: *idf_versions
+        target:
           - esp32
     steps:
       - uses: actions/checkout@v4
@@ -70,5 +70,5 @@ jobs:
         uses: espressif/esp-idf-ci-action@v1
         with:
           path: rc522/examples/${{ matrix.example }}
-          esp_idf_version: ${{ matrix.idf_ver }}
-          target: ${{ matrix.idf_target }}
+          esp_idf_version: ${{ matrix.idf }}
+          target: ${{ matrix.target }}
