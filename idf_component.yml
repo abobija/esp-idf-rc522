@@ -18,4 +18,4 @@ files:
     - "docs/**/*"
     - "test/**/*"
 dependencies:
-  idf: "^5.0"
+  idf: ">=5.0"
