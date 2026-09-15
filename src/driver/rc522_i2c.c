@@ -57,7 +57,7 @@ static esp_err_t rc522_i2c_receive(const rc522_driver_handle_t driver, uint8_t a
     RC522_CHECK(driver->config == NULL);
     RC522_CHECK_BYTES(bytes);
 
-    ESP_ERROR_CHECK(i2c_master_transmit_receive((i2c_master_dev_handle_t)driver->device,
+    RC522_RETURN_ON_ERROR(i2c_master_transmit_receive((i2c_master_dev_handle_t)driver->device,
         &address,
         1,
         bytes->ptr,
